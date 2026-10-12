@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Biolyn
 
-## Getting Started
+A link-in-bio page for Instagram. Each user claims a username and gets a public page at `biolyn.link/<username>` with their links.
 
-First, run the development server:
+Stack: Next.js (App Router, Cache Components), TypeScript, Tailwind CSS, Supabase (Postgres + Auth), hosted on Vercel.
+
+## First-time setup
+
+1. Create a free project at https://supabase.com.
+2. In Supabase, open **SQL Editor**, paste `supabase/schema.sql` and run it.
+3. In Supabase, open **Authentication > URL Configuration** and add these redirect URLs:
+   `http://localhost:3000/auth/callback` and `https://biolyn.link/auth/callback`.
+4. Copy the env file and fill it in from **Project Settings > API**:
+   ```bash
+   cp .env.example .env.local
+   ```
+5. Install and run:
+   ```bash
+   npm install
+   npm run dev
+   ```
+6. Open http://localhost:3000, sign in with your email, claim a username, add a link, then open `http://localhost:3000/<username>`.
+
+## Checks
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project map
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Path | What it does |
+|---|---|
+| `src/app/page.tsx` | Landing page |
+| `src/app/login/page.tsx` | Email magic-link sign in |
+| `src/app/auth/callback/route.ts` | Finishes sign in from the email link |
+| `src/app/dashboard/` | Claim username, edit profile, add/hide/reorder/delete links |
+| `src/app/[username]/page.tsx` | Public profile page (cached, refreshed on every edit) |
+| `src/app/api/click/[linkId]/route.ts` | Logs a click, then redirects to the real URL |
+| `src/proxy.ts` | Keeps the session fresh and protects `/dashboard` |
+| `supabase/schema.sql` | Tables and Row Level Security rules |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy to Vercel
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push this repo to GitHub and import it in Vercel.
+2. Add the three env vars from `.env.example` (use `https://biolyn.link` for `NEXT_PUBLIC_SITE_URL`).
+3. In Vercel **Settings > Domains**, add `biolyn.link` and set the DNS records Vercel shows at your registrar.
