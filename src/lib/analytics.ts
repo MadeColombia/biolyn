@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -19,6 +20,9 @@ export async function getStats(
   profileId: string,
   linkIds: string[],
 ): Promise<Stats> {
+  // Reading the clock needs a real request; cookies alone don't count,
+  // because Next.js can prerender with them ahead of time.
+  await connection();
   const now = Date.now();
   const since = new Date(now - 30 * DAY).toISOString();
 
