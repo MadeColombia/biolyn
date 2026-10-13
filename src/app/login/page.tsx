@@ -37,7 +37,7 @@ function saveLastMethod(method: Method) {
 
 function LastUsedBadge() {
   return (
-    <span className="absolute -top-2.5 right-3 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
+    <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
       Last used
     </span>
   );
@@ -111,7 +111,7 @@ function LoginForm() {
       <button
         type="button"
         onClick={signInWithGoogle}
-        className="relative rounded-lg border border-neutral-300 px-4 py-3 font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+        className="flex items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-3 font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
       >
         Continue with Google
         {lastMethod === "google" && <LastUsedBadge />}
@@ -129,7 +129,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={status === "sending"}
-          className="relative rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {status === "sending" ? "Sending..." : "Send magic link"}
           {lastMethod === "email" && <LastUsedBadge />}
