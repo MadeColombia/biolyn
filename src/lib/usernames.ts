@@ -1,8 +1,24 @@
 // Usernames that would clash with app routes or look official.
 export const RESERVED_USERNAMES = new Set([
-  "admin", "api", "app", "auth", "biolyn", "dashboard", "help", "login",
-  "logout", "settings", "signup", "support", "terms", "privacy", "about",
-  "_next", "favicon.ico", "robots.txt", "sitemap.xml",
+  "admin",
+  "api",
+  "app",
+  "auth",
+  "biolyn",
+  "dashboard",
+  "help",
+  "login",
+  "logout",
+  "settings",
+  "signup",
+  "support",
+  "terms",
+  "privacy",
+  "about",
+  "_next",
+  "favicon.ico",
+  "robots.txt",
+  "sitemap.xml",
 ]);
 
 const USERNAME_PATTERN = /^[a-z0-9_.]{3,30}$/;

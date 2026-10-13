@@ -3,7 +3,13 @@ import type { Stats } from "@/lib/analytics";
 
 type Link = { id: string; title: string };
 
-export function StatsSection({ stats, links }: { stats: Stats; links: Link[] }) {
+export function StatsSection({
+  stats,
+  links,
+}: {
+  stats: Stats;
+  links: Link[];
+}) {
   const tiles = [
     { label: "Views, 7 days", value: stats.views7 },
     { label: "Views, 30 days", value: stats.views30 },

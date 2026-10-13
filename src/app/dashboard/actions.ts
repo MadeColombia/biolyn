@@ -6,12 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import { validateUsername } from "@/lib/usernames";
 import { profileTag } from "@/lib/profiles";
 import { supabaseEnv } from "@/lib/supabase/env";
-import {
-  normalizeSocial,
-  SOCIAL_PLATFORMS,
-  type Socials,
-} from "@/lib/socials";
+import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import { isThemeId } from "@/lib/themes";
+import { checkLinkUrl } from "@/lib/link-safety";
+import { allow } from "@/lib/rate-limit";
+
+const MAX_LINKS = 100;
 
 async function requireOwnProfile() {
   const supabase = await createClient();
@@ -91,17 +91,20 @@ export async function addLink(
   let url = String(formData.get("url") ?? "").trim();
   if (!title || !url) return { error: "Add a title and a URL." };
   if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-  try {
-    new URL(url);
-  } catch {
-    return { error: "That URL doesn't look right." };
-  }
+  const unsafe = await checkLinkUrl(url);
+  if (unsafe) return { error: unsafe };
 
   const { supabase, profile } = await requireOwnProfile();
+  if (!(await allow(`addlink:${profile.id}`, 30, 600))) {
+    return { error: "You're adding links very fast. Wait a few minutes." };
+  }
   const { count } = await supabase
     .from("links")
     .select("id", { count: "exact", head: true })
     .eq("profile_id", profile.id);
+  if ((count ?? 0) >= MAX_LINKS) {
+    return { error: `You can have up to ${MAX_LINKS} links.` };
+  }
 
   const { error } = await supabase
     .from("links")
@@ -172,6 +175,10 @@ export async function updateSocials(
   for (const { id } of SOCIAL_PLATFORMS) {
     const result = normalizeSocial(id, String(formData.get(id) ?? ""));
     if ("error" in result) return { error: result.error };
+    if (result.url?.startsWith("http")) {
+      const unsafe = await checkLinkUrl(result.url);
+      if (unsafe) return { error: unsafe };
+    }
     if (result.url) socials[id] = result.url;
   }
 

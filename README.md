@@ -38,12 +38,20 @@ npm run build
 | `src/app/dashboard/` | Claim username, edit profile, add/hide/reorder/delete links |
 | `src/app/[username]/page.tsx` | Public profile page (cached, refreshed on every edit) |
 | `src/app/api/click/[linkId]/route.ts` | Logs a click, then redirects to the real URL |
+| `src/app/report/[username]/` | Report form linked from every public page |
+| `src/lib/link-safety.ts` | Checks new links (no local/IP addresses, optional Google Safe Browsing) |
+| `src/lib/rate-limit.ts` | Per-visitor limits for views, clicks, reports and adding links |
 | `src/proxy.ts` | Keeps the session fresh and protects `/dashboard` |
 | `supabase/schema.sql` | Tables and Row Level Security rules |
-| `supabase/migrations/` | Later database changes (socials, avatars, page views) |
+| `supabase/migrations/` | Later database changes (socials, avatars, page views, reports and rate limits) |
 
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and import it in Vercel.
-2. Add the three env vars from `.env.example` (use `https://biolyn.link` for `NEXT_PUBLIC_SITE_URL`).
+2. Add the env vars from `.env.example` (use `https://biolyn.link` for `NEXT_PUBLIC_SITE_URL`). `SUPABASE_SERVICE_ROLE_KEY` is required for view and click counting once migration 004 is applied; `SAFE_BROWSING_API_KEY` is optional.
 3. In Vercel **Settings > Domains**, add `biolyn.link` and set the DNS records Vercel shows at your registrar.
+
+## Moderation
+
+- Reports land in the `reports` table (Supabase > Table Editor). Set `status` to `closed` when handled.
+- To hide a page, set `is_suspended` to `true` on its row in `profiles`. Its links stop redirecting at once, and the page itself disappears within about an hour (cache).

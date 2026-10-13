@@ -18,7 +18,8 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
   title: "Biolyn",
-  description: "One link for everything you share. Put it in your Instagram bio.",
+  description:
+    "One link for everything you share. Put it in your Instagram bio.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
