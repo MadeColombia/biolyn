@@ -10,6 +10,18 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Homepage palette: warm near-black with a terracotta accent. */
+  --color-night-950: #15110f;
+  --color-night-900: #211a17;
+  --color-night-800: #2a211d;
+  --color-night-700: #3a2e28;
+  --color-night-line: #2e2420;
+  --color-sand-50: #f6eee8;
+  --color-sand-200: #cdbfb5;
+  --color-sand-400: #a39185;
+  --color-terra: #d2693f;
+  --color-terra-light: #e07a5f;
 }
 
 @media (prefers-color-scheme: dark) {
