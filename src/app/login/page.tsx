@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -15,7 +15,41 @@ export default function LoginPage() {
   );
 }
 
+// Remembers which sign-in method this browser used last, so the login page
+// can mark it with a "Last used" badge. Stored only in this browser.
+type Method = "google" | "email";
+const LAST_METHOD_KEY = "biolyn:last-sign-in";
+
+function readLastMethod(): Method | null {
+  try {
+    const value = localStorage.getItem(LAST_METHOD_KEY);
+    return value === "google" || value === "email" ? value : null;
+  } catch {
+    return null; // storage blocked, for example in some private windows
+  }
+}
+
+function saveLastMethod(method: Method) {
+  try {
+    localStorage.setItem(LAST_METHOD_KEY, method);
+  } catch {}
+}
+
+function LastUsedBadge() {
+  return (
+    <span className="absolute -top-2.5 right-3 rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
+      Last used
+    </span>
+  );
+}
+
 function LoginForm() {
+  // Read on the client only; the server render shows no badge.
+  const lastMethod = useSyncExternalStore(
+    () => () => {},
+    readLastMethod,
+    () => null,
+  );
   // /auth/callback sends people here with ?error=link when the email link
   // was already used or has expired, or Google sign-in was cancelled.
   const linkFailed = useSearchParams().get("error") === "link";
@@ -38,6 +72,7 @@ function LoginForm() {
       options: { emailRedirectTo: `${siteUrl}/auth/callback` },
     });
     if (!error) {
+      saveLastMethod("email");
       setStatus("sent");
       return;
     }
@@ -58,8 +93,11 @@ function LoginForm() {
       provider: "google",
       options: { redirectTo: `${siteUrl}/auth/callback` },
     });
-    if (error)
+    if (error) {
       setError("Google sign-in isn't available right now. Use email instead.");
+    } else {
+      saveLastMethod("google");
+    }
   }
 
   if (status === "sent") {
@@ -73,9 +111,10 @@ function LoginForm() {
       <button
         type="button"
         onClick={signInWithGoogle}
-        className="rounded-lg border border-neutral-300 px-4 py-3 font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
+        className="relative rounded-lg border border-neutral-300 px-4 py-3 font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
       >
         Continue with Google
+        {lastMethod === "google" && <LastUsedBadge />}
       </button>
       <p className="text-center text-sm text-neutral-500">or</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -90,9 +129,10 @@ function LoginForm() {
         <button
           type="submit"
           disabled={status === "sending"}
-          className="rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="relative rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {status === "sending" ? "Sending..." : "Send magic link"}
+          {lastMethod === "email" && <LastUsedBadge />}
         </button>
       </form>
       {error && <p className="text-sm text-red-600">{error}</p>}
