@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { REPORT_REASONS, submitReport, type ReportState } from "../actions";
+import { submitReport, type ReportState } from "../actions";
+import { REPORT_REASONS } from "../reasons";
 
 const input =
   "rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900";

@@ -3,14 +3,7 @@
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { visitorId } from "@/lib/rate-limit";
-
-export const REPORT_REASONS = [
-  { id: "spam", label: "Spam or misleading links" },
-  { id: "scam", label: "Scam, phishing or malware" },
-  { id: "impersonation", label: "Pretending to be someone else" },
-  { id: "adult", label: "Adult or violent content" },
-  { id: "other", label: "Something else" },
-] as const;
+import { REPORT_REASONS } from "./reasons";
 
 export type ReportState = { error?: string; sent?: boolean };
 
