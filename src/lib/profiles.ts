@@ -19,22 +19,27 @@ export type PublicProfile = {
 export const profileTag = (username: string) => `profile:${username}`;
 
 // Cached on the server per username. The dashboard calls updateTag()
-// after every edit so the public page refreshes right away.
+// after every edit so the public page refreshes right away. "hours" means
+// changes made outside the app (like suspending a page in Supabase) show
+// up within about an hour.
 export async function getPublicProfile(
   username: string,
 ): Promise<PublicProfile | null> {
   "use cache";
   cacheTag(profileTag(username));
-  cacheLife("days");
+  cacheLife("hours");
 
   const supabase = createPublicClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url, theme, socials")
+    .select(
+      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended",
+    )
     .eq("username", username)
     .maybeSingle();
 
-  if (!profile) return null;
+  // Suspended pages look like they don't exist.
+  if (!profile || profile.is_suspended) return null;
 
   const { data: links } = await supabase
     .from("links")

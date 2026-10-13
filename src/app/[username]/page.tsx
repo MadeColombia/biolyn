@@ -65,7 +65,9 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
         )}
         <div className="text-center">
           <h1 className="text-2xl font-bold">{name}</h1>
-          {profile.bio && <p className={`mt-1 ${theme.muted}`}>{profile.bio}</p>}
+          {profile.bio && (
+            <p className={`mt-1 ${theme.muted}`}>{profile.bio}</p>
+          )}
         </div>
         {socials.length > 0 && (
           <ul className="flex flex-wrap justify-center gap-4">
@@ -96,9 +98,15 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
             </li>
           ))}
         </ul>
-        <Link href="/" className={`mt-auto pt-8 text-sm ${theme.muted}`}>
-          Made with Biolyn
-        </Link>
+        <div
+          className={`mt-auto flex items-center gap-4 pt-8 text-sm ${theme.muted}`}
+        >
+          <Link href="/">Made with Biolyn</Link>
+          <span aria-hidden>·</span>
+          <Link href={`/report/${profile.username}`} rel="nofollow">
+            Report
+          </Link>
+        </div>
       </div>
     </main>
   );

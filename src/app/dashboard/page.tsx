@@ -35,7 +35,9 @@ async function Dashboard() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url, theme, socials")
+    .select(
+      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended",
+    )
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -67,6 +69,12 @@ async function Dashboard() {
 
   return (
     <>
+      {profile.is_suspended && (
+        <p className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          Your public page is hidden because it was reported for breaking the
+          rules. You can still edit it, but visitors can&apos;t see it.
+        </p>
+      )}
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Your Biolyn</h1>
@@ -139,9 +147,7 @@ async function Dashboard() {
                 aria-pressed={id === currentTheme}
                 className={`flex h-24 w-full flex-col items-center justify-center gap-2 rounded-xl text-sm font-medium ${THEMES[id].page} ${id === currentTheme ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
               >
-                <span
-                  className={`h-3 w-3/4 rounded ${THEMES[id].button}`}
-                />
+                <span className={`h-3 w-3/4 rounded ${THEMES[id].button}`} />
                 {THEMES[id].label}
               </button>
             </form>

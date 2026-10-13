@@ -48,12 +48,7 @@ export function AddLinkForm() {
   return (
     <form ref={formRef} action={action} className="flex flex-col gap-2">
       <input name="title" placeholder="Title" required className={input} />
-      <input
-        name="url"
-        placeholder="https://..."
-        required
-        className={input}
-      />
+      <input name="url" placeholder="https://..." required className={input} />
       <button disabled={pending} className={button}>
         {pending ? "Adding..." : "Add link"}
       </button>
@@ -75,7 +70,9 @@ export function SocialsForm({ socials }: { socials: Socials }) {
           <input
             name={p.id}
             defaultValue={displaySocial(p.id, socials[p.id])}
-            placeholder={p.id === "email" ? "you@example.com" : "@handle or URL"}
+            placeholder={
+              p.id === "email" ? "you@example.com" : "@handle or URL"
+            }
             className={`${input} flex-1`}
           />
         </label>
