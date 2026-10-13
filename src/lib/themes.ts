@@ -28,7 +28,8 @@ export const THEMES = {
 export type ThemeId = keyof typeof THEMES;
 
 export function isThemeId(value: unknown): value is ThemeId {
-  return typeof value === "string" && value in THEMES;
+  // Object.hasOwn, not `in`: `"toString" in THEMES` is true too.
+  return typeof value === "string" && Object.hasOwn(THEMES, value);
 }
 
 // profiles.theme is stored as {"preset": "<id>"}; anything else means classic.
