@@ -6,6 +6,7 @@ import { themeFrom, type ThemeId } from "@/lib/themes";
 
 export type PublicLink = { id: string; title: string; url: string };
 export type PublicProfile = {
+  id: string;
   username: string;
   display_name: string | null;
   bio: string | null;
@@ -43,6 +44,7 @@ export async function getPublicProfile(
     .order("position");
 
   return {
+    id: profile.id,
     username: profile.username,
     display_name: profile.display_name,
     bio: profile.bio,

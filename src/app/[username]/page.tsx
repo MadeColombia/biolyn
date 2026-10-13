@@ -6,6 +6,7 @@ import { SocialIcon } from "@/components/social-icon";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
+import { ViewTracker } from "./view-tracker";
 
 export async function generateMetadata(
   props: PageProps<"/[username]">,
@@ -46,6 +47,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
 
   return (
     <main className={`flex flex-1 flex-col ${theme.page}`}>
+      <ViewTracker profileId={profile.id} />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 py-16">
         {profile.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
