@@ -22,13 +22,13 @@ const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
 export default function Home() {
   return (
     <div
-      className={`${display.variable} ${body.variable} flex flex-1 flex-col bg-night-950 font-[family-name:var(--font-body)] text-sand-50`}
+      className={`${display.variable} ${body.variable} flex flex-1 flex-col bg-home-bg font-[family-name:var(--font-body)] text-home-text`}
     >
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-5">
         <Link href="/" className={`${heading} text-xl font-extrabold`}>
           biolyn<span className="text-terra">.</span>link
         </Link>
-        <AccountLink className="rounded-xl bg-night-800 px-4 py-3 text-sm font-bold hover:bg-night-700" />
+        <AccountLink className="rounded-xl bg-home-raised px-4 py-3 text-sm font-bold hover:bg-home-border" />
       </header>
 
       <main className="flex flex-1 flex-col">
@@ -39,38 +39,38 @@ export default function Home() {
             Your bio fits <span className="text-terra">one link.</span> Make it
             count.
           </h1>
-          <p className="max-w-xl text-lg leading-relaxed text-sand-200 sm:text-xl">
+          <p className="max-w-xl text-lg leading-relaxed text-home-text-2 sm:text-xl">
             Biolyn turns that single link into a page with all your links, your
             socials and stats on what people actually tap.
           </p>
           <Link
             href="/login"
-            className="flex w-full max-w-xl flex-wrap items-center gap-2 rounded-3xl border border-night-700 bg-night-900 p-2 text-left transition hover:border-terra"
+            className="flex w-full max-w-xl flex-wrap items-center gap-2 rounded-3xl border border-home-border bg-home-card p-2 text-left transition hover:border-terra"
           >
             <span className="flex min-h-14 flex-1 items-center px-4 text-lg font-semibold">
-              <span className="text-sand-400">biolyn.link/</span>
+              <span className="text-home-muted">biolyn.link/</span>
               <span>yourname</span>
             </span>
-            <span className="flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-terra px-7 text-lg font-bold text-night-950 sm:flex-none">
+            <span className="flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-terra px-7 text-lg font-bold text-white sm:flex-none">
               Claim it free
             </span>
           </Link>
-          <p className="text-sm text-sand-400">
+          <p className="text-sm text-home-muted">
             Continue with Google or get a magic link by email.
           </p>
         </section>
 
         <section className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-6 pb-24 md:grid-cols-3">
-          <div className="flex flex-col gap-5 rounded-3xl border border-night-700 bg-night-900 p-8 md:col-span-2">
+          <div className="flex flex-col gap-5 rounded-3xl border border-home-border bg-home-card p-8 md:col-span-2">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 className={`${heading} text-2xl font-bold`}>
                 Know what works
               </h2>
-              <span className="text-sm text-sand-400">
+              <span className="text-sm text-home-muted">
                 Dashboard preview, sample data
               </span>
             </div>
-            <p className="max-w-lg leading-relaxed text-sand-200">
+            <p className="max-w-lg leading-relaxed text-home-text-2">
               Views over 7 or 30 days, clicks on each link and the sites your
               visitors came from.
             </p>
@@ -78,14 +78,14 @@ export default function Home() {
               {SAMPLE_BARS.map((height, i) => (
                 <div
                   key={i}
-                  className={`flex-1 rounded-lg ${i === 5 ? "bg-terra" : "bg-night-700"}`}
+                  className={`flex-1 rounded-lg ${i === 5 ? "bg-terra" : "bg-home-border"}`}
                   style={{ height: `${height}%` }}
                 />
               ))}
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-4 rounded-3xl bg-terra p-8 text-night-950">
+          <div className="flex flex-col justify-between gap-4 rounded-3xl bg-terra p-8 text-white">
             <QrIcon />
             <div>
               <h2 className={`${heading} mb-2 text-2xl font-bold`}>
@@ -101,7 +101,7 @@ export default function Home() {
             title="Three themes"
             icon={
               <div className="flex gap-2.5" aria-hidden="true">
-                <span className="h-11 w-11 rounded-xl border border-night-700 bg-white" />
+                <span className="h-11 w-11 rounded-xl border border-home-border bg-white" />
                 <span className="h-11 w-11 rounded-xl border border-slate-700 bg-slate-950" />
                 <span className="h-11 w-11 rounded-xl bg-linear-to-b from-orange-400 via-pink-500 to-purple-600" />
               </div>
@@ -117,7 +117,7 @@ export default function Home() {
           </Feature>
         </section>
 
-        <section className="border-t border-night-line">
+        <section className="border-t border-home-line">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start gap-12 px-6 py-20">
             <h2
               className={`${heading} flex-[1_1_320px] text-4xl leading-tight font-extrabold`}
@@ -144,14 +144,14 @@ export default function Home() {
           </h2>
           <Link
             href="/login"
-            className="inline-flex min-h-14 items-center rounded-2xl bg-terra px-8 text-lg font-bold text-night-950 transition hover:bg-terra-light"
+            className="inline-flex min-h-14 items-center rounded-2xl bg-terra px-8 text-lg font-bold text-white transition hover:bg-terra-dark"
           >
             Get started free
           </Link>
         </section>
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl border-t border-night-line px-6 pt-6 pb-10 text-sm text-sand-400">
+      <footer className="mx-auto w-full max-w-6xl border-t border-home-line px-6 pt-6 pb-10 text-sm text-home-muted">
         © Biolyn
       </footer>
     </div>
@@ -168,10 +168,10 @@ function Feature({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-3xl border border-night-700 bg-night-900 p-8">
+    <div className="flex flex-col gap-4 rounded-3xl border border-home-border bg-home-card p-8">
       {icon}
       <h2 className={`${heading} text-2xl font-bold`}>{title}</h2>
-      <p className="leading-relaxed text-sand-200">{children}</p>
+      <p className="leading-relaxed text-home-text-2">{children}</p>
     </div>
   );
 }
@@ -186,11 +186,11 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-baseline gap-6 border-b border-night-line py-5">
+    <li className="flex items-baseline gap-6 border-b border-home-line py-5">
       <span className={`${heading} w-5 shrink-0 text-lg font-bold text-terra`}>{n}</span>
       <span className="text-xl">
         <strong>{verb}</strong>{" "}
-        <span className="text-sand-200">{children}</span>
+        <span className="text-home-text-2">{children}</span>
       </span>
     </li>
   );

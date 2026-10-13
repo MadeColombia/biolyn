@@ -11,17 +11,17 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Homepage palette: warm near-black with a terracotta accent. */
-  --color-night-950: #15110f;
-  --color-night-900: #211a17;
-  --color-night-800: #2a211d;
-  --color-night-700: #3a2e28;
-  --color-night-line: #2e2420;
-  --color-sand-50: #f6eee8;
-  --color-sand-200: #cdbfb5;
-  --color-sand-400: #a39185;
-  --color-terra: #d2693f;
-  --color-terra-light: #e07a5f;
+  /* Homepage palette: warm off-white with a terracotta accent. */
+  --color-home-bg: #f5efe6;
+  --color-home-card: #fffbf5;
+  --color-home-raised: #eadfd2;
+  --color-home-border: #e3d5c5;
+  --color-home-line: #e3d5c5;
+  --color-home-text: #2a1e18;
+  --color-home-text-2: #5e4b40;
+  --color-home-muted: #74604f;
+  --color-terra: #b9532d;
+  --color-terra-dark: #a9472a;
 }
 
 @media (prefers-color-scheme: dark) {
