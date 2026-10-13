@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getStats } from "@/lib/analytics";
 import { socialsFrom } from "@/lib/socials";
 import { THEMES, themeFrom, type ThemeId } from "@/lib/themes";
 import { setTheme, signOut, updateProfile } from "./actions";
@@ -12,6 +13,7 @@ import {
   SocialsForm,
 } from "./forms";
 import { LinkList } from "./link-list";
+import { QrSection, StatsSection } from "./stats";
 
 export default function DashboardPage() {
   return (
@@ -56,6 +58,12 @@ async function Dashboard() {
     .order("position");
 
   const currentTheme = themeFrom(profile.theme);
+  const stats = await getStats(
+    supabase,
+    profile.id,
+    (links ?? []).map((l) => l.id),
+  );
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
 
   return (
     <>
@@ -112,6 +120,10 @@ async function Dashboard() {
           links={links ?? []}
         />
       </section>
+
+      <StatsSection stats={stats} links={links ?? []} />
+
+      <QrSection url={`${siteUrl}/${profile.username}`} />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Socials</h2>

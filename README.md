@@ -40,7 +40,7 @@ npm run build
 | `src/app/api/click/[linkId]/route.ts` | Logs a click, then redirects to the real URL |
 | `src/proxy.ts` | Keeps the session fresh and protects `/dashboard` |
 | `supabase/schema.sql` | Tables and Row Level Security rules |
-| `supabase/migrations/` | Later database changes (socials, avatar storage) |
+| `supabase/migrations/` | Later database changes (socials, avatars, page views) |
 
 ## Deploy to Vercel
 
