@@ -89,12 +89,29 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
         <ul className="flex w-full flex-col gap-3">
           {profile.links.map((link) => (
             <li key={link.id}>
-              <a
-                href={`/api/click/${link.id}`}
-                className={`block w-full rounded-xl px-4 py-4 text-center font-medium transition ${theme.button}`}
-              >
-                {link.title}
-              </a>
+              {link.embed ? (
+                <iframe
+                  src={link.embed.src}
+                  title={link.title}
+                  loading="lazy"
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  className={`w-full rounded-xl border-0 ${
+                    link.embed.kind === "youtube"
+                      ? "aspect-video"
+                      : link.embed.tall
+                        ? "h-[352px]"
+                        : "h-[152px]"
+                  }`}
+                />
+              ) : (
+                <a
+                  href={`/api/click/${link.id}`}
+                  className={`block w-full rounded-xl px-4 py-4 text-center font-medium transition ${theme.button}`}
+                >
+                  {link.title}
+                </a>
+              )}
             </li>
           ))}
         </ul>

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { allow, visitorId } from "@/lib/rate-limit";
+import { isLive } from "@/lib/schedule";
 
 // Every link on a public page points here. We log the click, then
 // redirect the visitor to the real URL.
@@ -11,16 +12,17 @@ export async function GET(
 ) {
   const { linkId } = await ctx.params;
 
-  // Read fresh (not cached) so a suspended page stops redirecting at once.
+  // Read fresh (not cached) so a suspended page or an ended scheduled link
+  // stops redirecting at once.
   const { data: link } = await createPublicClient()
     .from("links")
-    .select("url, profiles!inner(is_suspended)")
+    .select("url, starts_at, ends_at, profiles!inner(is_suspended)")
     .eq("id", linkId)
     .eq("is_visible", true)
     .eq("profiles.is_suspended", false)
     .maybeSingle();
 
-  if (!link) {
+  if (!link || !isLive(link, Date.now())) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
