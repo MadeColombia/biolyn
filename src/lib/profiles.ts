@@ -1,6 +1,8 @@
 import "server-only";
 import { cacheTag, cacheLife } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
+import { socialsFrom, type Socials } from "@/lib/socials";
+import { themeFrom, type ThemeId } from "@/lib/themes";
 
 export type PublicLink = { id: string; title: string; url: string };
 export type PublicProfile = {
@@ -8,6 +10,8 @@ export type PublicProfile = {
   display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  theme: ThemeId;
+  socials: Socials;
   links: PublicLink[];
 };
 
@@ -25,7 +29,7 @@ export async function getPublicProfile(
   const supabase = createPublicClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio, avatar_url")
+    .select("id, username, display_name, bio, avatar_url, theme, socials")
     .eq("username", username)
     .maybeSingle();
 
@@ -43,6 +47,8 @@ export async function getPublicProfile(
     display_name: profile.display_name,
     bio: profile.bio,
     avatar_url: profile.avatar_url,
+    theme: themeFrom(profile.theme),
+    socials: socialsFrom(profile.socials),
     links: links ?? [],
   };
 }

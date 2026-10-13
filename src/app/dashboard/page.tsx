@@ -2,14 +2,16 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { socialsFrom } from "@/lib/socials";
+import { THEMES, themeFrom, type ThemeId } from "@/lib/themes";
+import { setTheme, signOut, updateProfile } from "./actions";
 import {
-  deleteLink,
-  moveLink,
-  signOut,
-  toggleLink,
-  updateProfile,
-} from "./actions";
-import { AddLinkForm, ClaimUsernameForm } from "./forms";
+  AddLinkForm,
+  AvatarUpload,
+  ClaimUsernameForm,
+  SocialsForm,
+} from "./forms";
+import { LinkList } from "./link-list";
 
 export default function DashboardPage() {
   return (
@@ -31,7 +33,7 @@ async function Dashboard() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio")
+    .select("id, username, display_name, bio, avatar_url, theme, socials")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -52,6 +54,8 @@ async function Dashboard() {
     .select("id, title, url, is_visible")
     .eq("profile_id", profile.id)
     .order("position");
+
+  const currentTheme = themeFrom(profile.theme);
 
   return (
     <>
@@ -75,6 +79,11 @@ async function Dashboard() {
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Profile</h2>
+        <AvatarUpload
+          userId={user.id}
+          avatarUrl={profile.avatar_url}
+          name={profile.display_name ?? profile.username}
+        />
         <form action={updateProfile} className="flex flex-col gap-2">
           <input
             name="display_name"
@@ -98,42 +107,34 @@ async function Dashboard() {
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Links</h2>
         <AddLinkForm />
-        <ul className="flex flex-col gap-2">
-          {(links ?? []).map((link, i) => (
-            <li
-              key={link.id}
-              className={`flex items-center gap-2 rounded-lg border p-3 ${link.is_visible ? "" : "opacity-50"}`}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{link.title}</p>
-                <p className="truncate text-sm text-neutral-500">{link.url}</p>
-              </div>
-              <form action={moveLink.bind(null, link.id, -1)}>
-                <button disabled={i === 0} aria-label="Move up">
-                  ↑
-                </button>
-              </form>
-              <form action={moveLink.bind(null, link.id, 1)}>
-                <button
-                  disabled={i === (links ?? []).length - 1}
-                  aria-label="Move down"
-                >
-                  ↓
-                </button>
-              </form>
-              <form action={toggleLink.bind(null, link.id, link.is_visible)}>
-                <button className="text-sm underline">
-                  {link.is_visible ? "Hide" : "Show"}
-                </button>
-              </form>
-              <form action={deleteLink.bind(null, link.id)}>
-                <button className="text-sm text-red-600 underline">
-                  Delete
-                </button>
-              </form>
-            </li>
+        <LinkList
+          key={(links ?? []).map((l) => `${l.id}:${l.is_visible}`).join()}
+          links={links ?? []}
+        />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">Socials</h2>
+        <SocialsForm socials={socialsFrom(profile.socials)} />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">Theme</h2>
+        <div className="grid grid-cols-3 gap-3">
+          {(Object.keys(THEMES) as ThemeId[]).map((id) => (
+            <form key={id} action={setTheme.bind(null, id)}>
+              <button
+                aria-pressed={id === currentTheme}
+                className={`flex h-24 w-full flex-col items-center justify-center gap-2 rounded-xl text-sm font-medium ${THEMES[id].page} ${id === currentTheme ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
+              >
+                <span
+                  className={`h-3 w-3/4 rounded ${THEMES[id].button}`}
+                />
+                {THEMES[id].label}
+              </button>
+            </form>
           ))}
-        </ul>
+        </div>
       </section>
     </>
   );
