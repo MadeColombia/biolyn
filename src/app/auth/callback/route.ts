@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// The magic link in the sign-in email lands here with a one-time code.
+// The magic link and Google sign-in both land here with a one-time code.
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
 
