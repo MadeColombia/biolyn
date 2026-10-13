@@ -55,7 +55,7 @@ async function Dashboard() {
 
   const { data: links } = await supabase
     .from("links")
-    .select("id, title, url, is_visible")
+    .select("id, title, url, is_visible, embed, starts_at, ends_at")
     .eq("profile_id", profile.id)
     .order("position");
 
@@ -124,7 +124,9 @@ async function Dashboard() {
         <h2 className="text-xl font-semibold">Links</h2>
         <AddLinkForm />
         <LinkList
-          key={(links ?? []).map((l) => `${l.id}:${l.is_visible}`).join()}
+          key={(links ?? [])
+            .map((l) => `${l.id}:${l.is_visible}:${l.embed}`)
+            .join()}
           links={links ?? []}
         />
       </section>

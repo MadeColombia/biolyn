@@ -3,8 +3,15 @@ import { cacheTag, cacheLife } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { socialsFrom, type Socials } from "@/lib/socials";
 import { themeFrom, type ThemeId } from "@/lib/themes";
+import { embedFor, type Embed } from "@/lib/embeds";
+import { isLive, secondsUntilNextChange } from "@/lib/schedule";
 
-export type PublicLink = { id: string; title: string; url: string };
+export type PublicLink = {
+  id: string;
+  title: string;
+  url: string;
+  embed: Embed | null;
+};
 export type PublicProfile = {
   id: string;
   username: string;
@@ -21,13 +28,13 @@ export const profileTag = (username: string) => `profile:${username}`;
 // Cached on the server per username. The dashboard calls updateTag()
 // after every edit so the public page refreshes right away. "hours" means
 // changes made outside the app (like suspending a page in Supabase) show
-// up within about an hour.
+// up within about an hour. When a scheduled link is about to appear or
+// disappear, the cache refreshes around that moment instead.
 export async function getPublicProfile(
   username: string,
 ): Promise<PublicProfile | null> {
   "use cache";
   cacheTag(profileTag(username));
-  cacheLife("hours");
 
   const supabase = createPublicClient();
   const { data: profile } = await supabase
@@ -39,14 +46,35 @@ export async function getPublicProfile(
     .maybeSingle();
 
   // Suspended pages look like they don't exist.
-  if (!profile || profile.is_suspended) return null;
+  if (!profile || profile.is_suspended) {
+    cacheLife("hours");
+    return null;
+  }
 
-  const { data: links } = await supabase
+  const { data: rows } = await supabase
     .from("links")
-    .select("id, title, url")
+    .select("id, title, url, embed, starts_at, ends_at")
     .eq("profile_id", profile.id)
     .eq("is_visible", true)
     .order("position");
+
+  const now = Date.now();
+  const all = rows ?? [];
+  const nextChange = secondsUntilNextChange(all, now);
+  cacheLife({
+    stale: 60,
+    revalidate: Math.min(3600, Math.max(60, nextChange ?? 3600)),
+    expire: 86400,
+  });
+
+  const links: PublicLink[] = all
+    .filter((l) => isLive(l, now))
+    .map((l) => ({
+      id: l.id,
+      title: l.title,
+      url: l.url,
+      embed: l.embed ? embedFor(l.url) : null,
+    }));
 
   return {
     id: profile.id,
@@ -56,6 +84,6 @@ export async function getPublicProfile(
     avatar_url: profile.avatar_url,
     theme: themeFrom(profile.theme),
     socials: socialsFrom(profile.socials),
-    links: links ?? [],
+    links,
   };
 }

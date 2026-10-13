@@ -39,6 +39,17 @@ export function AddLinkForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<FormState, FormData>(
     async (prev, formData) => {
+      // datetime-local values have no time zone; turn them into exact
+      // moments using this browser's zone before sending.
+      for (const [local, field] of [
+        ["starts_local", "starts_at"],
+        ["ends_local", "ends_at"],
+      ]) {
+        const value = formData.get(local);
+        if (typeof value === "string" && value) {
+          formData.set(field, new Date(value).toISOString());
+        }
+      }
       const result = await addLink(prev, formData);
       if (!result.error) formRef.current?.reset();
       return result;

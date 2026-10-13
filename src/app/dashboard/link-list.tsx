@@ -18,9 +18,36 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { deleteLink, reorderLinks, toggleLink } from "./actions";
+import { embedFor } from "@/lib/embeds";
+import { deleteLink, reorderLinks, toggleEmbed, toggleLink } from "./actions";
 
-type Link = { id: string; title: string; url: string; is_visible: boolean };
+type Link = {
+  id: string;
+  title: string;
+  url: string;
+  is_visible: boolean;
+  embed: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+};
+
+// Shown in the creator's own time zone. The server renders UTC first,
+// so the text is allowed to change once the browser takes over.
+function when(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function scheduleText(link: Link) {
+  if (link.starts_at && link.ends_at) {
+    return `Shows ${when(link.starts_at)} to ${when(link.ends_at)}`;
+  }
+  if (link.starts_at) return `Shows from ${when(link.starts_at)}`;
+  if (link.ends_at) return `Hides after ${when(link.ends_at)}`;
+  return null;
+}
 
 // The parent gives this a `key` built from the server data, so the list
 // starts fresh whenever the saved links change.
@@ -99,7 +126,19 @@ function SortableLink({ link }: { link: Link }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{link.title}</p>
         <p className="truncate text-sm text-neutral-500">{link.url}</p>
+        {scheduleText(link) && (
+          <p className="text-xs text-blue-600" suppressHydrationWarning>
+            {scheduleText(link)}
+          </p>
+        )}
       </div>
+      {embedFor(link.url) && (
+        <form action={toggleEmbed.bind(null, link.id, link.embed)}>
+          <button className="text-sm underline">
+            {link.embed ? "Show as button" : "Show as player"}
+          </button>
+        </form>
+      )}
       <form action={toggleLink.bind(null, link.id, link.is_visible)}>
         <button className="text-sm underline">
           {link.is_visible ? "Hide" : "Show"}

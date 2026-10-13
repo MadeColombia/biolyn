@@ -30,20 +30,22 @@ npm run build
 
 ## Project map
 
-| Path | What it does |
-|---|---|
-| `src/app/page.tsx` | Landing page |
-| `src/app/login/page.tsx` | Email magic-link sign in |
-| `src/app/auth/callback/route.ts` | Finishes sign in from the email link |
-| `src/app/dashboard/` | Claim username, edit profile, add/hide/reorder/delete links |
-| `src/app/[username]/page.tsx` | Public profile page (cached, refreshed on every edit) |
-| `src/app/api/click/[linkId]/route.ts` | Logs a click, then redirects to the real URL |
-| `src/app/report/[username]/` | Report form linked from every public page |
-| `src/lib/link-safety.ts` | Checks new links (no local/IP addresses, optional Google Safe Browsing) |
-| `src/lib/rate-limit.ts` | Per-visitor limits for views, clicks, reports and adding links |
-| `src/proxy.ts` | Keeps the session fresh and protects `/dashboard` |
-| `supabase/schema.sql` | Tables and Row Level Security rules |
-| `supabase/migrations/` | Later database changes (socials, avatars, page views, reports and rate limits) |
+| Path                                          | What it does                                                                      |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/app/page.tsx`                            | Landing page                                                                      |
+| `src/app/login/page.tsx`                      | Email magic-link sign in                                                          |
+| `src/app/auth/callback/route.ts`              | Finishes sign in from the email link                                              |
+| `src/app/dashboard/`                          | Claim username, edit profile, add/hide/reorder/delete links                       |
+| `src/app/[username]/page.tsx`                 | Public profile page (cached, refreshed on every edit)                             |
+| `src/app/api/click/[linkId]/route.ts`         | Logs a click, then redirects to the real URL                                      |
+| `src/app/report/[username]/`                  | Report form linked from every public page                                         |
+| `src/lib/link-safety.ts`                      | Checks new links (no local/IP addresses, optional Google Safe Browsing)           |
+| `src/lib/rate-limit.ts`                       | Per-visitor limits for views, clicks, reports and adding links                    |
+| `src/lib/embeds.ts`, `src/lib/schedule.ts`    | YouTube/Spotify players and scheduled links                                       |
+| `src/instrumentation.ts`, `src/lib/alerts.ts` | Emails you when a server error happens (needs `RESEND_API_KEY` and `ALERT_EMAIL`) |
+| `src/proxy.ts`                                | Keeps the session fresh and protects `/dashboard`                                 |
+| `supabase/schema.sql`                         | Tables and Row Level Security rules                                               |
+| `supabase/migrations/`                        | Later database changes (socials, avatars, page views, reports and rate limits)    |
 
 ## Deploy to Vercel
 

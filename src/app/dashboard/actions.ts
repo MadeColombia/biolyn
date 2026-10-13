@@ -10,6 +10,7 @@ import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import { isThemeId } from "@/lib/themes";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
+import { embedFor } from "@/lib/embeds";
 
 const MAX_LINKS = 100;
 
@@ -94,6 +95,15 @@ export async function addLink(
   const unsafe = await checkLinkUrl(url);
   if (unsafe) return { error: unsafe };
 
+  // The form converts the optional schedule to ISO time in the browser,
+  // so it matches the creator's own time zone.
+  const startsAt = isoOrNull(formData.get("starts_at"));
+  const endsAt = isoOrNull(formData.get("ends_at"));
+  if (startsAt && endsAt && endsAt <= startsAt) {
+    return { error: "The end time must be after the start time." };
+  }
+  const embed = formData.get("embed") === "on" && embedFor(url) !== null;
+
   const { supabase, profile } = await requireOwnProfile();
   if (!(await allow(`addlink:${profile.id}`, 30, 600))) {
     return { error: "You're adding links very fast. Wait a few minutes." };
@@ -106,13 +116,31 @@ export async function addLink(
     return { error: `You can have up to ${MAX_LINKS} links.` };
   }
 
-  const { error } = await supabase
-    .from("links")
-    .insert({ profile_id: profile.id, title, url, position: count ?? 0 });
+  const { error } = await supabase.from("links").insert({
+    profile_id: profile.id,
+    title,
+    url,
+    position: count ?? 0,
+    embed,
+    starts_at: startsAt,
+    ends_at: endsAt,
+  });
   if (error) return { error: "Could not save the link." };
 
   refresh(profile.username);
   return {};
+}
+
+function isoOrNull(value: FormDataEntryValue | null): string | null {
+  if (typeof value !== "string" || !value) return null;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+}
+
+export async function toggleEmbed(linkId: string, embed: boolean) {
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase.from("links").update({ embed: !embed }).eq("id", linkId);
+  refresh(profile.username);
 }
 
 export async function deleteLink(linkId: string) {
