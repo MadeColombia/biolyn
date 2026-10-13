@@ -51,7 +51,7 @@ export default function Home() {
               <span className="text-home-muted">biolyn.link/</span>
               <span>yourname</span>
             </span>
-            <span className="flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-terra px-7 text-lg font-bold text-white sm:flex-none">
+            <span className="flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-terra px-7 text-lg font-bold text-on-terra sm:flex-none">
               Claim it free
             </span>
           </Link>
@@ -85,7 +85,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex flex-col justify-between gap-4 rounded-3xl bg-terra p-8 text-white">
+          <div className="flex flex-col justify-between gap-4 rounded-3xl bg-terra p-8 text-on-terra">
             <QrIcon />
             <div>
               <h2 className={`${heading} mb-2 text-2xl font-bold`}>
@@ -144,7 +144,7 @@ export default function Home() {
           </h2>
           <Link
             href="/login"
-            className="inline-flex min-h-14 items-center rounded-2xl bg-terra px-8 text-lg font-bold text-white transition hover:bg-terra-dark"
+            className="inline-flex min-h-14 items-center rounded-2xl bg-terra px-8 text-lg font-bold text-on-terra transition hover:bg-terra-hover"
           >
             Get started free
           </Link>

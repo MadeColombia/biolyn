@@ -3,6 +3,19 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Homepage: warm off-white with a terracotta accent. */
+  --home-bg: #f5efe6;
+  --home-card: #fffbf5;
+  --home-raised: #eadfd2;
+  --home-border: #e3d5c5;
+  --home-line: #e3d5c5;
+  --home-text: #2a1e18;
+  --home-text-2: #5e4b40;
+  --home-muted: #74604f;
+  --terra: #b9532d;
+  --terra-hover: #a9472a;
+  --on-terra: #ffffff;
 }
 
 @theme inline {
@@ -11,23 +24,37 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Homepage palette: warm off-white with a terracotta accent. */
-  --color-home-bg: #f5efe6;
-  --color-home-card: #fffbf5;
-  --color-home-raised: #eadfd2;
-  --color-home-border: #e3d5c5;
-  --color-home-line: #e3d5c5;
-  --color-home-text: #2a1e18;
-  --color-home-text-2: #5e4b40;
-  --color-home-muted: #74604f;
-  --color-terra: #b9532d;
-  --color-terra-dark: #a9472a;
+  /* Homepage palette, light or dark from the variables below. */
+  --color-home-bg: var(--home-bg);
+  --color-home-card: var(--home-card);
+  --color-home-raised: var(--home-raised);
+  --color-home-border: var(--home-border);
+  --color-home-line: var(--home-line);
+  --color-home-text: var(--home-text);
+  --color-home-text-2: var(--home-text-2);
+  --color-home-muted: var(--home-muted);
+  --color-terra: var(--terra);
+  --color-terra-hover: var(--terra-hover);
+  --color-on-terra: var(--on-terra);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    /* Homepage: warm near-black with a brighter terracotta. */
+    --home-bg: #15110f;
+    --home-card: #211a17;
+    --home-raised: #2a211d;
+    --home-border: #3a2e28;
+    --home-line: #2e2420;
+    --home-text: #f6eee8;
+    --home-text-2: #cdbfb5;
+    --home-muted: #a39185;
+    --terra: #d2693f;
+    --terra-hover: #e07a5f;
+    --on-terra: #15110f;
   }
 }
 
