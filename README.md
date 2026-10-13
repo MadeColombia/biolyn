@@ -7,7 +7,7 @@ Stack: Next.js (App Router, Cache Components), TypeScript, Tailwind CSS, Supabas
 ## First-time setup
 
 1. Create a free project at https://supabase.com.
-2. In Supabase, open **SQL Editor**, paste `supabase/schema.sql` and run it.
+2. In Supabase, open **SQL Editor**, run `supabase/schema.sql`, then each file in `supabase/migrations/` in order.
 3. In Supabase, open **Authentication > URL Configuration** and add these redirect URLs:
    `http://localhost:3000/auth/callback` and `https://biolyn.link/auth/callback`.
 4. Copy the env file and fill it in from **Project Settings > API**:
@@ -40,6 +40,7 @@ npm run build
 | `src/app/api/click/[linkId]/route.ts` | Logs a click, then redirects to the real URL |
 | `src/proxy.ts` | Keeps the session fresh and protects `/dashboard` |
 | `supabase/schema.sql` | Tables and Row Level Security rules |
+| `supabase/migrations/` | Later database changes (socials, avatar storage) |
 
 ## Deploy to Vercel
 

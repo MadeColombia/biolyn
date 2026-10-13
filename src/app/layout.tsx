@@ -13,6 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Makes share-image URLs absolute (https://biolyn.link/...).
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
   title: "Biolyn",
   description: "One link for everything you share. Put it in your Instagram bio.",
 };

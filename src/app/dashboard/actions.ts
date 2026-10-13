@@ -5,6 +5,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { validateUsername } from "@/lib/usernames";
 import { profileTag } from "@/lib/profiles";
+import { supabaseEnv } from "@/lib/supabase/env";
+import {
+  normalizeSocial,
+  SOCIAL_PLATFORMS,
+  type Socials,
+} from "@/lib/socials";
+import { isThemeId } from "@/lib/themes";
 
 async function requireOwnProfile() {
   const supabase = await createClient();
@@ -15,12 +22,12 @@ async function requireOwnProfile() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username")
+    .select("id, username, avatar_url")
     .eq("user_id", user.id)
     .single();
   if (!profile) redirect("/dashboard");
 
-  return { supabase, profile };
+  return { supabase, profile, user };
 }
 
 // Refresh both the dashboard and the cached public page.
@@ -29,7 +36,7 @@ function refresh(username: string) {
   revalidatePath("/dashboard");
 }
 
-export type FormState = { error?: string };
+export type FormState = { error?: string; saved?: boolean };
 
 export async function claimUsername(
   _prev: FormState,
@@ -120,26 +127,86 @@ export async function toggleLink(linkId: string, isVisible: boolean) {
   refresh(profile.username);
 }
 
-// Swap a link with its neighbour above (-1) or below (+1).
-export async function moveLink(linkId: string, direction: -1 | 1) {
+// Saves a new order after a drag. `orderedIds` must contain exactly
+// the user's own link ids, otherwise nothing changes.
+export async function reorderLinks(orderedIds: string[]) {
   const { supabase, profile } = await requireOwnProfile();
   const { data: links } = await supabase
     .from("links")
     .select("id")
-    .eq("profile_id", profile.id)
-    .order("position");
+    .eq("profile_id", profile.id);
   if (!links) return;
 
-  const index = links.findIndex((l) => l.id === linkId);
-  const target = index + direction;
-  if (index < 0 || target < 0 || target >= links.length) return;
+  const own = new Set(links.map((l) => l.id));
+  if (
+    orderedIds.length !== own.size ||
+    new Set(orderedIds).size !== own.size ||
+    !orderedIds.every((id) => own.has(id))
+  ) {
+    return;
+  }
 
-  [links[index], links[target]] = [links[target], links[index]];
   await Promise.all(
-    links.map((l, position) =>
-      supabase.from("links").update({ position }).eq("id", l.id),
+    orderedIds.map((id, position) =>
+      supabase.from("links").update({ position }).eq("id", id),
     ),
   );
+  refresh(profile.username);
+}
+
+export async function setTheme(themeId: string) {
+  if (!isThemeId(themeId)) return;
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase
+    .from("profiles")
+    .update({ theme: { preset: themeId } })
+    .eq("id", profile.id);
+  refresh(profile.username);
+}
+
+export async function updateSocials(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const socials: Socials = {};
+  for (const { id } of SOCIAL_PLATFORMS) {
+    const result = normalizeSocial(id, String(formData.get(id) ?? ""));
+    if ("error" in result) return { error: result.error };
+    if (result.url) socials[id] = result.url;
+  }
+
+  const { supabase, profile } = await requireOwnProfile();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ socials })
+    .eq("id", profile.id);
+  if (error) return { error: "Could not save. Try again." };
+
+  refresh(profile.username);
+  return { saved: true };
+}
+
+// Public URLs look like <supabase>/storage/v1/object/public/avatars/<path>.
+function avatarPrefix() {
+  return `${supabaseEnv().url}/storage/v1/object/public/avatars/`;
+}
+
+// Called after the browser uploads a picture to Storage. Only accepts a
+// file inside the user's own folder, then removes the previous picture.
+export async function setAvatar(url: string | null) {
+  const { supabase, profile, user } = await requireOwnProfile();
+  const prefix = avatarPrefix();
+  if (url !== null && !url.startsWith(`${prefix}${user.id}/`)) return;
+
+  await supabase
+    .from("profiles")
+    .update({ avatar_url: url })
+    .eq("id", profile.id);
+
+  const old = profile.avatar_url;
+  if (old && old !== url && old.startsWith(prefix)) {
+    await supabase.storage.from("avatars").remove([old.slice(prefix.length)]);
+  }
   refresh(profile.username);
 }
 
