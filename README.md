@@ -25,8 +25,12 @@ Stack: Next.js (App Router, Cache Components), TypeScript, Tailwind CSS, Supabas
 
 ```bash
 npm run lint
+npm test               # unit tests (Vitest), no Supabase needed
+npm run test:coverage  # same, and fails under 85% coverage
 npm run build
 ```
+
+Tests live in `tests/` and cover the server code in `src/**/*.ts` (route handlers, server actions, the proxy and `src/lib`). Supabase, Resend and Google are replaced with fakes, so the tests never touch real data. GitHub Actions runs lint and `test:coverage` on every pull request.
 
 ## Project map
 
