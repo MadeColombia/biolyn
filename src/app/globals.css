@@ -21,7 +21,8 @@
   --color-home-text-2: #5e4b40;
   --color-home-muted: #74604f;
   --color-terra: #b9532d;
-  --color-terra-dark: #a9472a;
+  --color-terra-light: #c9643c;
+  --color-terra-deep: #7f3a1f;
 }
 
 @media (prefers-color-scheme: dark) {
