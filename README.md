@@ -37,6 +37,7 @@ Tests live in `tests/` and cover the server code in `src/**/*.ts` (route handler
 | Path                                          | What it does                                                                      |
 | --------------------------------------------- | --------------------------------------------------------------------------------- |
 | `src/app/page.tsx`                            | Landing page                                                                      |
+| `src/components/ui/`, `docs/design-system.md` | Design system: tokens, shared components and rules (preview at `/styleguide`)    |
 | `src/app/login/page.tsx`                      | Email magic-link sign in                                                          |
 | `src/app/auth/callback/route.ts`              | Finishes sign in from the email link                                              |
 | `src/app/dashboard/`                          | Claim username, edit profile, add/hide/reorder/delete links                       |
