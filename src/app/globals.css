@@ -1,41 +1,30 @@
 @import "tailwindcss";
 
+/*
+ * Biolyn design tokens. See docs/design-system.md before adding or changing
+ * one. Screens use the Tailwind utilities generated from these (bg-canvas,
+ * text-ink, border-edge, bg-brand ...), never raw hex values, so light and
+ * dark mode come for free.
+ */
 :root {
+  /* Legacy defaults for screens not yet moved to the design system. */
   --background: #ffffff;
   --foreground: #171717;
 
-  /* Homepage: warm off-white with a terracotta accent. */
-  --home-bg: #f5efe6;
-  --home-card: #fffbf5;
-  --home-raised: #eadfd2;
-  --home-border: #e3d5c5;
-  --home-line: #e3d5c5;
-  --home-text: #2a1e18;
-  --home-text-2: #5e4b40;
-  --home-muted: #74604f;
-  --terra: #b9532d;
-  --terra-hover: #a9472a;
-  --on-terra: #ffffff;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
-  /* Homepage palette, light or dark from the variables below. */
-  --color-home-bg: var(--home-bg);
-  --color-home-card: var(--home-card);
-  --color-home-raised: var(--home-raised);
-  --color-home-border: var(--home-border);
-  --color-home-line: var(--home-line);
-  --color-home-text: var(--home-text);
-  --color-home-text-2: var(--home-text-2);
-  --color-home-muted: var(--home-muted);
-  --color-terra: var(--terra);
-  --color-terra-hover: var(--terra-hover);
-  --color-on-terra: var(--on-terra);
+  /* Light: warm off-white with a terracotta accent. */
+  --canvas: #f5efe6; /* page background */
+  --surface: #fffbf5; /* cards, inputs */
+  --raised: #eadfd2; /* secondary buttons, chips, empty states */
+  --edge: #e3d5c5; /* borders around cards and inputs */
+  --line: #e3d5c5; /* dividers between sections and rows */
+  --ink: #2a1e18; /* main text */
+  --ink-soft: #5e4b40; /* body copy under a heading */
+  --ink-muted: #74604f; /* captions, hints, placeholders */
+  --brand: #b9532d; /* terracotta: primary actions, highlights */
+  --brand-hover: #a9472a;
+  --on-brand: #ffffff; /* text on a brand background */
+  --danger: #b42318;
+  --success: #2f7a4b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -43,23 +32,89 @@
     --background: #0a0a0a;
     --foreground: #ededed;
 
-    /* Homepage: warm near-black with a brighter terracotta. */
-    --home-bg: #15110f;
-    --home-card: #211a17;
-    --home-raised: #2a211d;
-    --home-border: #3a2e28;
-    --home-line: #2e2420;
-    --home-text: #f6eee8;
-    --home-text-2: #cdbfb5;
-    --home-muted: #a39185;
-    --terra: #d2693f;
-    --terra-hover: #e07a5f;
-    --on-terra: #15110f;
+    /* Dark: warm near-black with a brighter terracotta. */
+    --canvas: #15110f;
+    --surface: #211a17;
+    --raised: #2a211d;
+    --edge: #3a2e28;
+    --line: #2e2420;
+    --ink: #f6eee8;
+    --ink-soft: #cdbfb5;
+    --ink-muted: #a39185;
+    --brand: #d2693f;
+    --brand-hover: #e07a5f;
+    --on-brand: #15110f;
+    --danger: #f97066;
+    --success: #6cc596;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-edge: var(--edge);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-brand: var(--on-brand);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+
+  /* Fonts are loaded in src/app/layout.tsx. */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-unbounded); /* headings: font-display */
+  --font-body: var(--font-plex-sans); /* text: font-body */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Logo: the ring o dashes in from the left (see Logo animated). */
+@keyframes biolyn-dash-in {
+  from {
+    transform: translateX(-2.4em);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes biolyn-dash-trail {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.biolyn-dash-in {
+  animation: biolyn-dash-in 700ms cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
+}
+
+.biolyn-dash-trail {
+  animation: biolyn-dash-trail 1000ms ease-out 150ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .biolyn-dash-in,
+  .biolyn-dash-trail {
+    animation: none;
+  }
+
+  .biolyn-dash-trail {
+    opacity: 0;
+  }
 }

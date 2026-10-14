@@ -1,76 +1,73 @@
 import Link from "next/link";
-import { IBM_Plex_Sans, Unbounded } from "next/font/google";
-import { AccountLink } from "@/components/account-link";
-
-// Homepage-only fonts: Unbounded for headings, IBM Plex Sans for body text.
-const display = Unbounded({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["700", "800"],
-});
-const body = IBM_Plex_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-});
-
-const heading = "font-[family-name:var(--font-display)] tracking-tight";
+import {
+  ButtonLink,
+  Card,
+  Heading,
+  Logo,
+  LogoMotion,
+  PageShell,
+  button,
+  card,
+  container,
+  cx,
+} from "@/components/ui";
 
 // Illustrative bar heights for the dashboard preview (not real data).
 const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
 
 export default function Home() {
   return (
-    <div
-      className={`${display.variable} ${body.variable} flex flex-1 flex-col bg-home-bg font-[family-name:var(--font-body)] text-home-text`}
-    >
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-5">
-        <Link href="/" className={`${heading} text-xl font-extrabold`}>
-          biolyn<span className="text-terra">.</span>link
-        </Link>
-        <AccountLink className="rounded-xl bg-home-raised px-4 py-3 text-sm font-bold hover:bg-home-border" />
-      </header>
-
+    <PageShell showLogo={false}>
       <main className="flex flex-1 flex-col">
-        <section className="mx-auto flex w-full max-w-6xl flex-col items-center gap-7 px-6 pt-16 pb-16 text-center sm:pt-20">
-          <h1
-            className={`${heading} max-w-4xl text-5xl leading-[1.05] font-extrabold sm:text-7xl`}
-          >
-            Your bio fits <span className="text-terra">one link.</span> Make it
+        <section
+          className={cx(
+            container(),
+            "flex flex-col items-center gap-7 pt-16 pb-16 text-center sm:pt-20",
+          )}
+        >
+          <Logo animated className="text-3xl sm:text-4xl" />
+          <Heading as="h1" size="display" className="max-w-4xl">
+            Your bio fits <span className="text-brand">one link.</span> Make it
             count.
-          </h1>
-          <p className="max-w-xl text-lg leading-relaxed text-home-text-2 sm:text-xl">
+          </Heading>
+          <p className="max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl">
             Biolyn turns that single link into a page with all your links, your
             socials and stats on what people actually tap.
           </p>
           <Link
             href="/login"
-            className="flex w-full max-w-xl flex-wrap items-center gap-2 rounded-3xl border border-home-border bg-home-card p-2 text-left transition hover:border-terra"
+            className={cx(
+              card({ tone: "interactive", padding: "none" }),
+              "flex w-full max-w-xl flex-wrap items-center gap-2 p-2 text-left",
+            )}
           >
             <span className="flex min-h-14 flex-1 items-center px-4 text-lg font-semibold">
-              <span className="text-home-muted">biolyn.link/</span>
+              <span className="text-ink-muted">biolyn.link/</span>
               <span>yourname</span>
             </span>
-            <span className="flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-terra px-7 text-lg font-bold text-on-terra sm:flex-none">
+            <span className={cx(button({ size: "lg" }), "flex-1 sm:flex-none")}>
               Claim it free
             </span>
           </Link>
-          <p className="text-sm text-home-muted">
+          <p className="text-sm text-ink-muted">
             Continue with Google or get a magic link by email.
           </p>
         </section>
 
-        <section className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-6 pb-24 md:grid-cols-3">
-          <div className="flex flex-col gap-5 rounded-3xl border border-home-border bg-home-card p-8 md:col-span-2">
+        <section
+          className={cx(
+            container(),
+            "grid grid-cols-1 gap-4 pb-24 md:grid-cols-3",
+          )}
+        >
+          <Card className="flex flex-col gap-5 md:col-span-2">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <h2 className={`${heading} text-2xl font-bold`}>
-                Know what works
-              </h2>
-              <span className="text-sm text-home-muted">
+              <Heading>Know what works</Heading>
+              <span className="text-sm text-ink-muted">
                 Dashboard preview, sample data
               </span>
             </div>
-            <p className="max-w-lg leading-relaxed text-home-text-2">
+            <p className="max-w-lg leading-relaxed text-ink-soft">
               Views over 7 or 30 days, clicks on each link and the sites your
               visitors came from.
             </p>
@@ -78,30 +75,28 @@ export default function Home() {
               {SAMPLE_BARS.map((height, i) => (
                 <div
                   key={i}
-                  className={`flex-1 rounded-lg ${i === 5 ? "bg-terra" : "bg-home-border"}`}
+                  className={`flex-1 rounded-lg ${i === 5 ? "bg-brand" : "bg-edge"}`}
                   style={{ height: `${height}%` }}
                 />
               ))}
             </div>
-          </div>
+          </Card>
 
-          <div className="flex flex-col justify-between gap-4 rounded-3xl bg-terra p-8 text-on-terra">
+          <Card tone="brand" className="flex flex-col justify-between gap-4">
             <QrIcon />
             <div>
-              <h2 className={`${heading} mb-2 text-2xl font-bold`}>
-                QR code included
-              </h2>
+              <Heading className="mb-2">QR code included</Heading>
               <p className="leading-relaxed">
                 Download a PNG for flyers, menus and your shop counter.
               </p>
             </div>
-          </div>
+          </Card>
 
           <Feature
             title="Multiple themes"
             icon={
               <div className="flex gap-2.5" aria-hidden="true">
-                <span className="h-11 w-11 rounded-xl border border-home-border bg-white" />
+                <span className="h-11 w-11 rounded-xl border border-edge bg-white" />
                 <span className="h-11 w-11 rounded-xl border border-slate-700 bg-slate-950" />
                 <span className="h-11 w-11 rounded-xl bg-linear-to-b from-orange-400 via-pink-500 to-purple-600" />
               </div>
@@ -117,13 +112,11 @@ export default function Home() {
           </Feature>
         </section>
 
-        <section className="border-t border-home-line">
-          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-start gap-12 px-6 py-20">
-            <h2
-              className={`${heading} flex-[1_1_320px] text-4xl leading-tight font-extrabold`}
-            >
+        <section className="border-t border-line">
+          <div className={cx(container(), "flex flex-wrap items-start gap-12 py-20")}>
+            <Heading size="title" className="flex-[1_1_320px] leading-tight">
               From sign up to bio in minutes.
-            </h2>
+            </Heading>
             <ol className="flex flex-[2_1_520px] flex-col">
               <Step n={1} verb="Claim">
                 biolyn.link/yourname
@@ -138,23 +131,22 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 pb-20 text-center">
-          <h2 className={`${heading} text-4xl font-extrabold sm:text-5xl`}>
+        <section
+          className={cx(
+            container(),
+            "flex flex-col items-center gap-6 pb-20 text-center",
+          )}
+        >
+          <LogoMotion height={72} />
+          <Heading size="title" className="sm:text-5xl">
             Claim your name before it&apos;s gone.
-          </h2>
-          <Link
-            href="/login"
-            className="inline-flex min-h-14 items-center rounded-2xl bg-terra px-8 text-lg font-bold text-on-terra transition hover:bg-terra-hover"
-          >
+          </Heading>
+          <ButtonLink href="/login" size="lg">
             Get started free
-          </Link>
+          </ButtonLink>
         </section>
       </main>
-
-      <footer className="mx-auto w-full max-w-6xl border-t border-home-line px-6 pt-6 pb-10 text-sm text-home-muted">
-        © Biolyn
-      </footer>
-    </div>
+    </PageShell>
   );
 }
 
@@ -168,11 +160,11 @@ function Feature({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 rounded-3xl border border-home-border bg-home-card p-8">
+    <Card className="flex flex-col gap-4">
       {icon}
-      <h2 className={`${heading} text-2xl font-bold`}>{title}</h2>
-      <p className="leading-relaxed text-home-text-2">{children}</p>
-    </div>
+      <Heading>{title}</Heading>
+      <p className="leading-relaxed text-ink-soft">{children}</p>
+    </Card>
   );
 }
 
@@ -186,11 +178,13 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex items-baseline gap-6 border-b border-home-line py-5">
-      <span className={`${heading} w-5 shrink-0 text-lg font-bold text-terra`}>{n}</span>
+    <li className="flex items-baseline gap-6 border-b border-line py-5">
+      <Heading as="span" size="label" className="w-5 shrink-0 text-brand">
+        {n}
+      </Heading>
       <span className="text-xl">
         <strong>{verb}</strong>{" "}
-        <span className="text-home-text-2">{children}</span>
+        <span className="text-ink-soft">{children}</span>
       </span>
     </li>
   );
@@ -216,7 +210,7 @@ function QrIcon() {
 
 function ShareIcon() {
   return (
-    <svg {...iconProps} width="40" height="40" className="stroke-terra">
+    <svg {...iconProps} width="40" height="40" className="stroke-brand">
       <circle cx="6" cy="12" r="3" />
       <circle cx="18" cy="6" r="3" />
       <circle cx="18" cy="18" r="3" />
@@ -227,7 +221,7 @@ function ShareIcon() {
 
 function SlidersIcon() {
   return (
-    <svg {...iconProps} width="40" height="40" className="stroke-terra">
+    <svg {...iconProps} width="40" height="40" className="stroke-brand">
       <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
       <circle cx="16" cy="6" r="2" />
       <circle cx="10" cy="12" r="2" />

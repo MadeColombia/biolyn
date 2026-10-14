@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Design system
+
+Build every screen except public profiles (`/[username]`) with the design system in `docs/design-system.md`: tokens from `src/app/globals.css` (`bg-canvas`, `text-ink`, `bg-brand` ...) and components from `@/components/ui` (`PageShell`, `Heading`, `Button`, `Card`, `Field` ...). No raw hex colors, no `dark:` classes, no `neutral-*` grays on those screens. Preview at `/styleguide`.

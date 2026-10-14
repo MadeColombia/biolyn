@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { button } from "@/components/ui/recipes";
 import { createClient } from "@/lib/supabase/browser";
 
 // Shows "Dashboard" when this browser already has a session, else "Log in".
 // getSession() reads the local cookie, so it makes no network request.
-// Pass className to restyle it (the homepage uses its own dark style).
+// Looks like a small secondary button; pass className to restyle it.
 export function AccountLink({
-  className = "rounded-full border border-neutral-300 px-4 py-2 text-sm font-medium dark:border-neutral-700",
+  className = button({ variant: "secondary", size: "sm" }),
 }: {
   className?: string;
 }) {
