@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState, useTransition } from "react";
 import { Button, Input, Field, button, cx } from "@/components/ui";
+import { embedFor } from "@/lib/embeds";
 import { createClient } from "@/lib/supabase/browser";
 import { displaySocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import {
@@ -52,6 +53,8 @@ export function ClaimUsernameForm() {
 
 export function AddLinkForm() {
   const formRef = useRef<HTMLFormElement>(null);
+  const [url, setUrl] = useState("");
+  const embed = embedFor(url.trim());
   const [state, action, pending] = useActionState<FormState, FormData>(
     async (prev, formData) => {
       // datetime-local values have no time zone; turn them into exact
@@ -66,7 +69,10 @@ export function AddLinkForm() {
         }
       }
       const result = await addLink(prev, formData);
-      if (!result.error) formRef.current?.reset();
+      if (!result.error) {
+        formRef.current?.reset();
+        setUrl("");
+      }
       return result;
     },
     {},
@@ -82,8 +88,21 @@ export function AddLinkForm() {
           inputMode="url"
           placeholder="https://..."
           required
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
         />
       </div>
+      {embed && (
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="embed"
+            defaultChecked
+            className="size-4 accent-brand"
+          />
+          Show as a player on your page
+        </label>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Button disabled={pending}>{pending ? "Adding..." : "Add link"}</Button>
         {state.error && (

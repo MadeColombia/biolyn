@@ -9,6 +9,12 @@ import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
 import { ViewTracker } from "./view-tracker";
 
+// Heights the Spotify and Apple Music players are designed for.
+const PLAYER_HEIGHT = {
+  spotify: { short: "h-[152px]", tall: "h-[352px]" },
+  apple: { short: "h-[175px]", tall: "h-[450px]" },
+};
+
 export async function generateMetadata(
   props: PageProps<"/[username]">,
 ): Promise<Metadata> {
@@ -113,9 +119,9 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   className={`w-full rounded-xl border-0 ${
                     link.embed.kind === "youtube"
                       ? "aspect-video"
-                      : link.embed.tall
-                        ? "h-[352px]"
-                        : "h-[152px]"
+                      : PLAYER_HEIGHT[link.embed.kind][
+                          link.embed.tall ? "tall" : "short"
+                        ]
                   }`}
                 />
               ) : (

@@ -46,7 +46,7 @@ Tests live in `tests/` and cover the server code in `src/**/*.ts` (route handler
 | `src/app/report/[username]/`                  | Report form linked from every public page                                         |
 | `src/lib/link-safety.ts`                      | Checks new links (no local/IP addresses, optional Google Safe Browsing)           |
 | `src/lib/rate-limit.ts`                       | Per-visitor limits for views, clicks, reports and adding links                    |
-| `src/lib/embeds.ts`, `src/lib/schedule.ts`    | YouTube/Spotify players and scheduled links                                       |
+| `src/lib/embeds.ts`, `src/lib/schedule.ts`    | YouTube, Spotify and Apple Music players and scheduled links                      |
 | `src/instrumentation.ts`, `src/lib/alerts.ts` | Emails you when a server error happens (needs `RESEND_API_KEY` and `ALERT_EMAIL`) |
 | `src/proxy.ts`                                | Keeps the session fresh and protects `/dashboard`                                 |
 | `supabase/schema.sql`                         | Tables and Row Level Security rules                                               |
