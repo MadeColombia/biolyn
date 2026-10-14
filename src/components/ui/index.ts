@@ -5,7 +5,7 @@ export { Button, ButtonLink } from "./button";
 export { Card } from "./card";
 export { Field, Input } from "./field";
 export { Heading } from "./heading";
-export { Logo } from "./logo";
+export { Logo, LogoMark } from "./logo";
 export { PageShell } from "./page-shell";
 export {
   badge,

@@ -7,6 +7,8 @@ import {
   Card,
   Field,
   Heading,
+  Logo,
+  LogoMark,
   PageShell,
   container,
   cx,
@@ -49,6 +51,20 @@ export default function StyleGuide() {
             to dark mode to check both palettes.
           </p>
         </div>
+
+        <Section title="Logo">
+          <div className="flex flex-wrap items-center gap-6">
+            <LogoMark size={96} title="Biolyn" />
+            <LogoMark size={64} />
+            <LogoMark size={32} />
+            <LogoMark size={16} />
+            <Logo />
+          </div>
+          <p className="text-sm text-ink-muted">
+            Files for other uses (Instagram, print, slides) are in
+            public/brand/.
+          </p>
+        </Section>
 
         <Section title="Colors">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

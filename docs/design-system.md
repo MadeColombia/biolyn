@@ -13,6 +13,24 @@ Public profile pages (`/[username]`) are the exception: they use the owner's the
 3. **One brand moment per area.** Terracotta (`brand`) is for the main action and one highlight. Everything else is ink on canvas or surface.
 4. **Headings use `Heading`, text uses `font-body`.** `PageShell` sets the body font and colors for you.
 
+## Logo
+
+The mark is a lowercase b whose bowl is a chain link, white on a terracotta tile (dark mode: near-black on the brighter terracotta). Next to it, the wordmark `biolyn.link` in Unbounded 800 with a terracotta dot.
+
+- In the app: `<Logo />` (mark + wordmark, links home) or `<LogoMark size={32} />` (mark only). Both use tokens, so dark mode is automatic. `PageShell` already puts `<Logo />` in the header.
+- Browser tab and home screen: `src/app/icon.svg` (follows light/dark), `src/app/favicon.ico` (older browsers), `src/app/apple-icon.png` (iPhone home screen).
+- Everywhere else, use the files in `public/brand/` (also served at `https://biolyn.link/brand/...`):
+
+| File                        | Use for                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `biolyn-mark.svg`           | Default mark, any size (slides, docs, email signatures)       |
+| `biolyn-mark-dark.svg`      | Mark on dark backgrounds                                      |
+| `biolyn-glyph.svg`          | Just the terracotta b, no tile (watermarks, small print)      |
+| `biolyn-mark-512.png`, `-1024.png` | PNG with rounded corners and a transparent background |
+| `biolyn-profile-1080.png`   | Square, no rounded corners: Instagram and other profile pictures (they crop to a circle) |
+
+Rules: don't recolor, stretch, rotate or add effects (shadows, gradients, outlines). Keep clear space around the mark of at least a quarter of its width. Don't go smaller than 16px. Don't use the old Next.js icons in `public/` for Biolyn.
+
 ## Tokens
 
 Defined in `src/app/globals.css`. Each one becomes Tailwind utilities (`bg-`, `text-`, `border-`, `ring-`, ...).
