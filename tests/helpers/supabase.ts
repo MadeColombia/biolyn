@@ -41,6 +41,9 @@ export function fakeClient(tables: Record<string, unknown[]> = {}) {
     return q;
   });
   const remove = vi.fn(async () => ({ data: null, error: null }));
+  const upload = vi.fn<(...args: unknown[]) => Promise<{ data: unknown; error: unknown }>>(
+    async () => ({ data: null, error: null }),
+  );
   return {
     from,
     queries,
@@ -52,7 +55,17 @@ export function fakeClient(tables: Record<string, unknown[]> = {}) {
       signOut: vi.fn(async () => ({ error: null })),
       exchangeCodeForSession: vi.fn(async () => ({ error: null })),
     },
-    storage: { from: vi.fn(() => ({ remove })), remove },
+    storage: {
+      from: vi.fn((bucket: string) => ({
+        remove,
+        upload,
+        getPublicUrl: (path: string) => ({
+          data: { publicUrl: `https://x.supabase.co/storage/v1/object/public/${bucket}/${path}` },
+        }),
+      })),
+      remove,
+      upload,
+    },
   };
 }
 

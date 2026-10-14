@@ -4,7 +4,11 @@ import { useActionState, useState, useTransition } from "react";
 import { Button, Field, button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
 import { createClient } from "@/lib/supabase/browser";
-import { LINK_IMAGES_BUCKET, type LinkSize } from "@/lib/link-form";
+import {
+  isIconPreview,
+  LINK_IMAGES_BUCKET,
+  type LinkSize,
+} from "@/lib/link-form";
 import type { FormState } from "./actions";
 
 export type EditableLink = {
@@ -266,7 +270,12 @@ export function LinkForm({
               src={shownPicture}
               alt=""
               referrerPolicy="no-referrer"
-              className="aspect-video w-full max-w-sm rounded-xl border border-edge object-cover"
+              className={cx(
+                "aspect-video w-full max-w-sm rounded-xl border border-edge",
+                isIconPreview(shownPicture)
+                  ? "bg-raised object-contain p-8"
+                  : "object-cover",
+              )}
             />
           )}
           <div className="flex flex-wrap items-center gap-2">
@@ -305,8 +314,10 @@ export function LinkForm({
             {imageUrl
               ? "Your picture is cropped to a wide 16:9 shape."
               : savedPreview
-                ? "This is the link's own preview picture. Add yours to replace it."
-                : "Optional. Without one, we use the link's own preview picture when it has one."}
+                ? isIconPreview(savedPreview)
+                  ? "This site has no preview picture, so its icon is used. Add a picture to replace it."
+                  : "This is the link's own preview picture. Add yours to replace it."
+                : "Optional. Without one, we use the link's own preview picture, or the site's icon."}
           </p>
           {imageError && <p className="text-sm text-danger">{imageError}</p>}
         </div>

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  isIconPreview,
   isLinkSize,
   isOwnLinkImage,
   linkImagePath,
@@ -25,6 +26,14 @@ describe("isLinkSize", () => {
   });
   it.each([undefined, null, "", "huge", 1])("rejects %s", (v) => {
     expect(isLinkSize(v)).toBe(false);
+  });
+});
+
+describe("isIconPreview", () => {
+  it("spots previews marked as site icons", () => {
+    expect(isIconPreview("https://a.com/i.svg#biolyn-icon")).toBe(true);
+    expect(isIconPreview("https://a.com/og.jpg")).toBe(false);
+    expect(isIconPreview(null)).toBe(false);
   });
 });
 

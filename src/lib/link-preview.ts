@@ -1,5 +1,6 @@
 import "server-only";
 import { embedFor } from "@/lib/embeds";
+import { ICON_MARK } from "@/lib/link-form";
 import { isPublicHost } from "@/lib/link-safety";
 
 const MAX_BYTES = 512 * 1024;
@@ -97,7 +98,50 @@ function decodeEntities(value: string) {
     .replace(/&gt;/g, ">");
 }
 
-/** Finds the share picture in a page's HTML. Exported for tests. */
+// An absolute https URL for `raw`, or null.
+function httpsUrl(raw: string, pageUrl: URL): string | null {
+  try {
+    const url = new URL(decodeEntities(raw.trim()), pageUrl);
+    // Browsers block http pictures on an https page.
+    if (url.protocol === "http:") url.protocol = "https:";
+    if (url.protocol !== "https:" || url.href.length > 2000) return null;
+    url.hash = "";
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+// The biggest icon a page declares: apple-touch-icon first (180px),
+// then a sized or SVG icon. Tiny .ico favicons look blurry when large,
+// so they're skipped.
+function iconFromHtml(html: string, pageUrl: URL): string | null {
+  let best: { href: string; score: number } | null = null;
+  for (const [tag] of html.matchAll(/<link\b[^>]*>/gi)) {
+    const rel = attr(tag, "rel")?.toLowerCase() ?? "";
+    const href = attr(tag, "href");
+    if (!href || !/(^|\s)(icon|apple-touch-icon(-precomposed)?)(\s|$)/.test(rel)) {
+      continue;
+    }
+    if (/\.ico(\?|$)/i.test(href)) continue;
+    const size = Number(attr(tag, "sizes")?.match(/^(\d+)/)?.[1] ?? 0);
+    const svg =
+      /svg/i.test(attr(tag, "type") ?? "") || /\.svg(\?|$)/i.test(href);
+    const score = rel.includes("apple-touch-icon")
+      ? 1000 + size
+      : svg
+        ? 900
+        : size;
+    if (score >= 64 && (!best || score > best.score)) best = { href, score };
+  }
+  const url = best && httpsUrl(best.href, pageUrl);
+  return url ? url + ICON_MARK : null;
+}
+
+/**
+ * Finds the share picture in a page's HTML, or else its biggest icon
+ * (marked with ICON_MARK). Exported for tests.
+ */
 export function previewFromHtml(html: string, pageUrl: URL): string | null {
   const found = new Map<string, string>();
   for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
@@ -107,15 +151,68 @@ export function previewFromHtml(html: string, pageUrl: URL): string | null {
   }
   for (const key of IMAGE_KEYS) {
     const raw = found.get(key);
-    if (!raw) continue;
-    try {
-      const url = new URL(decodeEntities(raw.trim()), pageUrl);
-      // Browsers block http pictures on an https page.
-      if (url.protocol === "http:") url.protocol = "https:";
-      if (url.protocol === "https:" && url.href.length <= 2000) return url.href;
-    } catch {
-      // Not a URL; try the next key.
-    }
+    const url = raw && httpsUrl(raw, pageUrl);
+    if (url) return url;
   }
-  return null;
+  return iconFromHtml(html, pageUrl);
+}
+
+const SCREENSHOT_TIMEOUT_MS = 15000;
+const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
+
+export type Screenshot = { data: ArrayBuffer; type: string };
+
+/**
+ * A 16:9 screenshot of the page, taken by Microlink (microlink.io), for
+ * sites without a share picture. MICROLINK_API_KEY is optional: without
+ * it the free plan is used, which has a small daily limit. Returns null
+ * on any problem so saving never fails because of it.
+ */
+export async function fetchScreenshot(pageUrl: string): Promise<Screenshot | null> {
+  try {
+    const target = new URL(pageUrl);
+    if (!isPublicHost(target.hostname)) return null;
+
+    const key = process.env.MICROLINK_API_KEY;
+    const api = new URL(
+      key ? "https://pro.microlink.io/" : "https://api.microlink.io/",
+    );
+    api.search = new URLSearchParams({
+      url: target.href,
+      screenshot: "true",
+      meta: "false",
+      "viewport.width": "1280",
+      "viewport.height": "720",
+      type: "jpeg",
+    }).toString();
+
+    const signal = AbortSignal.timeout(SCREENSHOT_TIMEOUT_MS);
+    const res = await fetch(api, {
+      signal,
+      headers: key ? { "x-api-key": key } : {},
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      status?: string;
+      data?: { screenshot?: { url?: string } };
+    };
+    const shot = body.data?.screenshot?.url;
+    if (body.status !== "success" || !shot) return null;
+
+    // Only download from Microlink's own servers.
+    const shotUrl = new URL(shot);
+    if (shotUrl.protocol !== "https:" || !/(^|\.)microlink\.io$/.test(shotUrl.hostname)) {
+      return null;
+    }
+    const image = await fetch(shotUrl, { signal });
+    const type = image.headers.get("content-type") ?? "";
+    if (!image.ok || !/^image\/(jpeg|png|webp)$/.test(type)) return null;
+    const data = await image.arrayBuffer();
+    if (data.byteLength === 0 || data.byteLength > MAX_SCREENSHOT_BYTES) {
+      return null;
+    }
+    return { data, type };
+  } catch {
+    return null;
+  }
 }

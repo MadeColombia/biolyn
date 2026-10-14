@@ -7,6 +7,7 @@ import { SocialIcon } from "@/components/social-icon";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
+import { isIconPreview } from "@/lib/link-form";
 import { ViewTracker } from "./view-tracker";
 
 // Heights the Spotify and Apple Music players are designed for.
@@ -129,15 +130,31 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   href={`/api/click/${link.id}`}
                   className={`block w-full overflow-hidden rounded-3xl p-2 text-center font-semibold transition ${theme.card}`}
                 >
-                  {link.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={link.image_url}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      className="aspect-video w-full rounded-2xl object-cover"
-                    />
+                  {link.image_url && isIconPreview(link.image_url) ? (
+                    // The site's icon, centered on a tinted panel.
+                    <span
+                      className={`flex aspect-video w-full items-center justify-center rounded-2xl ${theme.avatar}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={link.image_url}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="h-1/2 w-auto max-w-1/2 object-contain"
+                      />
+                    </span>
+                  ) : (
+                    link.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={link.image_url}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="aspect-video w-full rounded-2xl object-cover"
+                      />
+                    )
                   )}
                   <span
                     className={`block px-4 text-lg ${link.image_url ? "py-4" : "py-8"}`}

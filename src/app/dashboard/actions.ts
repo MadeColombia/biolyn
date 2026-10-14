@@ -11,13 +11,14 @@ import { isThemeId } from "@/lib/themes";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
 import {
+  isIconPreview,
   isOwnLinkImage,
   LINK_IMAGES_BUCKET,
   linkImagePath,
   parseLinkForm,
   type LinkValues,
 } from "@/lib/link-form";
-import { fetchPreviewImage } from "@/lib/link-preview";
+import { fetchPreviewImage, fetchScreenshot } from "@/lib/link-preview";
 
 const MAX_LINKS = 100;
 
@@ -120,7 +121,7 @@ export async function addLink(
     profile_id: profile.id,
     position: count ?? 0,
     ...values,
-    preview_url: await previewFor(values),
+    preview_url: await previewFor(supabase, user.id, values),
   });
   if (error) return { error: "Could not save the link." };
 
@@ -155,9 +156,10 @@ export async function updateLink(
     .maybeSingle();
   if (!current) return { error: "That link no longer exists." };
 
+  const preview_url = await previewFor(supabase, user.id, values, current);
   const { error } = await supabase
     .from("links")
-    .update({ ...values, preview_url: await previewFor(values, current) })
+    .update({ ...values, preview_url })
     .eq("id", linkId)
     .eq("profile_id", profile.id);
   if (error) return { error: "Could not save the link." };
@@ -165,25 +167,49 @@ export async function updateLink(
   if (current.image_url !== values.image_url) {
     await removeLinkImage(supabase, current.image_url);
   }
+  if (current.preview_url !== preview_url) {
+    await removeLinkImage(supabase, current.preview_url);
+  }
   refresh(profile.username);
   return { saved: true };
 }
 
-// A big button with no picture of its own shows the page's share picture.
-// It's looked up once when the link is saved, and again when its URL
-// changes, so visitors never wait for it.
+// A big button with no picture of its own shows the page's share picture,
+// else a screenshot of the page (saved in the user's storage folder),
+// else the site's icon. It's looked up once when the link is saved, and
+// again when its URL changes, so visitors never wait for it.
 async function previewFor(
+  supabase: Supabase,
+  userId: string,
   values: LinkValues,
   current?: { url: string; preview_url: string | null },
 ): Promise<string | null> {
   const known = current?.url === values.url ? current.preview_url : null;
   if (values.size !== "big" || values.image_url || known) return known;
-  return fetchPreviewImage(values.url);
+
+  const found = await fetchPreviewImage(values.url);
+  if (found && !isIconPreview(found)) return found;
+
+  const shot = await fetchScreenshot(values.url);
+  if (shot) {
+    const ext = shot.type.split("/")[1];
+    const path = `${userId}/preview-${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(LINK_IMAGES_BUCKET)
+      .upload(path, shot.data, { contentType: shot.type });
+    if (!error) {
+      return supabase.storage.from(LINK_IMAGES_BUCKET).getPublicUrl(path).data
+        .publicUrl;
+    }
+  }
+  return found;
 }
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 // Deletes a picture we host. Anything else (or nothing) is ignored.
 async function removeLinkImage(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Supabase,
   url: string | null,
 ) {
   const path = linkImagePath(url);
@@ -200,12 +226,15 @@ export async function deleteLink(linkId: string) {
   const { supabase, profile } = await requireOwnProfile();
   const { data: link } = await supabase
     .from("links")
-    .select("image_url")
+    .select("image_url, preview_url")
     .eq("id", linkId)
     .eq("profile_id", profile.id)
     .maybeSingle();
   await supabase.from("links").delete().eq("id", linkId);
-  if (link) await removeLinkImage(supabase, link.image_url);
+  if (link) {
+    await removeLinkImage(supabase, link.image_url);
+    await removeLinkImage(supabase, link.preview_url);
+  }
   refresh(profile.username);
 }
 
