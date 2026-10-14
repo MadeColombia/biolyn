@@ -24,6 +24,10 @@ const checkLinkUrl = vi.fn<(url: string) => Promise<string | null>>(
 vi.mock("@/lib/link-safety", () => ({ checkLinkUrl }));
 const allow = vi.fn<(...args: unknown[]) => Promise<boolean>>(async () => true);
 vi.mock("@/lib/rate-limit", () => ({ allow }));
+const fetchPreviewImage = vi.fn<(url: string) => Promise<string | null>>(
+  async () => null,
+);
+vi.mock("@/lib/link-preview", () => ({ fetchPreviewImage }));
 
 const actions = await import("@/app/dashboard/actions");
 
@@ -61,6 +65,7 @@ beforeEach(() => {
   revalidatePath.mockClear();
   checkLinkUrl.mockReset().mockResolvedValue(null);
   allow.mockReset().mockResolvedValue(true);
+  fetchPreviewImage.mockReset().mockResolvedValue(null);
   PROFILE.avatar_url = null;
 });
 
@@ -240,10 +245,13 @@ describe("addLink", () => {
         embed: true,
         size: "small",
         image_url: null,
+        preview_url: null,
         starts_at: "2026-10-14T08:00:00.000Z",
         ends_at: null,
       },
     ]);
+    // Small buttons don't need the page's preview picture.
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
     expect(updateTag).toHaveBeenCalledWith("profile:ethan");
   });
 
@@ -275,6 +283,20 @@ describe("addLink", () => {
     expect(lastWrite("links", "insert")?.[0]).toMatchObject({
       size: "big",
       image_url: `${IMAGES}u1/a.jpg`,
+    });
+  });
+
+  it("gives a big button without a picture the page's preview", async () => {
+    signedIn({ links: [{ count: 0 }, { error: null }] });
+    fetchPreviewImage.mockResolvedValueOnce("https://cdn.a.com/og.jpg");
+    await actions.addLink(
+      {},
+      form({ title: "x", url: "https://a.com", size: "big" }),
+    );
+    expect(fetchPreviewImage).toHaveBeenCalledWith("https://a.com");
+    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
+      image_url: null,
+      preview_url: "https://cdn.a.com/og.jpg",
     });
   });
 
@@ -385,10 +407,12 @@ describe("updateLink", () => {
         embed: false,
         size: "big",
         image_url: `${IMAGES}u1/a.jpg`,
+        preview_url: null,
         starts_at: "2026-10-14T10:00:00.000Z",
         ends_at: null,
       },
     ]);
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
     const write = db.queries.links[1].calls;
     expect(write).toContainEqual({ method: "eq", args: ["id", "l1"] });
     expect(write).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
@@ -405,6 +429,37 @@ describe("updateLink", () => {
       image_url: null,
     });
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/old.jpg"]);
+  });
+
+  it("keeps the saved preview while the URL stays the same", async () => {
+    const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
+    signedIn({ links: [{ data: saved }, { error: null }] });
+    await edit({ title: "x", url: "https://a.com", size: "big" });
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      preview_url: "https://p/1.jpg",
+    });
+  });
+
+  it("looks up a new preview when the URL changes", async () => {
+    const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
+    signedIn({ links: [{ data: saved }, { error: null }] });
+    fetchPreviewImage.mockResolvedValueOnce("https://p/2.jpg");
+    await edit({ title: "x", url: "https://b.com", size: "big" });
+    expect(fetchPreviewImage).toHaveBeenCalledWith("https://b.com");
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      preview_url: "https://p/2.jpg",
+    });
+  });
+
+  it("drops the old preview when a small link changes URL", async () => {
+    const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
+    signedIn({ links: [{ data: saved }, { error: null }] });
+    await edit({ title: "x", url: "https://b.com" });
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      preview_url: null,
+    });
   });
 
   it("leaves pictures it doesn't host alone", async () => {

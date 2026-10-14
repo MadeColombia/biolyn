@@ -15,7 +15,9 @@ import {
   LINK_IMAGES_BUCKET,
   linkImagePath,
   parseLinkForm,
+  type LinkValues,
 } from "@/lib/link-form";
+import { fetchPreviewImage } from "@/lib/link-preview";
 
 const MAX_LINKS = 100;
 
@@ -118,6 +120,7 @@ export async function addLink(
     profile_id: profile.id,
     position: count ?? 0,
     ...values,
+    preview_url: await previewFor(values),
   });
   if (error) return { error: "Could not save the link." };
 
@@ -146,7 +149,7 @@ export async function updateLink(
   }
   const { data: current } = await supabase
     .from("links")
-    .select("image_url")
+    .select("url, image_url, preview_url")
     .eq("id", linkId)
     .eq("profile_id", profile.id)
     .maybeSingle();
@@ -154,7 +157,7 @@ export async function updateLink(
 
   const { error } = await supabase
     .from("links")
-    .update(values)
+    .update({ ...values, preview_url: await previewFor(values, current) })
     .eq("id", linkId)
     .eq("profile_id", profile.id);
   if (error) return { error: "Could not save the link." };
@@ -164,6 +167,18 @@ export async function updateLink(
   }
   refresh(profile.username);
   return { saved: true };
+}
+
+// A big button with no picture of its own shows the page's share picture.
+// It's looked up once when the link is saved, and again when its URL
+// changes, so visitors never wait for it.
+async function previewFor(
+  values: LinkValues,
+  current?: { url: string; preview_url: string | null },
+): Promise<string | null> {
+  const known = current?.url === values.url ? current.preview_url : null;
+  if (values.size !== "big" || values.image_url || known) return known;
+  return fetchPreviewImage(values.url);
 }
 
 // Deletes a picture we host. Anything else (or nothing) is ignored.

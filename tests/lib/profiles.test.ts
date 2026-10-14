@@ -74,12 +74,13 @@ describe("getPublicProfile", () => {
             }),
             link({ id: "e", size: "big", image_url: "https://img/a.jpg" }),
             link({ id: "f", size: "huge" }),
+            link({ id: "g", size: "big", preview_url: "https://og/x.jpg" }),
           ],
         },
       ],
     });
     const page = await getPublicProfile("ethan");
-    expect(page?.links.map((l) => l.id)).toEqual(["a", "d", "e", "f"]);
+    expect(page?.links.map((l) => l.id)).toEqual(["a", "d", "e", "f", "g"]);
     expect(page?.links[0]).toMatchObject({ size: "small", image_url: null });
     expect(page?.links[2]).toMatchObject({
       size: "big",
@@ -87,6 +88,8 @@ describe("getPublicProfile", () => {
     });
     // Unknown sizes fall back to the small button.
     expect(page?.links[3].size).toBe("small");
+    // Without an uploaded picture, the page's preview is used.
+    expect(page?.links[4].image_url).toBe("https://og/x.jpg");
     expect(page?.links[0].embed).toBeNull();
     expect(page?.links[1].embed?.kind).toBe("youtube");
     expect(page?.theme).toBe("midnight");

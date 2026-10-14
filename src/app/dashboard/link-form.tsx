@@ -14,6 +14,7 @@ export type EditableLink = {
   embed: boolean;
   size: LinkSize;
   image_url: string | null;
+  preview_url?: string | null;
   starts_at: string | null;
   ends_at: string | null;
 };
@@ -147,6 +148,10 @@ export function LinkForm({
   }
 
   const showsPlayer = Boolean(embed) && asPlayer;
+  // The saved preview only matches while the URL stays the same.
+  const savedPreview =
+    link?.preview_url && url.trim() === link.url ? link.preview_url : null;
+  const shownPicture = imageUrl ?? savedPreview;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -255,11 +260,12 @@ export function LinkForm({
       {!showsPlayer && size === "big" && (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-bold text-ink">Picture</p>
-          {imageUrl && (
+          {shownPicture && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={imageUrl}
+              src={shownPicture}
               alt=""
+              referrerPolicy="no-referrer"
               className="aspect-video w-full max-w-sm rounded-xl border border-edge object-cover"
             />
           )}
@@ -296,7 +302,11 @@ export function LinkForm({
             )}
           </div>
           <p className="text-sm text-ink-muted">
-            Optional. It&apos;s cropped to a wide 16:9 shape.
+            {imageUrl
+              ? "Your picture is cropped to a wide 16:9 shape."
+              : savedPreview
+                ? "This is the link's own preview picture. Add yours to replace it."
+                : "Optional. Without one, we use the link's own preview picture when it has one."}
           </p>
           {imageError && <p className="text-sm text-danger">{imageError}</p>}
         </div>
