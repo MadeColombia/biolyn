@@ -7,6 +7,11 @@ import { fontFrom, type FontId } from "@/lib/fonts";
 import { embedFor, type Embed } from "@/lib/embeds";
 import { isLive, secondsUntilNextChange } from "@/lib/schedule";
 import { isLinkSize, type LinkSize } from "@/lib/link-form";
+import {
+  galleryLayoutFrom,
+  photoPrefix,
+  type GalleryLayout,
+} from "@/lib/gallery";
 
 export type PublicLink = {
   id: string;
@@ -17,6 +22,7 @@ export type PublicLink = {
   // The uploaded picture, else the page's own share picture.
   image_url: string | null;
 };
+export type PublicPhoto = { id: string; url: string; alt: string };
 export type PublicProfile = {
   id: string;
   username: string;
@@ -27,6 +33,7 @@ export type PublicProfile = {
   font: FontId;
   socials: Socials;
   links: PublicLink[];
+  gallery: { layout: GalleryLayout; photos: PublicPhoto[] };
 };
 
 export const profileTag = (username: string) => `profile:${username}`;
@@ -46,7 +53,7 @@ export async function getPublicProfile(
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended",
+      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended, gallery_layout",
     )
     .eq("username", username)
     .maybeSingle();
@@ -57,12 +64,21 @@ export async function getPublicProfile(
     return null;
   }
 
-  const { data: rows } = await supabase
-    .from("links")
-    .select("id, title, url, embed, size, image_url, preview_url, starts_at, ends_at")
-    .eq("profile_id", profile.id)
-    .eq("is_visible", true)
-    .order("position");
+  const [{ data: rows }, { data: photoRows }] = await Promise.all([
+    supabase
+      .from("links")
+      .select(
+        "id, title, url, embed, size, image_url, preview_url, starts_at, ends_at",
+      )
+      .eq("profile_id", profile.id)
+      .eq("is_visible", true)
+      .order("position"),
+    supabase
+      .from("photos")
+      .select("id, url, alt")
+      .eq("profile_id", profile.id)
+      .order("position"),
+  ]);
 
   const now = Date.now();
   const all = rows ?? [];
@@ -94,5 +110,17 @@ export async function getPublicProfile(
     font: fontFrom(profile.theme),
     socials: socialsFrom(profile.socials),
     links,
+    gallery: {
+      layout: galleryLayoutFrom(profile.gallery_layout),
+      // Only files from our own photos bucket, even if a row was written
+      // outside the app.
+      photos: (photoRows ?? [])
+        .filter((p) => p.url.startsWith(photoPrefix()))
+        .map((p) => ({
+        id: p.id,
+        url: p.url,
+        alt: p.alt ?? "",
+      })),
+    },
   };
 }

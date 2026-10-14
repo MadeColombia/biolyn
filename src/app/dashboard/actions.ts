@@ -22,6 +22,12 @@ import {
   type LinkValues,
 } from "@/lib/link-form";
 import { fetchPreviewImage, fetchScreenshot } from "@/lib/link-preview";
+import {
+  cleanAlt,
+  isGalleryLayout,
+  MAX_PHOTOS,
+  ownPhotoPath,
+} from "@/lib/gallery";
 
 const MAX_LINKS = 100;
 
@@ -383,6 +389,107 @@ export async function setAvatar(url: string | null) {
   if (old && old !== url && old.startsWith(prefix)) {
     await supabase.storage.from("avatars").remove([old.slice(prefix.length)]);
   }
+  refresh(profile.username);
+}
+
+// Called after the browser uploads a photo to Storage. Only accepts a file
+// inside the user's own folder of the photos bucket.
+export async function addPhoto(url: string, alt: string): Promise<FormState> {
+  const { supabase, profile, user } = await requireOwnProfile();
+  const path = ownPhotoPath(url, user.id);
+  if (!path) return { error: "Could not add that photo." };
+
+  // Removes the uploaded file when it can't be saved, so it doesn't sit
+  // in Storage with nothing pointing at it.
+  const discard = async (error: string) => {
+    await supabase.storage.from("photos").remove([path]);
+    return { error };
+  };
+
+  if (!(await allow(`addphoto:${profile.id}`, 30, 600))) {
+    return discard("You're adding photos very fast. Wait a few minutes.");
+  }
+  const { count } = await supabase
+    .from("photos")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profile.id);
+  if ((count ?? 0) >= MAX_PHOTOS) {
+    return discard(`You can have up to ${MAX_PHOTOS} photos.`);
+  }
+
+  const { error } = await supabase.from("photos").insert({
+    profile_id: profile.id,
+    url,
+    alt: cleanAlt(alt),
+    position: count ?? 0,
+  });
+  if (error) return discard("Could not save the photo.");
+
+  refresh(profile.username);
+  return {};
+}
+
+export async function updatePhotoAlt(photoId: string, alt: string) {
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase
+    .from("photos")
+    .update({ alt: cleanAlt(alt) })
+    .eq("id", photoId)
+    .eq("profile_id", profile.id);
+  refresh(profile.username);
+}
+
+// Deletes the row, then the file, but only a file in the user's own folder.
+export async function deletePhoto(photoId: string) {
+  const { supabase, profile, user } = await requireOwnProfile();
+  const { data: photo } = await supabase
+    .from("photos")
+    .select("id, url")
+    .eq("id", photoId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  if (!photo) return;
+
+  await supabase.from("photos").delete().eq("id", photo.id);
+  const path = ownPhotoPath(photo.url, user.id);
+  if (path) await supabase.storage.from("photos").remove([path]);
+  refresh(profile.username);
+}
+
+// Same rules as reorderLinks: `orderedIds` must be exactly the user's own
+// photo ids, otherwise nothing changes.
+export async function reorderPhotos(orderedIds: string[]) {
+  const { supabase, profile } = await requireOwnProfile();
+  const { data: photos } = await supabase
+    .from("photos")
+    .select("id")
+    .eq("profile_id", profile.id);
+  if (!photos) return;
+
+  const own = new Set(photos.map((p) => p.id));
+  if (
+    orderedIds.length !== own.size ||
+    new Set(orderedIds).size !== own.size ||
+    !orderedIds.every((id) => own.has(id))
+  ) {
+    return;
+  }
+
+  await Promise.all(
+    orderedIds.map((id, position) =>
+      supabase.from("photos").update({ position }).eq("id", id),
+    ),
+  );
+  refresh(profile.username);
+}
+
+export async function setGalleryLayout(layout: string) {
+  if (!isGalleryLayout(layout)) return;
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase
+    .from("profiles")
+    .update({ gallery_layout: layout })
+    .eq("id", profile.id);
   refresh(profile.username);
 }
 

@@ -11,6 +11,7 @@ import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
 import { isIconPreview } from "@/lib/link-form";
+import { Gallery } from "./gallery";
 import { ViewTracker } from "./view-tracker";
 
 // Heights the Spotify and Apple Music players are designed for.
@@ -181,6 +182,10 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
             </li>
           ))}
         </ul>
+        <Gallery
+          layout={profile.gallery.layout}
+          photos={profile.gallery.photos}
+        />
         <div
           className={`mt-auto flex items-center gap-4 pt-8 text-sm ${theme.muted}`}
         >

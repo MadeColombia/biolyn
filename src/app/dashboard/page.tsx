@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/analytics";
 import { socialsFrom } from "@/lib/socials";
 import { THEMES, themeFrom, type ThemeId } from "@/lib/themes";
+import { galleryLayoutFrom } from "@/lib/gallery";
 import { setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
 import { FONT_CLASS } from "@/components/profile-fonts";
@@ -27,6 +28,7 @@ import {
   SocialsForm,
 } from "./forms";
 import { LinkList } from "./link-list";
+import { PhotoManager } from "./photos";
 import { QrSection, StatsSection } from "./stats";
 
 export default function DashboardPage() {
@@ -95,7 +97,7 @@ async function Dashboard() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended",
+      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended, gallery_layout",
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -125,6 +127,13 @@ async function Dashboard() {
     )
     .eq("profile_id", profile.id)
     .order("position");
+
+  const { data: photos } = await supabase
+    .from("photos")
+    .select("id, url, alt")
+    .eq("profile_id", profile.id)
+    .order("position");
+  const galleryLayout = galleryLayoutFrom(profile.gallery_layout);
 
   const currentTheme = themeFrom(profile.theme);
   const currentFont = fontFrom(profile.theme);
@@ -214,6 +223,20 @@ async function Dashboard() {
             links={links ?? []}
           />
         </div>
+      </Card>
+
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Photos">
+          Up to 12 pictures under your links, as a carousel or a grid.
+        </SectionTitle>
+        <PhotoManager
+          key={`${galleryLayout}|${(photos ?? [])
+            .map((p) => `${p.id}:${p.alt}`)
+            .join()}`}
+          userId={user.id}
+          layout={galleryLayout}
+          photos={photos ?? []}
+        />
       </Card>
 
       <StatsSection stats={stats} links={links ?? []} />
