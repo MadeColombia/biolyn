@@ -169,6 +169,11 @@ export function PhotoManager({
         <p className="text-sm text-ink-muted">
           {photos.length} of {MAX_PHOTOS} photos
         </p>
+        <p className="w-full text-sm text-ink-muted">
+          <span className="font-bold text-ink">Required:</span> a JPG, PNG or
+          WebP picture. A description is optional and helps people who use
+          screen readers.
+        </p>
         {error && (
           <p role="alert" className="w-full text-sm text-danger">
             {error}
@@ -194,25 +199,32 @@ export function PhotoManager({
                   alt=""
                   className="size-20 shrink-0 rounded-xl object-cover"
                 />
-                <label className="sr-only" htmlFor={`photo-alt-${photo.id}`}>
-                  Description of photo {i + 1}
-                </label>
-                <input
-                  id={`photo-alt-${photo.id}`}
-                  defaultValue={photo.alt}
-                  maxLength={MAX_ALT_LENGTH}
-                  placeholder="Describe it (optional)"
-                  onBlur={(e) => {
-                    const alt = e.target.value;
-                    if (alt !== photo.alt) {
-                      setPhotos((all) =>
-                        all.map((p) => (p.id === photo.id ? { ...p, alt } : p)),
-                      );
-                      startTransition(() => updatePhotoAlt(photo.id, alt));
-                    }
-                  }}
-                  className={cx(input(), "h-10 min-w-0 flex-1 text-sm")}
-                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <label
+                    htmlFor={`photo-alt-${photo.id}`}
+                    className="text-sm font-bold text-ink"
+                  >
+                    Description{" "}
+                    <span className="font-normal text-ink-muted">(optional)</span>
+                    <span className="sr-only"> for photo {i + 1}</span>
+                  </label>
+                  <input
+                    id={`photo-alt-${photo.id}`}
+                    defaultValue={photo.alt}
+                    maxLength={MAX_ALT_LENGTH}
+                    placeholder="What's in the photo?"
+                    onBlur={(e) => {
+                      const alt = e.target.value;
+                      if (alt !== photo.alt) {
+                        setPhotos((all) =>
+                          all.map((p) => (p.id === photo.id ? { ...p, alt } : p)),
+                        );
+                        startTransition(() => updatePhotoAlt(photo.id, alt));
+                      }
+                    }}
+                    className={cx(input(), "h-10 min-w-0 text-sm")}
+                  />
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 <Button
