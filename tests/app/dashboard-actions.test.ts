@@ -713,3 +713,170 @@ describe("signOut", () => {
     expect(db.auth.signOut).toHaveBeenCalled();
   });
 });
+
+const PHOTOS = "https://x.supabase.co/storage/v1/object/public/photos/";
+
+describe("photo actions when signed out", () => {
+  beforeEach(() => {
+    db = fakeClient();
+  });
+
+  it.each([
+    ["addPhoto", () => actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")],
+    ["updatePhotoAlt", () => actions.updatePhotoAlt("ph1", "x")],
+    ["deletePhoto", () => actions.deletePhoto("ph1")],
+    ["reorderPhotos", () => actions.reorderPhotos([])],
+    ["setGalleryLayout", () => actions.setGalleryLayout("grid")],
+  ])("%s sends them to login and writes nothing", async (_name, run) => {
+    await expect(run()).rejects.toMatchObject({ to: "/login" });
+    expect(db.from).not.toHaveBeenCalledWith("photos");
+    expect(db.storage.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("addPhoto", () => {
+  it("saves a photo from the user's own folder at the end", async () => {
+    signedIn({ photos: [{ count: 3 }, { error: null }] });
+    expect(
+      await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "  My   dog "),
+    ).toEqual({});
+    expect(lastWrite("photos", "insert")).toEqual([
+      { profile_id: "p1", url: `${PHOTOS}u1/a.jpg`, alt: "My dog", position: 3 },
+    ]);
+    expect(allow).toHaveBeenCalledWith("addphoto:p1", 30, 600);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it.each([
+    ["another user's folder", `${PHOTOS}u2/a.jpg`],
+    ["an outside site", "https://evil.example/u1/a.jpg"],
+  ])("refuses %s and deletes nothing", async (_label, url) => {
+    signedIn();
+    expect(await actions.addPhoto(url, "")).toEqual({
+      error: "Could not add that photo.",
+    });
+    expect(db.from).not.toHaveBeenCalledWith("photos");
+    expect(db.storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("stops at 12 photos and removes the extra upload", async () => {
+    signedIn({ photos: [{ count: 12 }] });
+    expect(await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")).toEqual({
+      error: "You can have up to 12 photos.",
+    });
+    expect(lastWrite("photos", "insert")).toBeUndefined();
+    expect(db.storage.from).toHaveBeenCalledWith("photos");
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
+
+  it("rate limits and removes the upload", async () => {
+    allow.mockResolvedValue(false);
+    signedIn();
+    expect(await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")).toEqual({
+      error: "You're adding photos very fast. Wait a few minutes.",
+    });
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
+
+  it("removes the upload when the row can't be saved", async () => {
+    signedIn({ photos: [{ count: null }, { error: { code: "P0001" } }] });
+    expect(await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")).toEqual({
+      error: "Could not save the photo.",
+    });
+    expect(lastWrite("photos", "insert")?.[0]).toMatchObject({ position: 0 });
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
+});
+
+describe("updatePhotoAlt", () => {
+  it("cleans the text and only touches the user's own photo", async () => {
+    signedIn();
+    await actions.updatePhotoAlt("ph1", "  Sunset \n at sea ");
+    expect(lastWrite("photos", "update")).toEqual([{ alt: "Sunset at sea" }]);
+    expect(db.queries.photos[0].calls).toContainEqual({
+      method: "eq",
+      args: ["profile_id", "p1"],
+    });
+  });
+});
+
+describe("deletePhoto", () => {
+  it("deletes the row and the file", async () => {
+    signedIn({
+      photos: [{ data: { id: "ph1", url: `${PHOTOS}u1/a.jpg` } }, {}],
+    });
+    await actions.deletePhoto("ph1");
+    expect(db.queries.photos[0].calls).toContainEqual({
+      method: "eq",
+      args: ["profile_id", "p1"],
+    });
+    expect(lastWrite("photos", "delete")).toEqual([]);
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("does nothing for a photo that isn't theirs", async () => {
+    signedIn({ photos: [{ data: null }] });
+    await actions.deletePhoto("ph9");
+    expect(lastWrite("photos", "delete")).toBeUndefined();
+    expect(db.storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("never deletes files outside the user's folder", async () => {
+    signedIn({
+      photos: [{ data: { id: "ph1", url: `${PHOTOS}u2/a.jpg` } }, {}],
+    });
+    await actions.deletePhoto("ph1");
+    expect(lastWrite("photos", "delete")).toEqual([]);
+    expect(db.storage.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("reorderPhotos", () => {
+  const own = { data: [{ id: "a" }, { id: "b" }] };
+
+  it("saves the new positions", async () => {
+    signedIn({ photos: [own] });
+    await actions.reorderPhotos(["b", "a"]);
+    const updates = db.queries.photos
+      .slice(1)
+      .map((q) => [q.calls[0].args[0], q.calls[1].args[1]]);
+    expect(updates).toEqual([
+      [{ position: 0 }, "b"],
+      [{ position: 1 }, "a"],
+    ]);
+  });
+
+  it.each([
+    ["someone else's photo", ["a", "x"]],
+    ["a missing photo", ["a"]],
+    ["a repeated photo", ["a", "a"]],
+  ])("ignores a list with %s", async (_label, ids) => {
+    signedIn({ photos: [own] });
+    await actions.reorderPhotos(ids);
+    expect(db.queries.photos).toHaveLength(1);
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the photos can't be read", async () => {
+    signedIn({ photos: [{ data: null }] });
+    await actions.reorderPhotos(["a"]);
+    expect(db.queries.photos).toHaveLength(1);
+  });
+});
+
+describe("setGalleryLayout", () => {
+  it("saves a known layout", async () => {
+    signedIn();
+    await actions.setGalleryLayout("grid");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { gallery_layout: "grid" },
+    ]);
+  });
+
+  it("ignores anything else without signing in", async () => {
+    db = fakeClient();
+    await actions.setGalleryLayout("slideshow");
+    expect(db.auth.getUser).not.toHaveBeenCalled();
+  });
+});
