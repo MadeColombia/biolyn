@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Heading, PageShell, container, cx } from "@/components/ui";
+import { Heading, PageShell, Skeleton, container, cx } from "@/components/ui";
 import { ReportForm } from "./form";
 
 export const metadata: Metadata = {
-  title: "Report a page | Biolyn",
+  title: "Report a page | biolyn",
   robots: { index: false },
 };
 
@@ -17,7 +17,16 @@ export default function ReportPage(props: PageProps<"/report/[username]">) {
           "flex flex-1 flex-col gap-8 py-12 sm:py-16",
         )}
       >
-        <Suspense>
+        <Suspense
+          fallback={
+            <div aria-busy="true" className="flex flex-col gap-6">
+              <p className="sr-only">Loading the report form...</p>
+              <Skeleton className="h-10 w-56 rounded-xl" />
+              <Skeleton className="h-10 w-48 rounded-xl" />
+              <Skeleton className="h-96 w-full rounded-3xl" />
+            </div>
+          }
+        >
           <Report params={props.params} />
         </Suspense>
       </main>

@@ -109,7 +109,7 @@ export function Logo({
   return (
     <Link
       href="/"
-      aria-label="Biolyn home"
+      aria-label="biolyn home"
       className={cx(
         "isolate inline-flex items-center gap-2.5 font-display text-xl font-extrabold tracking-tight",
         className,

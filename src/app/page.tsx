@@ -31,8 +31,8 @@ export default function Home() {
             count.
           </Heading>
           <p className="max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl">
-            Biolyn turns that single link into a page with all your links, your
-            socials and stats on what people actually tap.
+            Turn that single link into a page with all your links, your socials
+            and stats on what people actually tap.
           </p>
           <Link
             href="/login"
@@ -113,7 +113,12 @@ export default function Home() {
         </section>
 
         <section className="border-t border-line">
-          <div className={cx(container(), "flex flex-wrap items-start gap-12 py-20")}>
+          <div
+            className={cx(
+              container(),
+              "flex flex-wrap items-start gap-12 py-20",
+            )}
+          >
             <Heading size="title" className="flex-[1_1_320px] leading-tight">
               From sign up to bio in minutes.
             </Heading>

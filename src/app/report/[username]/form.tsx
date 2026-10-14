@@ -32,7 +32,7 @@ export function ReportForm({ username }: { username: string }) {
           The report was sent and we&apos;ll review this page.
         </p>
         <ButtonLink href="/" variant="secondary" className="self-start">
-          Go to Biolyn
+          Go to the homepage
         </ButtonLink>
       </Card>
     );

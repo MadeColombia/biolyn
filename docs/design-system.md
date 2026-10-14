@@ -12,6 +12,8 @@ Public profile pages (`/[username]`) are the exception: they use the owner's the
 2. **Use the components first.** Import from `@/components/ui`. If a component almost fits, add a variant to it instead of writing new classes in a screen.
 3. **One brand moment per area.** Terracotta (`brand`) is for the main action and one highlight. Everything else is ink on canvas or surface.
 4. **Headings use `Heading`, text uses `font-body`.** `PageShell` sets the body font and colors for you.
+5. **Loading states use the system too.** Every `<Suspense>` gets a `fallback` built from `Skeleton` on the canvas, shaped like the screen it stands in for. The root layout paints `bg-canvas` so there is never a white flash.
+6. **Write the name lowercase and use it sparingly.** The brand is "biolyn" with a small b (sign in says "Sign in to biolyn"). Prefer plain words like "your page" over repeating the name.
 
 ## Logo
 
@@ -96,6 +98,7 @@ All in `src/components/ui/`, exported from `@/components/ui`.
 | `Input`                | Just the input, when you need your own label layout.                       |
 | `Badge`                | Small pill. `tone`: `brand` or `neutral`.                                  |
 | `Logo`                 | The biolyn.link wordmark.                                                  |
+| `Skeleton`             | Pulsing placeholder for loading states (`<Suspense fallback>`). Size it with classes. |
 
 When you need the look on an element the components don't cover (a `<span>` inside a link, an `<a>` to another site), use the class recipes from the same import: `button()`, `card()`, `heading()`, `input()`, `badge()`, `container()`, plus `cx()` to join classes. Recipes live in `src/components/ui/recipes.ts` and are unit tested.
 

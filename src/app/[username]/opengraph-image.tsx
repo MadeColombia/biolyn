@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getPublicProfile } from "@/lib/profiles";
 
-export const alt = "Biolyn profile";
+export const alt = "biolyn profile";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -13,7 +13,7 @@ export default async function Image({
 }) {
   const { username } = await params;
   const profile = await getPublicProfile(username.toLowerCase());
-  const name = profile?.display_name ?? profile?.username ?? "Biolyn";
+  const name = profile?.display_name ?? profile?.username ?? "biolyn";
 
   return new ImageResponse(
     <div

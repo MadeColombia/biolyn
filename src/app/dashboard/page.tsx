@@ -148,7 +148,7 @@ async function Dashboard() {
 
       <header className="flex flex-col gap-4 pb-2">
         <Heading as="h1" size="title">
-          Your Biolyn
+          Your page
         </Heading>
         <div
           className={cx(

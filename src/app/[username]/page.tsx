@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Skeleton } from "@/components/ui";
 import { SocialIcon } from "@/components/social-icon";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
@@ -13,8 +14,8 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { username } = await props.params;
   const profile = await getPublicProfile(username.toLowerCase());
-  if (!profile) return { title: "Biolyn" };
-  const title = `${profile.display_name ?? profile.username} | Biolyn`;
+  if (!profile) return { title: "biolyn" };
+  const title = `${profile.display_name ?? profile.username} | biolyn`;
   return {
     title,
     description: profile.bio ?? undefined,
@@ -26,8 +27,21 @@ export default function ProfilePage(props: PageProps<"/[username]">) {
   return (
     <Suspense
       fallback={
-        <main className="flex flex-1 justify-center py-16">
-          <div className="h-24 w-24 rounded-full bg-neutral-200" />
+        // The owner's theme isn't known yet, so this uses the design
+        // system's neutral canvas instead.
+        <main
+          aria-busy="true"
+          className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 py-16"
+        >
+          <p className="sr-only">Loading this page...</p>
+          <Skeleton className="h-24 w-24 rounded-full" />
+          <Skeleton className="h-7 w-44 rounded-xl" />
+          <Skeleton className="h-4 w-64 rounded-xl" />
+          <div className="flex w-full flex-col gap-3 pt-2">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-14 w-full rounded-2xl" />
+            ))}
+          </div>
         </main>
       }
     >
@@ -118,7 +132,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
         <div
           className={`mt-auto flex items-center gap-4 pt-8 text-sm ${theme.muted}`}
         >
-          <Link href="/">Made with Biolyn</Link>
+          <Link href="/">Made with biolyn</Link>
           <span aria-hidden>·</span>
           <Link href={`/report/${profile.username}`} rel="nofollow">
             Report

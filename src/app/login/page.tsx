@@ -9,6 +9,7 @@ import {
   Field,
   Heading,
   PageShell,
+  Skeleton,
   container,
   cx,
 } from "@/components/ui";
@@ -26,13 +27,17 @@ export default function LoginPage() {
       >
         <div className="flex flex-col items-center gap-3 text-center">
           <Heading as="h1" size="title">
-            Sign in to Biolyn
+            Sign in to biolyn
           </Heading>
           <p className="text-lg leading-relaxed text-ink-soft">
             Claim your link or pick up where you left off. No password needed.
           </p>
         </div>
-        <Suspense>
+        <Suspense
+          fallback={
+            <Skeleton className="h-80 w-full rounded-3xl border border-edge" />
+          }
+        >
           <LoginForm />
         </Suspense>
       </main>

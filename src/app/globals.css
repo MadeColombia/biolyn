@@ -7,10 +7,6 @@
  * dark mode come for free.
  */
 :root {
-  /* Legacy defaults for screens not yet moved to the design system. */
-  --background: #ffffff;
-  --foreground: #171717;
-
   /* Light: warm off-white with a terracotta accent. */
   --canvas: #f5efe6; /* page background */
   --surface: #fffbf5; /* cards, inputs */
@@ -29,9 +25,6 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-
     /* Dark: warm near-black with a brighter terracotta. */
     --canvas: #15110f;
     --surface: #211a17;
@@ -50,9 +43,6 @@
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-raised: var(--raised);
@@ -74,10 +64,12 @@
   --font-body: var(--font-plex-sans); /* text: font-body */
 }
 
+/* Every screen is on the design system now, so the page itself (and any
+   loading state before a screen paints) uses the canvas and body font. */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
 }
 
 /* Logo: the ring o dashes in from the left (see Logo animated). */

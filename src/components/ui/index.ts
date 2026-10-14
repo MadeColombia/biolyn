@@ -7,6 +7,7 @@ export { Field, Input } from "./field";
 export { Heading } from "./heading";
 export { Logo, LogoMark, LogoMotion } from "./logo";
 export { PageShell } from "./page-shell";
+export { Skeleton } from "./skeleton";
 export {
   badge,
   button,
