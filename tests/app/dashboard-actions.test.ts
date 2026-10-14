@@ -27,7 +27,10 @@ vi.mock("@/lib/rate-limit", () => ({ allow }));
 const fetchPreviewImage = vi.fn<(url: string) => Promise<string | null>>(
   async () => null,
 );
-vi.mock("@/lib/link-preview", () => ({ fetchPreviewImage }));
+const fetchScreenshot = vi.fn<
+  (url: string) => Promise<{ data: ArrayBuffer; type: string } | null>
+>(async () => null);
+vi.mock("@/lib/link-preview", () => ({ fetchPreviewImage, fetchScreenshot }));
 
 const actions = await import("@/app/dashboard/actions");
 
@@ -66,6 +69,7 @@ beforeEach(() => {
   checkLinkUrl.mockReset().mockResolvedValue(null);
   allow.mockReset().mockResolvedValue(true);
   fetchPreviewImage.mockReset().mockResolvedValue(null);
+  fetchScreenshot.mockReset().mockResolvedValue(null);
   PROFILE.avatar_url = null;
 });
 
@@ -300,6 +304,38 @@ describe("addLink", () => {
     });
   });
 
+  it("saves a screenshot when the page has no share picture", async () => {
+    signedIn({ links: [{ count: 0 }, { error: null }] });
+    const data = new ArrayBuffer(8);
+    fetchScreenshot.mockResolvedValueOnce({ data, type: "image/jpeg" });
+    await actions.addLink(
+      {},
+      form({ title: "x", url: "https://a.com", size: "big" }),
+    );
+    expect(fetchScreenshot).toHaveBeenCalledWith("https://a.com");
+    const [path, body, opts] = db.storage.upload.mock.calls[0];
+    expect(path).toMatch(/^u1\/preview-[\w-]+\.jpeg$/);
+    expect(body).toBe(data);
+    expect(opts).toEqual({ contentType: "image/jpeg" });
+    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
+      preview_url: `${IMAGES}${path}`,
+    });
+  });
+
+  it("takes a screenshot instead of a site icon, and keeps the icon if that fails", async () => {
+    signedIn({ links: [{ count: 0 }, { error: null }] });
+    const icon = "https://a.com/i.svg#biolyn-icon";
+    fetchPreviewImage.mockResolvedValueOnce(icon);
+    fetchScreenshot.mockResolvedValueOnce({ data: new ArrayBuffer(8), type: "image/png" });
+    db.storage.upload.mockResolvedValueOnce({ data: null, error: { message: "x" } });
+    await actions.addLink(
+      {},
+      form({ title: "x", url: "https://a.com", size: "big" }),
+    );
+    expect(fetchScreenshot).toHaveBeenCalled();
+    expect(lastWrite("links", "insert")?.[0]).toMatchObject({ preview_url: icon });
+  });
+
   it("refuses a picture from someone else's folder", async () => {
     signedIn();
     expect(
@@ -346,11 +382,21 @@ describe("single-link actions", () => {
     expect(updateTag).toHaveBeenCalledWith("profile:ethan");
   });
 
-  it("deleteLink also removes the link's picture", async () => {
-    signedIn({ links: [{ data: { image_url: `${IMAGES}u1/a.jpg` } }] });
+  it("deleteLink also removes the link's picture and screenshot", async () => {
+    signedIn({
+      links: [
+        {
+          data: {
+            image_url: `${IMAGES}u1/a.jpg`,
+            preview_url: `${IMAGES}u1/preview-b.jpeg`,
+          },
+        },
+      ],
+    });
     await actions.deleteLink("l1");
     expect(db.storage.from).toHaveBeenCalledWith("link-images");
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/preview-b.jpeg"]);
   });
 });
 
@@ -450,6 +496,14 @@ describe("updateLink", () => {
     expect(lastWrite("links", "update")?.[0]).toMatchObject({
       preview_url: "https://p/2.jpg",
     });
+  });
+
+  it("removes an old screenshot when the URL changes", async () => {
+    const saved = { url: "https://a.com", image_url: null, preview_url: `${IMAGES}u1/preview-old.jpeg` };
+    signedIn({ links: [{ data: saved }, { error: null }] });
+    fetchPreviewImage.mockResolvedValueOnce("https://p/new.jpg");
+    await edit({ title: "x", url: "https://b.com", size: "big" });
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/preview-old.jpeg"]);
   });
 
   it("drops the old preview when a small link changes URL", async () => {

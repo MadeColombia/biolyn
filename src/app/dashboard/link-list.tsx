@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Badge, Button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
+import { isIconPreview } from "@/lib/link-form";
 import {
   deleteLink,
   reorderLinks,
@@ -154,7 +155,10 @@ function SortableLink({ link, userId }: { link: Link; userId: string }) {
           referrerPolicy="no-referrer"
           alt=""
           className={cx(
-            "aspect-video w-16 shrink-0 rounded-lg border border-edge object-cover",
+            "aspect-video w-16 shrink-0 rounded-lg border border-edge",
+            isIconPreview(link.image_url ?? link.preview_url)
+              ? "bg-raised object-contain p-1"
+              : "object-cover",
             !link.is_visible && "opacity-50",
           )}
         />

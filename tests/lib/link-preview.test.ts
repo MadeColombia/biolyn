@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchPreviewImage, previewFromHtml } from "@/lib/link-preview";
+import {
+  fetchPreviewImage,
+  fetchScreenshot,
+  previewFromHtml,
+} from "@/lib/link-preview";
 
 const PAGE = new URL("https://shop.example.com/item/1");
 
@@ -57,6 +61,50 @@ describe("previewFromHtml", () => {
     `<meta property="og:image" content="https://x.com/${"a".repeat(2000)}">`,
     `<meta property="og:image" content="http://[bad">`,
   ])("returns null for %#", (html) => {
+    expect(previewFromHtml(html, PAGE)).toBeNull();
+  });
+});
+
+describe("previewFromHtml: site icons", () => {
+  const ICON = "#biolyn-icon";
+
+  it("uses the SVG icon when there's no share picture", () => {
+    expect(
+      previewFromHtml(
+        `<link rel="icon" type="image/svg+xml" href="/favicon.svg">`,
+        PAGE,
+      ),
+    ).toBe(`https://shop.example.com/favicon.svg${ICON}`);
+  });
+
+  it("prefers apple-touch-icon, then the biggest sized icon", () => {
+    const html = `
+      <link rel="icon" sizes="192x192" href="/i192.png">
+      <link rel="apple-touch-icon" href="/apple.png">
+      <link rel="icon" href="/i.svg">`;
+    expect(previewFromHtml(html, PAGE)).toBe(
+      `https://shop.example.com/apple.png${ICON}`,
+    );
+    expect(
+      previewFromHtml(
+        `<link rel="icon" sizes="32x32" href="/s.png"><link rel="icon" sizes="192x192" href="/b.png">`,
+        PAGE,
+      ),
+    ).toBe(`https://shop.example.com/b.png${ICON}`);
+  });
+
+  it("still prefers a share picture over any icon", () => {
+    const html = `<link rel="apple-touch-icon" href="/a.png"><meta property="og:image" content="/og.jpg">`;
+    expect(previewFromHtml(html, PAGE)).toBe("https://shop.example.com/og.jpg");
+  });
+
+  it.each([
+    `<link rel="icon" href="/favicon.ico">`,
+    `<link rel="icon" sizes="32x32" href="/small.png">`,
+    `<link rel="icon" href="/unsized.png">`,
+    `<link rel="stylesheet" href="/a.svg">`,
+    `<link rel="icon">`,
+  ])("ignores icons too small or unknown: %s", (html) => {
     expect(previewFromHtml(html, PAGE)).toBeNull();
   });
 });
@@ -151,5 +199,69 @@ describe("fetchPreviewImage", () => {
     const big = head + "x".repeat(2 * 1024 * 1024);
     vi.stubGlobal("fetch", vi.fn(async () => htmlResponse(big)));
     expect(await fetchPreviewImage("https://a.com")).toBe("https://a.com/i.jpg");
+  });
+});
+
+describe("fetchScreenshot", () => {
+  const ok = (url = "https://iad.microlink.io/abc.jpeg") =>
+    Response.json({ status: "success", data: { screenshot: { url } } });
+  const image = (type = "image/jpeg", bytes = 10) =>
+    new Response(new Uint8Array(bytes), { headers: { "content-type": type } });
+
+  it("asks Microlink for a 16:9 screenshot and downloads it", async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(ok()).mockResolvedValueOnce(image());
+    vi.stubGlobal("fetch", fetch);
+    const shot = await fetchScreenshot("https://ethanmont.dev");
+    expect(shot?.type).toBe("image/jpeg");
+    expect(shot?.data.byteLength).toBe(10);
+    const api = fetch.mock.calls[0][0] as URL;
+    expect(api.origin).toBe("https://api.microlink.io");
+    expect(api.searchParams.get("url")).toBe("https://ethanmont.dev/");
+    expect(api.searchParams.get("screenshot")).toBe("true");
+    expect(api.searchParams.get("viewport.width")).toBe("1280");
+    expect(api.searchParams.get("viewport.height")).toBe("720");
+  });
+
+  it("uses the pro endpoint with a key when one is set", async () => {
+    vi.stubEnv("MICROLINK_API_KEY", "k");
+    const fetch = vi.fn().mockResolvedValueOnce(ok()).mockResolvedValueOnce(image());
+    vi.stubGlobal("fetch", fetch);
+    await fetchScreenshot("https://a.com");
+    const [api, init] = fetch.mock.calls[0];
+    expect((api as URL).origin).toBe("https://pro.microlink.io");
+    expect(init.headers).toEqual({ "x-api-key": "k" });
+  });
+
+  it("skips local addresses and bad URLs", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    expect(await fetchScreenshot("http://localhost")).toBeNull();
+    expect(await fetchScreenshot("nope")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["the API fails", () => [new Response("", { status: 429 })]],
+    ["there is no screenshot", () => [Response.json({ status: "fail" })]],
+    ["the image is not on Microlink", () => [ok("https://evil.com/a.jpeg")]],
+    ["the image is not https", () => [ok("http://iad.microlink.io/a.jpeg")]],
+    ["the file is not an image", () => [ok(), image("text/html")]],
+    ["the image is empty", () => [ok(), image("image/png", 0)]],
+    ["the image is too big", () => [ok(), image("image/png", 3 * 1024 * 1024)]],
+  ])("returns null when %s", async (_name, responses) => {
+    const fetch = vi.fn();
+    for (const r of responses()) fetch.mockResolvedValueOnce(r);
+    vi.stubGlobal("fetch", fetch);
+    expect(await fetchScreenshot("https://a.com")).toBeNull();
+  });
+
+  it("returns null when Microlink can't be reached", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("down");
+      }),
+    );
+    expect(await fetchScreenshot("https://a.com")).toBeNull();
   });
 });

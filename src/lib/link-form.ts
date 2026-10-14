@@ -6,6 +6,14 @@ export type LinkSize = (typeof LINK_SIZES)[number];
 
 export const LINK_IMAGES_BUCKET = "link-images";
 
+// Marks a preview that is the site's icon rather than a share picture,
+// so pages show it small and centered instead of cropped to fill the card.
+export const ICON_MARK = "#biolyn-icon";
+
+export function isIconPreview(url: string | null | undefined) {
+  return Boolean(url?.endsWith(ICON_MARK));
+}
+
 export function isLinkSize(value: unknown): value is LinkSize {
   return value === "small" || value === "big";
 }
