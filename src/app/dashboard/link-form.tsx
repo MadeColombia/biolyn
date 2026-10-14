@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { Button, Field, button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
 import { createClient } from "@/lib/supabase/browser";
@@ -9,7 +9,7 @@ import {
   LINK_IMAGES_BUCKET,
   type LinkSize,
 } from "@/lib/link-form";
-import type { FormState } from "./actions";
+import { discardLinkImage, loadPreview, type FormState } from "./actions";
 
 export type EditableLink = {
   id: string;
@@ -103,8 +103,20 @@ export function LinkForm({
   const [asPlayer, setAsPlayer] = useState(link ? link.embed : true);
   const [size, setSize] = useState<LinkSize>(link?.size ?? "small");
   const [imageUrl, setImageUrl] = useState(link?.image_url ?? null);
+  // The preview belongs to the URL it was made for.
+  const [preview, setPreview] = useState(
+    link?.preview_url ? { url: link.url, src: link.preview_url } : null,
+  );
   const [imageError, setImageError] = useState<string | null>(null);
   const [uploading, startUpload] = useTransition();
+  const [previewing, startPreview] = useTransition();
+  // Pictures made in this form that aren't saved yet, so the ones the
+  // user replaces or cancels can be deleted instead of left behind.
+  const unsaved = useRef(new Set<string>());
+
+  function drop(src: string | null | undefined) {
+    if (src && unsaved.current.delete(src)) void discardLinkImage(src);
+  }
   const hasSchedule = Boolean(link?.starts_at || link?.ends_at);
 
   const [state, formAction, pending] = useActionState<FormState, FormData>(
@@ -121,7 +133,15 @@ export function LinkForm({
         }
       }
       const result = await action(prev, formData);
-      if (!result.error) onSaved?.();
+      if (!result.error) {
+        // Anything made here but not saved with the link is deleted.
+        const kept = [formData.get("image_url"), formData.get("preview_url")];
+        for (const src of unsaved.current) {
+          if (!kept.includes(src)) void discardLinkImage(src);
+        }
+        unsaved.current.clear();
+        onSaved?.();
+      }
       return result;
     },
     {},
@@ -144,18 +164,53 @@ export function LinkForm({
         const { data } = supabase.storage
           .from(LINK_IMAGES_BUCKET)
           .getPublicUrl(path);
+        unsaved.current.add(data.publicUrl);
+        drop(imageUrl);
+        drop(preview?.src);
         setImageUrl(data.publicUrl);
+        setPreview(null);
       } catch {
         setImageError("Could not upload that picture. Try a JPG or PNG.");
       }
     });
   }
 
+  function onLoadPreview() {
+    const target = url.trim();
+    setImageError(null);
+    startPreview(async () => {
+      const result = await loadPreview(target);
+      if (!result.preview_url) {
+        setImageError(result.error ?? "Could not load a preview.");
+        return;
+      }
+      unsaved.current.add(result.preview_url);
+      drop(imageUrl);
+      drop(preview?.src);
+      setImageUrl(null);
+      setPreview({ url: target, src: result.preview_url });
+    });
+  }
+
+  function onRemovePicture() {
+    drop(imageUrl);
+    drop(preview?.src);
+    setImageUrl(null);
+    setPreview(null);
+  }
+
+  function onCancel_() {
+    for (const src of unsaved.current) void discardLinkImage(src);
+    unsaved.current.clear();
+    onCancel?.();
+  }
+
   const showsPlayer = Boolean(embed) && asPlayer;
-  // The saved preview only matches while the URL stays the same.
-  const savedPreview =
-    link?.preview_url && url.trim() === link.url ? link.preview_url : null;
-  const shownPicture = imageUrl ?? savedPreview;
+  // A preview made for another URL no longer matches the link.
+  const currentPreview =
+    preview && preview.url === url.trim() ? preview.src : null;
+  const shownPicture = imageUrl ?? currentPreview;
+  const busy = uploading || previewing;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -283,47 +338,59 @@ export function LinkForm({
               className={cx(
                 button({ variant: "secondary", size: "sm" }),
                 "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand",
-                uploading && "opacity-50",
+                busy && "pointer-events-none opacity-50",
               )}
             >
               {uploading
                 ? "Uploading..."
                 : imageUrl
                   ? "Change picture"
-                  : "Add picture"}
+                  : "Upload picture"}
               <input
                 type="file"
                 accept="image/*"
                 onChange={onPicture}
-                disabled={uploading}
+                disabled={busy}
                 className="sr-only"
               />
             </label>
-            {imageUrl && !uploading && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={busy || !url.trim() || currentPreview !== null}
+              onClick={onLoadPreview}
+            >
+              {previewing ? "Getting preview..." : "Use link preview"}
+            </Button>
+            {shownPicture && !busy && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setImageUrl(null)}
+                onClick={onRemovePicture}
               >
                 Remove picture
               </Button>
             )}
           </div>
-          <p className="text-sm text-ink-muted">
-            {imageUrl
-              ? "Your picture is cropped to a wide 16:9 shape."
-              : savedPreview
-                ? isIconPreview(savedPreview)
-                  ? "This site has no preview picture, so its icon is used. Add a picture to replace it."
-                  : "This is the link's own preview picture. Add yours to replace it."
-                : "Optional. Without one, we use the link's own preview picture, or the site's icon."}
+          <p className="text-sm text-ink-muted" aria-live="polite">
+            {previewing
+              ? "Getting the preview can take a few seconds."
+              : imageUrl
+                ? "Your picture is cropped to a wide 16:9 shape."
+                : currentPreview
+                  ? isIconPreview(currentPreview)
+                    ? "This site has no preview picture, so its icon is used."
+                    : "This is the link's preview."
+                  : "Optional. Upload your own picture, or use the link's preview."}
           </p>
           {imageError && <p className="text-sm text-danger">{imageError}</p>}
         </div>
       )}
       {/* Kept even when hidden, so switching sizes doesn't lose it. */}
       <input type="hidden" name="image_url" value={imageUrl ?? ""} />
+      <input type="hidden" name="preview_url" value={currentPreview ?? ""} />
 
       <details open={hasSchedule} className="group">
         <summary className="cursor-pointer text-sm font-bold text-ink">
@@ -348,11 +415,11 @@ export function LinkForm({
       </details>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button disabled={pending || uploading}>
+        <Button disabled={pending || busy}>
           {pending ? pendingLabel : submitLabel}
         </Button>
         {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={onCancel_}>
             Cancel
           </Button>
         )}

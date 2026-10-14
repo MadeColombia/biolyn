@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  isAllowedPreview,
   isIconPreview,
   isLinkSize,
   isOwnLinkImage,
@@ -55,6 +56,17 @@ describe("isOwnLinkImage", () => {
   });
 });
 
+describe("isAllowedPreview", () => {
+  it("accepts https pictures and screenshots in the user's folder", () => {
+    expect(isAllowedPreview("https://cdn.a.com/og.jpg", "u1")).toBe(true);
+    expect(isAllowedPreview(`${IMAGES}u1/preview-a.jpeg`, "u1")).toBe(true);
+    expect(isAllowedPreview(`${IMAGES}u2/preview-a.jpeg`, "u1")).toBe(false);
+    expect(isAllowedPreview("http://cdn.a.com/og.jpg", "u1")).toBe(false);
+    expect(isAllowedPreview("https://a.com/a b.jpg", "u1")).toBe(false);
+    expect(isAllowedPreview(`https://a.com/${"x".repeat(2000)}`, "u1")).toBe(false);
+  });
+});
+
 describe("parseLinkForm", () => {
   it("needs a title and a URL", () => {
     expect(parseLinkForm(form({ title: " ", url: "x" }))).toEqual({
@@ -89,6 +101,7 @@ describe("parseLinkForm", () => {
         embed: false,
         size: "small",
         image_url: null,
+        preview_url: null,
         starts_at: null,
         ends_at: null,
       },
@@ -104,6 +117,7 @@ describe("parseLinkForm", () => {
           embed: "on",
           size: "big",
           image_url: `${IMAGES}u1/a.jpg`,
+          preview_url: "https://cdn.a.com/og.jpg",
           ends_at: "2026-10-14T10:00:00Z",
         }),
       ),
@@ -114,6 +128,7 @@ describe("parseLinkForm", () => {
         embed: true,
         size: "big",
         image_url: `${IMAGES}u1/a.jpg`,
+        preview_url: "https://cdn.a.com/og.jpg",
         starts_at: null,
         ends_at: "2026-10-14T10:00:00.000Z",
       },

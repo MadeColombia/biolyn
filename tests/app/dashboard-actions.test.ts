@@ -254,7 +254,6 @@ describe("addLink", () => {
         ends_at: null,
       },
     ]);
-    // Small buttons don't need the page's preview picture.
     expect(fetchPreviewImage).not.toHaveBeenCalled();
     expect(updateTag).toHaveBeenCalledWith("profile:ethan");
   });
@@ -290,50 +289,32 @@ describe("addLink", () => {
     });
   });
 
-  it("gives a big button without a picture the page's preview", async () => {
+  it("saves the preview the user chose", async () => {
     signedIn({ links: [{ count: 0 }, { error: null }] });
-    fetchPreviewImage.mockResolvedValueOnce("https://cdn.a.com/og.jpg");
     await actions.addLink(
       {},
-      form({ title: "x", url: "https://a.com", size: "big" }),
+      form({
+        title: "x",
+        url: "https://a.com",
+        size: "big",
+        preview_url: `${IMAGES}u1/preview-a.jpeg`,
+      }),
     );
-    expect(fetchPreviewImage).toHaveBeenCalledWith("https://a.com");
     expect(lastWrite("links", "insert")?.[0]).toMatchObject({
-      image_url: null,
-      preview_url: "https://cdn.a.com/og.jpg",
+      preview_url: `${IMAGES}u1/preview-a.jpeg`,
     });
   });
 
-  it("saves a screenshot when the page has no share picture", async () => {
-    signedIn({ links: [{ count: 0 }, { error: null }] });
-    const data = new ArrayBuffer(8);
-    fetchScreenshot.mockResolvedValueOnce({ data, type: "image/jpeg" });
-    await actions.addLink(
-      {},
-      form({ title: "x", url: "https://a.com", size: "big" }),
-    );
-    expect(fetchScreenshot).toHaveBeenCalledWith("https://a.com");
-    const [path, body, opts] = db.storage.upload.mock.calls[0];
-    expect(path).toMatch(/^u1\/preview-[\w-]+\.jpeg$/);
-    expect(body).toBe(data);
-    expect(opts).toEqual({ contentType: "image/jpeg" });
-    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
-      preview_url: `${IMAGES}${path}`,
-    });
-  });
-
-  it("takes a screenshot instead of a site icon, and keeps the icon if that fails", async () => {
-    signedIn({ links: [{ count: 0 }, { error: null }] });
-    const icon = "https://a.com/i.svg#biolyn-icon";
-    fetchPreviewImage.mockResolvedValueOnce(icon);
-    fetchScreenshot.mockResolvedValueOnce({ data: new ArrayBuffer(8), type: "image/png" });
-    db.storage.upload.mockResolvedValueOnce({ data: null, error: { message: "x" } });
-    await actions.addLink(
-      {},
-      form({ title: "x", url: "https://a.com", size: "big" }),
-    );
-    expect(fetchScreenshot).toHaveBeenCalled();
-    expect(lastWrite("links", "insert")?.[0]).toMatchObject({ preview_url: icon });
+  it("refuses a preview from someone else's folder or not on https", async () => {
+    for (const preview_url of [`${IMAGES}u2/preview-a.jpeg`, "http://a.com/og.jpg"]) {
+      signedIn();
+      expect(
+        await actions.addLink(
+          {},
+          form({ title: "x", url: "https://a.com", size: "big", preview_url }),
+        ),
+      ).toEqual({ error: "Could not use that picture. Upload it again." });
+    }
   });
 
   it("refuses a picture from someone else's folder", async () => {
@@ -477,43 +458,22 @@ describe("updateLink", () => {
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/old.jpg"]);
   });
 
-  it("keeps the saved preview while the URL stays the same", async () => {
+  it("saves the preview the form sends", async () => {
     const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
     signedIn({ links: [{ data: saved }, { error: null }] });
-    await edit({ title: "x", url: "https://a.com", size: "big" });
-    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    await edit({ title: "x", url: "https://a.com", size: "big", preview_url: "https://p/1.jpg" });
     expect(lastWrite("links", "update")?.[0]).toMatchObject({
       preview_url: "https://p/1.jpg",
     });
+    expect(db.storage.remove).not.toHaveBeenCalled();
   });
 
-  it("looks up a new preview when the URL changes", async () => {
-    const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
-    signedIn({ links: [{ data: saved }, { error: null }] });
-    fetchPreviewImage.mockResolvedValueOnce("https://p/2.jpg");
-    await edit({ title: "x", url: "https://b.com", size: "big" });
-    expect(fetchPreviewImage).toHaveBeenCalledWith("https://b.com");
-    expect(lastWrite("links", "update")?.[0]).toMatchObject({
-      preview_url: "https://p/2.jpg",
-    });
-  });
-
-  it("removes an old screenshot when the URL changes", async () => {
+  it("removes an old screenshot when the preview changes or is dropped", async () => {
     const saved = { url: "https://a.com", image_url: null, preview_url: `${IMAGES}u1/preview-old.jpeg` };
     signedIn({ links: [{ data: saved }, { error: null }] });
-    fetchPreviewImage.mockResolvedValueOnce("https://p/new.jpg");
     await edit({ title: "x", url: "https://b.com", size: "big" });
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({ preview_url: null });
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/preview-old.jpeg"]);
-  });
-
-  it("drops the old preview when a small link changes URL", async () => {
-    const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
-    signedIn({ links: [{ data: saved }, { error: null }] });
-    await edit({ title: "x", url: "https://b.com" });
-    expect(fetchPreviewImage).not.toHaveBeenCalled();
-    expect(lastWrite("links", "update")?.[0]).toMatchObject({
-      preview_url: null,
-    });
   });
 
   it("leaves pictures it doesn't host alone", async () => {
@@ -529,6 +489,83 @@ describe("updateLink", () => {
     expect(await edit({ title: "x", url: "https://a.com" })).toEqual({
       error: "Could not save the link.",
     });
+  });
+});
+
+describe("loadPreview", () => {
+  it("needs a safe URL", async () => {
+    db = fakeClient();
+    expect(await actions.loadPreview("  ")).toEqual({ error: "Add the URL first." });
+    checkLinkUrl.mockResolvedValueOnce("unsafe!");
+    expect(await actions.loadPreview("bad.com")).toEqual({ error: "unsafe!" });
+    expect(checkLinkUrl).toHaveBeenCalledWith("https://bad.com");
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("is rate-limited", async () => {
+    signedIn();
+    allow.mockResolvedValueOnce(false);
+    expect(await actions.loadPreview("https://a.com")).toEqual({
+      error: "Too many previews. Wait a few minutes.",
+    });
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
+  });
+
+  it("uses the page's share picture", async () => {
+    signedIn();
+    fetchPreviewImage.mockResolvedValueOnce("https://cdn.a.com/og.jpg");
+    expect(await actions.loadPreview("https://a.com")).toEqual({
+      preview_url: "https://cdn.a.com/og.jpg",
+    });
+    expect(fetchScreenshot).not.toHaveBeenCalled();
+  });
+
+  it("saves a screenshot when the page has no share picture", async () => {
+    signedIn();
+    const data = new ArrayBuffer(8);
+    fetchScreenshot.mockResolvedValueOnce({ data, type: "image/jpeg" });
+    const result = await actions.loadPreview("https://a.com");
+    const [path, body, opts] = db.storage.upload.mock.calls[0];
+    expect(path).toMatch(/^u1\/preview-[\w-]+\.jpeg$/);
+    expect(body).toBe(data);
+    expect(opts).toEqual({ contentType: "image/jpeg" });
+    expect(result).toEqual({ preview_url: `${IMAGES}${path}` });
+  });
+
+  it("falls back to the site icon, then to an error", async () => {
+    signedIn();
+    const icon = "https://a.com/i.svg#biolyn-icon";
+    fetchPreviewImage.mockResolvedValueOnce(icon);
+    fetchScreenshot.mockResolvedValueOnce({ data: new ArrayBuffer(8), type: "image/png" });
+    db.storage.upload.mockResolvedValueOnce({ data: null, error: { message: "x" } });
+    expect(await actions.loadPreview("https://a.com")).toEqual({ preview_url: icon });
+
+    const none = { error: "Could not find a preview for this link. Add a picture instead." };
+    signedIn();
+    expect(await actions.loadPreview("https://a.com")).toEqual(none);
+    signedIn();
+    fetchPreviewImage.mockRejectedValueOnce(new Error("boom"));
+    expect(await actions.loadPreview("https://a.com")).toEqual(none);
+  });
+});
+
+describe("discardLinkImage", () => {
+  it("deletes an unused picture in the user's folder", async () => {
+    signedIn({ links: [{ count: 0 }] });
+    await actions.discardLinkImage(`${IMAGES}u1/preview-a.jpeg`);
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/preview-a.jpeg"]);
+  });
+
+  it("keeps pictures a saved link uses, and anything not the user's", async () => {
+    signedIn({ links: [{ count: 0 }, { count: 1 }] });
+    await actions.discardLinkImage(`${IMAGES}u1/a.jpg`);
+    expect(db.storage.remove).not.toHaveBeenCalled();
+    for (const url of [`${IMAGES}u2/a.jpg`, "https://cdn.a.com/og.jpg"]) {
+      signedIn();
+      await actions.discardLinkImage(url);
+      expect(db.storage.remove).not.toHaveBeenCalled();
+    }
+    expect(db.storage.remove).not.toHaveBeenCalled();
   });
 });
 

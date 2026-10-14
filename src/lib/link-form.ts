@@ -36,6 +36,7 @@ export type LinkValues = {
   embed: boolean;
   size: LinkSize;
   image_url: string | null;
+  preview_url: string | null;
   starts_at: string | null;
   ends_at: string | null;
 };
@@ -52,8 +53,17 @@ export function isOwnLinkImage(url: string, userId: string) {
 }
 
 /**
+ * A preview is either a picture on another site (https) or a screenshot
+ * in the user's own storage folder.
+ */
+export function isAllowedPreview(url: string, userId: string) {
+  if (linkImagePath(url)) return isOwnLinkImage(url, userId);
+  return /^https:\/\/[^\s]+$/i.test(url) && url.length <= 2000;
+}
+
+/**
  * Reads the add and edit link forms. The URL still needs the safety
- * check, and the picture the ownership check, after this.
+ * check, and the pictures the ownership checks, after this.
  */
 export function parseLinkForm(
   formData: FormData,
@@ -82,6 +92,7 @@ export function parseLinkForm(
       embed: formData.get("embed") === "on" && embedFor(url) !== null,
       size,
       image_url: String(formData.get("image_url") ?? "") || null,
+      preview_url: String(formData.get("preview_url") ?? "") || null,
       starts_at,
       ends_at,
     },
