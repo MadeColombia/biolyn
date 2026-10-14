@@ -3,6 +3,7 @@ import { cacheTag, cacheLife } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { socialsFrom, type Socials } from "@/lib/socials";
 import { themeFrom, type ThemeId } from "@/lib/themes";
+import { fontFrom, type FontId } from "@/lib/fonts";
 import { embedFor, type Embed } from "@/lib/embeds";
 import { isLive, secondsUntilNextChange } from "@/lib/schedule";
 import { isLinkSize, type LinkSize } from "@/lib/link-form";
@@ -23,6 +24,7 @@ export type PublicProfile = {
   bio: string | null;
   avatar_url: string | null;
   theme: ThemeId;
+  font: FontId;
   socials: Socials;
   links: PublicLink[];
 };
@@ -89,6 +91,7 @@ export async function getPublicProfile(
     bio: profile.bio,
     avatar_url: profile.avatar_url,
     theme: themeFrom(profile.theme),
+    font: fontFrom(profile.theme),
     socials: socialsFrom(profile.socials),
     links,
   };

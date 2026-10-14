@@ -79,12 +79,13 @@ describe("signed-out users", () => {
   });
 
   it.each([
-    ["updateProfile", () => actions.updateProfile(form({}))],
+    ["updateProfile", () => actions.updateProfile({}, form({}))],
     ["deleteLink", () => actions.deleteLink("l1")],
     ["toggleLink", () => actions.toggleLink("l1", true)],
     ["toggleEmbed", () => actions.toggleEmbed("l1", true)],
     ["reorderLinks", () => actions.reorderLinks([])],
     ["setTheme", () => actions.setTheme("midnight")],
+    ["setFont", () => actions.setFont("elegant")],
     ["setAvatar", () => actions.setAvatar(null)],
     ["claimUsername", () => actions.claimUsername({}, form({ username: "ethan" }))],
     [
@@ -154,23 +155,70 @@ describe("claimUsername", () => {
 });
 
 describe("updateProfile", () => {
-  it("caps name and bio length and only updates the user's own row", async () => {
+  it("caps the name and only updates the user's own row", async () => {
     signedIn();
-    await actions.updateProfile(
-      form({ display_name: "n".repeat(100), bio: "b".repeat(300) }),
-    );
+    expect(
+      await actions.updateProfile(
+        {},
+        form({ display_name: "n".repeat(100), bio: "Hi <b>there</b>" }),
+      ),
+    ).toEqual({ saved: true });
     expect(lastWrite("profiles", "update")).toEqual([
-      { display_name: "n".repeat(60), bio: "b".repeat(160) },
+      { display_name: "n".repeat(60), bio: "Hi <b>there</b>" },
     ]);
     expect(lastWrite("profiles", "eq")).toEqual(["id", "p1"]);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
   });
 
   it("handles missing fields", async () => {
     signedIn();
-    await actions.updateProfile(form({}));
+    await actions.updateProfile({}, form({}));
     expect(lastWrite("profiles", "update")).toEqual([
       { display_name: "", bio: "" },
     ]);
+  });
+
+  it("stores unknown tags as text", async () => {
+    signedIn();
+    await actions.updateProfile(
+      {},
+      form({ bio: '<img src=x onerror="alert(1)">' }),
+    );
+    expect(lastWrite("profiles", "update")).toEqual([
+      {
+        display_name: "",
+        bio: "&lt;img src=x onerror=\"alert(1)\"&gt;",
+      },
+    ]);
+  });
+
+  it("refuses bios over 160 visible characters", async () => {
+    db = fakeClient();
+    expect(
+      await actions.updateProfile({}, form({ bio: `<b>${"b".repeat(161)}</b>` })),
+    ).toEqual({ error: "Keep your bio under 160 characters." });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("checks every link in the bio", async () => {
+    checkLinkUrl.mockResolvedValueOnce(null).mockResolvedValueOnce("unsafe!");
+    db = fakeClient();
+    expect(
+      await actions.updateProfile(
+        {},
+        form({ bio: '<a href="https://a.com">a</a> <a href="b.com">b</a>' }),
+      ),
+    ).toEqual({ error: "Link in your bio: unsafe!" });
+    expect(checkLinkUrl).toHaveBeenCalledWith("https://b.com/");
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed save", async () => {
+    signedIn({ profiles: [{ error: { message: "check" } }] });
+    expect(await actions.updateProfile({}, form({ bio: "hi" }))).toEqual({
+      error: "Could not save. Try again.",
+    });
+    expect(updateTag).not.toHaveBeenCalled();
   });
 });
 
@@ -618,8 +666,42 @@ describe("setTheme", () => {
     signedIn();
     await actions.setTheme("sunset");
     expect(lastWrite("profiles", "update")).toEqual([
-      { theme: { preset: "sunset" } },
+      { theme: { preset: "sunset", font: "clean" } },
     ]);
+  });
+
+  it("keeps the chosen font", async () => {
+    db = fakeClient({
+      profiles: [{ data: { ...PROFILE, theme: { preset: "classic", font: "typewriter" } } }, { error: null }],
+    });
+    db.auth.getUser.mockResolvedValue({ data: { user: USER } } as never);
+    await actions.setTheme("midnight");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { theme: { preset: "midnight", font: "typewriter" } },
+    ]);
+  });
+});
+
+describe("setFont", () => {
+  it.each(["comic-sans", "toString", ""])(
+    "ignores unknown font %s",
+    async (font) => {
+      db = fakeClient();
+      await actions.setFont(font);
+      expect(db.from).not.toHaveBeenCalled();
+    },
+  );
+
+  it("saves the font and keeps the theme", async () => {
+    db = fakeClient({
+      profiles: [{ data: { ...PROFILE, theme: { preset: "sunset" } } }, { error: null }],
+    });
+    db.auth.getUser.mockResolvedValue({ data: { user: USER } } as never);
+    await actions.setFont("handwritten");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { theme: { preset: "sunset", font: "handwritten" } },
+    ]);
+    expect(lastWrite("profiles", "eq")).toEqual(["id", "p1"]);
   });
 });
 
