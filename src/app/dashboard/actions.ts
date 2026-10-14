@@ -1,7 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag, updateTag } from "next/cache";
-import { after } from "next/server";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { validateUsername } from "@/lib/usernames";
@@ -12,6 +11,7 @@ import { isThemeId } from "@/lib/themes";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
 import {
+  isAllowedPreview,
   isIconPreview,
   isOwnLinkImage,
   LINK_IMAGES_BUCKET,
@@ -104,9 +104,7 @@ export async function addLink(
   if (unsafe) return { error: unsafe };
 
   const { supabase, profile, user } = await requireOwnProfile();
-  if (values.image_url && !isOwnLinkImage(values.image_url, user.id)) {
-    return { error: PICTURE_ERROR };
-  }
+  if (!picturesAllowed(values, user.id)) return { error: PICTURE_ERROR };
   if (!(await allow(`addlink:${profile.id}`, 30, 600))) {
     return { error: "You're adding links very fast. Wait a few minutes." };
   }
@@ -118,21 +116,23 @@ export async function addLink(
     return { error: `You can have up to ${MAX_LINKS} links.` };
   }
 
-  const { data: row, error } = await supabase
+  const { error } = await supabase
     .from("links")
-    .insert({ profile_id: profile.id, position: count ?? 0, ...values })
-    .select("id")
-    .single();
-  if (error || !row) return { error: "Could not save the link." };
+    .insert({ profile_id: profile.id, position: count ?? 0, ...values });
+  if (error) return { error: "Could not save the link." };
 
-  if (needsPreview(values, null)) {
-    after(() => fillPreview(supabase, user.id, profile.username, row.id, values.url));
-  }
   refresh(profile.username);
   return {};
 }
 
 const PICTURE_ERROR = "Could not use that picture. Upload it again.";
+
+function picturesAllowed(values: LinkValues, userId: string) {
+  return (
+    (!values.image_url || isOwnLinkImage(values.image_url, userId)) &&
+    (!values.preview_url || isAllowedPreview(values.preview_url, userId))
+  );
+}
 
 // Changes one link in place: title, URL, size, picture, schedule and
 // player setting. Its position, visibility and clicks stay as they are.
@@ -148,9 +148,7 @@ export async function updateLink(
   if (unsafe) return { error: unsafe };
 
   const { supabase, profile, user } = await requireOwnProfile();
-  if (values.image_url && !isOwnLinkImage(values.image_url, user.id)) {
-    return { error: PICTURE_ERROR };
-  }
+  if (!picturesAllowed(values, user.id)) return { error: PICTURE_ERROR };
   const { data: current } = await supabase
     .from("links")
     .select("url, image_url, preview_url")
@@ -159,11 +157,9 @@ export async function updateLink(
     .maybeSingle();
   if (!current) return { error: "That link no longer exists." };
 
-  // The saved preview only belongs to the URL it was taken from.
-  const preview_url = current.url === values.url ? current.preview_url : null;
   const { error } = await supabase
     .from("links")
-    .update({ ...values, preview_url })
+    .update(values)
     .eq("id", linkId)
     .eq("profile_id", profile.id);
   if (error) return { error: "Could not save the link." };
@@ -171,69 +167,68 @@ export async function updateLink(
   if (current.image_url !== values.image_url) {
     await removeLinkImage(supabase, current.image_url);
   }
-  if (current.preview_url !== preview_url) {
+  if (current.preview_url !== values.preview_url) {
     await removeLinkImage(supabase, current.preview_url);
-  }
-  if (needsPreview(values, preview_url)) {
-    after(() => fillPreview(supabase, user.id, profile.username, linkId, values.url));
   }
   refresh(profile.username);
   return { saved: true };
 }
 
-// A big button with no picture of its own shows the page's share picture,
-// else a screenshot of the page (saved in the user's storage folder),
-// else the site's icon.
-function needsPreview(values: LinkValues, known: string | null) {
-  return values.size === "big" && !values.image_url && !known;
-}
+// Finds a picture for a big button when the user asks for one: the
+// page's share picture, else a screenshot of the page (saved in the
+// user's storage folder), else the site's icon. The form keeps the result
+// and sends it back with the rest of the link when it's saved.
+export async function loadPreview(
+  rawUrl: string,
+): Promise<{ preview_url?: string; error?: string }> {
+  let url = rawUrl.trim();
+  if (!url) return { error: "Add the URL first." };
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  const unsafe = await checkLinkUrl(url);
+  if (unsafe) return { error: unsafe };
 
-// Looks the preview up after the save has answered, because a screenshot
-// can take several seconds. It's only stored if the link still has this
-// URL and no preview; otherwise a screenshot we just made is deleted.
-async function fillPreview(
-  supabase: Supabase,
-  userId: string,
-  username: string,
-  linkId: string,
-  url: string,
-) {
+  const { supabase, profile, user } = await requireOwnProfile();
+  if (!(await allow(`preview:${profile.id}`, 20, 600))) {
+    return { error: "Too many previews. Wait a few minutes." };
+  }
+  const NONE = "Could not find a preview for this link. Add a picture instead.";
   try {
     const found = await fetchPreviewImage(url);
-    let preview = found && !isIconPreview(found) ? found : null;
-    if (!preview) {
-      const shot = await fetchScreenshot(url);
-      if (shot) {
-        const ext = shot.type.split("/")[1];
-        const path = `${userId}/preview-${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from(LINK_IMAGES_BUCKET)
-          .upload(path, shot.data, { contentType: shot.type });
-        if (!error) {
-          preview = supabase.storage.from(LINK_IMAGES_BUCKET).getPublicUrl(path)
-            .data.publicUrl;
-        }
+    if (found && !isIconPreview(found)) return { preview_url: found };
+
+    const shot = await fetchScreenshot(url);
+    if (shot) {
+      const ext = shot.type.split("/")[1];
+      const path = `${user.id}/preview-${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from(LINK_IMAGES_BUCKET)
+        .upload(path, shot.data, { contentType: shot.type });
+      if (!error) {
+        return {
+          preview_url: supabase.storage.from(LINK_IMAGES_BUCKET).getPublicUrl(path)
+            .data.publicUrl,
+        };
       }
     }
-    preview ??= found;
-    if (!preview) return;
-
-    const { data } = await supabase
-      .from("links")
-      .update({ preview_url: preview })
-      .eq("id", linkId)
-      .eq("url", url)
-      .is("preview_url", null)
-      .select("id");
-    if (!data?.length) {
-      await removeLinkImage(supabase, preview);
-      return;
-    }
-    revalidateTag(profileTag(username), { expire: 0 });
-    revalidatePath("/dashboard");
-  } catch (err) {
-    console.error("link preview failed", err);
+    return found ? { preview_url: found } : { error: NONE };
+  } catch {
+    return { error: NONE };
   }
+}
+
+// Deletes a picture or screenshot the form made but no longer uses, as
+// long as no saved link points at it.
+export async function discardLinkImage(url: string) {
+  const { supabase, user } = await requireOwnProfile();
+  if (!isOwnLinkImage(url, user.id)) return;
+  for (const column of ["image_url", "preview_url"]) {
+    const { count } = await supabase
+      .from("links")
+      .select("id", { count: "exact", head: true })
+      .eq(column, url);
+    if (count !== 0) return;
+  }
+  await removeLinkImage(supabase, url);
 }
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
