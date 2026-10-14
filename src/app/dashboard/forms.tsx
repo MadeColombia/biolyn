@@ -7,11 +7,13 @@ import { displaySocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import {
   addLink,
   claimUsername,
+  updateProfile,
   setAvatar,
   updateSocials,
   type FormState,
 } from "./actions";
 import { LinkForm } from "./link-form";
+import { BioEditor } from "./bio-editor";
 
 export function ClaimUsernameForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -47,6 +49,42 @@ export function ClaimUsernameForm() {
       <Button disabled={pending} size="lg" fullWidth>
         {pending ? "Claiming..." : "Claim username"}
       </Button>
+    </form>
+  );
+}
+
+export function ProfileForm({
+  displayName,
+  bio,
+}: {
+  displayName: string;
+  bio: string | null;
+}) {
+  const [state, action, pending] = useActionState<FormState, FormData>(
+    updateProfile,
+    {},
+  );
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <Field
+        label="Display name"
+        name="display_name"
+        defaultValue={displayName}
+        placeholder="Display name"
+      />
+      <BioEditor defaultValue={bio} />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button disabled={pending}>
+          {pending ? "Saving..." : "Save profile"}
+        </Button>
+        <p role="status" className="text-sm">
+          {state.error ? (
+            <span className="text-danger">{state.error}</span>
+          ) : (
+            state.saved && !pending && <span className="text-success">Saved.</span>
+          )}
+        </p>
+      </div>
     </form>
   );
 }

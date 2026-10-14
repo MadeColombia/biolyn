@@ -7,7 +7,9 @@ import { validateUsername } from "@/lib/usernames";
 import { profileTag } from "@/lib/profiles";
 import { supabaseEnv } from "@/lib/supabase/env";
 import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
-import { isThemeId } from "@/lib/themes";
+import { isThemeId, themeFrom } from "@/lib/themes";
+import { fontFrom, isFontId } from "@/lib/fonts";
+import { sanitizeBio } from "@/lib/rich-bio";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
 import {
@@ -38,7 +40,7 @@ async function requireOwnProfile() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, avatar_url")
+    .select("id, username, avatar_url, theme")
     .eq("user_id", user.id)
     .single();
   if (!profile) redirect("/dashboard");
@@ -87,16 +89,28 @@ export async function claimUsername(
   return {};
 }
 
-export async function updateProfile(formData: FormData) {
+export async function updateProfile(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const bio = sanitizeBio(String(formData.get("bio") ?? ""));
+  if ("error" in bio) return { error: bio.error };
+  for (const url of bio.links) {
+    const unsafe = await checkLinkUrl(url);
+    if (unsafe) return { error: `Link in your bio: ${unsafe}` };
+  }
+
   const { supabase, profile } = await requireOwnProfile();
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .update({
       display_name: String(formData.get("display_name") ?? "").slice(0, 60),
-      bio: String(formData.get("bio") ?? "").slice(0, 160),
+      bio: bio.bio,
     })
     .eq("id", profile.id);
+  if (error) return { error: "Could not save. Try again." };
   refresh(profile.username);
+  return { saved: true };
 }
 
 export async function addLink(
@@ -311,7 +325,19 @@ export async function setTheme(themeId: string) {
   const { supabase, profile } = await requireOwnProfile();
   await supabase
     .from("profiles")
-    .update({ theme: { preset: themeId } })
+    .update({ theme: { preset: themeId, font: fontFrom(profile.theme) } })
+    .eq("id", profile.id);
+  refresh(profile.username);
+}
+
+// The font for the whole public page. Kept in the theme column with the
+// preset, so changing one keeps the other.
+export async function setFont(fontId: string) {
+  if (!isFontId(fontId)) return;
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase
+    .from("profiles")
+    .update({ theme: { preset: themeFrom(profile.theme), font: fontId } })
     .eq("id", profile.id);
   refresh(profile.username);
 }
