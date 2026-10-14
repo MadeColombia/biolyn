@@ -78,6 +78,73 @@ describe("embedFor: Spotify", () => {
   });
 });
 
+describe("embedFor: Apple Music", () => {
+  const ALBUM = "1440857781";
+  const SONG = "1440857786";
+  const PLAYLIST = "pl.f4d106fed2bd41149aaacabb233eb5eb";
+
+  it("embeds an album as a tall player", () => {
+    expect(
+      embedFor(`https://music.apple.com/us/album/some-album/${ALBUM}`),
+    ).toEqual({
+      src: `https://embed.music.apple.com/us/album/some-album/${ALBUM}`,
+      kind: "apple",
+      tall: true,
+    });
+  });
+
+  it("embeds one song of an album as a short player", () => {
+    expect(
+      embedFor(`https://music.apple.com/es/album/x/${ALBUM}?i=${SONG}`),
+    ).toEqual({
+      src: `https://embed.music.apple.com/es/album/x/${ALBUM}?i=${SONG}`,
+      kind: "apple",
+      tall: false,
+    });
+  });
+
+  it("embeds a song link as a short player", () => {
+    expect(embedFor(`https://music.apple.com/us/song/x/${SONG}`)).toEqual({
+      src: `https://embed.music.apple.com/us/song/x/${SONG}`,
+      kind: "apple",
+      tall: false,
+    });
+  });
+
+  it.each([`todays-hits/${PLAYLIST}`, PLAYLIST])(
+    "embeds the playlist link /us/playlist/%s",
+    (path) => {
+      expect(embedFor(`https://music.apple.com/us/playlist/${path}`)).toEqual({
+        src: `https://embed.music.apple.com/us/playlist/${path}`,
+        kind: "apple",
+        tall: true,
+      });
+    },
+  );
+
+  it("keeps odd characters in the name from breaking the address", () => {
+    expect(
+      embedFor(`https://music.apple.com/us/album/a"b/${ALBUM}`)?.src,
+    ).toBe(`https://embed.music.apple.com/us/album/a%22b/${ALBUM}`);
+  });
+
+  it.each([
+    `https://music.apple.com/us/artist/x/${ALBUM}`,
+    `https://music.apple.com/usa/album/x/${ALBUM}`,
+    `https://music.apple.com/album/x/${ALBUM}`,
+    `https://music.apple.com/us/album/x/not-a-number`,
+    `https://music.apple.com/us/album/x/${ALBUM}?i=abc`,
+    `https://music.apple.com/us/album/a/b/${ALBUM}`,
+    `https://music.apple.com/us/playlist/x/${ALBUM}`,
+    `https://music.apple.com/us/song/x/pl.abc`,
+    "https://music.apple.com/us/album",
+    `https://apple.com/us/album/x/${ALBUM}`,
+    `https://music.apple.com.evil.com/us/album/x/${ALBUM}`,
+  ])("refuses %s", (url) => {
+    expect(embedFor(url)).toBeNull();
+  });
+});
+
 describe("embedFor: anything else", () => {
   it.each(["not a url", "", "https://example.com", "javascript:alert(1)"])(
     "returns null for %s",

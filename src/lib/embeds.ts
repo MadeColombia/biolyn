@@ -1,6 +1,10 @@
-// Turns a YouTube or Spotify link into the address of its embeddable
-// player, or returns null for any other link.
-export type Embed = { src: string; kind: "youtube" | "spotify"; tall: boolean };
+// Turns a YouTube, Spotify or Apple Music link into the address of its
+// embeddable player, or returns null for any other link.
+export type Embed = {
+  src: string;
+  kind: "youtube" | "spotify" | "apple";
+  tall: boolean;
+};
 
 const YT_ID = /^[A-Za-z0-9_-]{11}$/;
 const SPOTIFY_TYPES = [
@@ -19,6 +23,7 @@ export function embedFor(raw: string): Embed | null {
   } catch {
     return null;
   }
+  if (url.hostname === "music.apple.com") return appleMusic(url);
   const host = url.hostname.replace(/^(www|m|music)\./, "");
   const parts = url.pathname.split("/").filter(Boolean);
 
@@ -56,4 +61,39 @@ export function embedFor(raw: string): Embed | null {
     }
   }
   return null;
+}
+
+// music.apple.com/<country>/<type>/<optional-name>/<id>
+// A song inside an album link is ?i=<song id>, which plays just that song.
+const APPLE_TYPES = ["album", "playlist", "song"];
+
+function appleMusic(url: URL): Embed | null {
+  const parts = url.pathname.split("/").filter(Boolean);
+  const [country, type] = parts;
+  const id = parts.at(-1);
+  if (
+    !country ||
+    !/^[a-z]{2}$/.test(country) ||
+    !type ||
+    !APPLE_TYPES.includes(type) ||
+    parts.length < 3 ||
+    parts.length > 4 ||
+    !id
+  ) {
+    return null;
+  }
+  const validId =
+    type === "playlist" ? /^pl\.[A-Za-z0-9-]+$/.test(id) : /^\d+$/.test(id);
+  if (!validId) return null;
+
+  const song = type === "album" ? url.searchParams.get("i") : null;
+  if (song !== null && !/^\d+$/.test(song)) return null;
+
+  return {
+    src:
+      `https://embed.music.apple.com/${parts.join("/")}` +
+      (song ? `?i=${song}` : ""),
+    kind: "apple",
+    tall: type !== "song" && !song,
+  };
 }
