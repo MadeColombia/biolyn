@@ -233,7 +233,7 @@ async function Dashboard() {
       </Card>
 
       <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title="Links">
+        <SectionTitle title="Content">
           Add links and photo carousels, then drag them into any order. Hidden
           items stay here but not on your page.
         </SectionTitle>
