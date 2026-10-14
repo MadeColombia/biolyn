@@ -2,16 +2,46 @@
 
 import { Suspense, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Heading,
+  PageShell,
+  Skeleton,
+  container,
+  cx,
+} from "@/components/ui";
 import { createClient } from "@/lib/supabase/browser";
 
 export default function LoginPage() {
+  // header={null}: no "Log in" button pointing at this same page.
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-24">
-      <h1 className="text-3xl font-bold">Sign in to Biolyn</h1>
-      <Suspense>
-        <LoginForm />
-      </Suspense>
-    </main>
+    <PageShell header={null}>
+      <main
+        className={cx(
+          container("narrow"),
+          "flex flex-1 flex-col justify-center gap-8 py-12 sm:py-20",
+        )}
+      >
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Heading as="h1" size="title">
+            Sign in to biolyn
+          </Heading>
+          <p className="text-lg leading-relaxed text-ink-soft">
+            Claim your link or pick up where you left off. No password needed.
+          </p>
+        </div>
+        <Suspense
+          fallback={
+            <Skeleton className="h-80 w-full rounded-3xl border border-edge" />
+          }
+        >
+          <LoginForm />
+        </Suspense>
+      </main>
+    </PageShell>
   );
 }
 
@@ -35,10 +65,13 @@ function saveLastMethod(method: Method) {
   } catch {}
 }
 
-function LastUsedBadge() {
+// The badge sits inside a button, so it takes the opposite tone to stay
+// visible: neutral on the terracotta button, brand on the secondary one.
+function LastUsedBadge({ onBrand = false }: { onBrand?: boolean }) {
+  // Pinned to the button's top corner so the label never wraps on phones.
   return (
-    <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
-      Last used
+    <span className="absolute -top-2.5 right-3">
+      <Badge tone={onBrand ? "neutral" : "brand"}>Last used</Badge>
     </span>
   );
 }
@@ -102,40 +135,60 @@ function LoginForm() {
 
   if (status === "sent") {
     return (
-      <p>Check your email for a sign-in link. Open it in this same browser.</p>
+      <Card className="flex flex-col gap-3 text-center" role="status">
+        <Heading as="h2">Check your email</Heading>
+        <p className="leading-relaxed text-ink-soft">
+          We sent a sign-in link to{" "}
+          <strong className="font-bold break-all text-ink">{email}</strong>.
+          Open it in this same browser.
+        </p>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <button
+    <Card className="flex flex-col gap-5">
+      <Button
         type="button"
+        className="relative"
+        variant="secondary"
+        fullWidth
         onClick={signInWithGoogle}
-        className="flex items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-3 font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
       >
         Continue with Google
         {lastMethod === "google" && <LastUsedBadge />}
-      </button>
-      <p className="text-center text-sm text-neutral-500">or</p>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input
+      </Button>
+      <div className="flex items-center gap-3" aria-hidden="true">
+        <span className="flex-1 border-t border-line" />
+        <span className="text-sm text-ink-muted">or</span>
+        <span className="flex-1 border-t border-line" />
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field
+          label="Email"
+          id="login-email"
           type="email"
           required
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="rounded-lg border border-neutral-300 px-4 py-3 dark:border-neutral-700 dark:bg-neutral-900"
         />
-        <button
+        <Button
           type="submit"
+          fullWidth
+          className="relative"
           disabled={status === "sending"}
-          className="flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black"
         >
           {status === "sending" ? "Sending..." : "Send magic link"}
-          {lastMethod === "email" && <LastUsedBadge />}
-        </button>
+          {lastMethod === "email" && <LastUsedBadge onBrand />}
+        </Button>
       </form>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-    </div>
+      {error && (
+        <p role="alert" className="text-sm leading-relaxed text-danger">
+          {error}
+        </p>
+      )}
+    </Card>
   );
 }

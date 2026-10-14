@@ -37,7 +37,7 @@ export function PageShell({
           "border-t border-line pt-6 pb-10 text-sm text-ink-muted",
         )}
       >
-        © Biolyn
+        © biolyn
       </footer>
     </div>
   );

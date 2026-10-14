@@ -1,6 +1,18 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  Badge,
+  Button,
+  Card,
+  Field,
+  Heading,
+  PageShell,
+  card,
+  container,
+  cx,
+  input,
+} from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/analytics";
 import { socialsFrom } from "@/lib/socials";
@@ -10,6 +22,7 @@ import {
   AddLinkForm,
   AvatarUpload,
   ClaimUsernameForm,
+  CopyLinkButton,
   SocialsForm,
 } from "./forms";
 import { LinkList } from "./link-list";
@@ -17,11 +30,56 @@ import { QrSection, StatsSection } from "./stats";
 
 export default function DashboardPage() {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-6 py-12">
-      <Suspense fallback={<p>Loading your links...</p>}>
-        <Dashboard />
-      </Suspense>
-    </main>
+    <PageShell
+      header={
+        <form action={signOut}>
+          <Button variant="ghost" size="sm">
+            Sign out
+          </Button>
+        </form>
+      }
+    >
+      <main
+        className={cx(container("medium"), "flex flex-1 flex-col gap-4 py-12")}
+      >
+        <Suspense fallback={<DashboardLoading />}>
+          <Dashboard />
+        </Suspense>
+      </main>
+    </PageShell>
+  );
+}
+
+// Card shaped placeholders, so the page doesn't jump when data arrives.
+function DashboardLoading() {
+  return (
+    <div aria-busy="true" className="flex flex-col gap-4">
+      <p className="sr-only">Loading your links...</p>
+      <div className="h-10 w-56 rounded-xl bg-raised motion-safe:animate-pulse" />
+      <div className="h-16 rounded-3xl border border-edge bg-surface motion-safe:animate-pulse" />
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-48 rounded-3xl border border-edge bg-surface motion-safe:animate-pulse"
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Card title with an optional caption under it. */
+function SectionTitle({
+  title,
+  children,
+}: {
+  title: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Heading size="section">{title}</Heading>
+      {children && <p className="text-sm text-ink-muted">{children}</p>}
+    </div>
   );
 }
 
@@ -43,12 +101,18 @@ async function Dashboard() {
 
   if (!profile) {
     return (
-      <section className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold">Pick your username</h1>
-        <p className="text-neutral-600 dark:text-neutral-400">
-          This becomes your link, for example biolyn.link/yourname.
-        </p>
-        <ClaimUsernameForm />
+      <section className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <Heading as="h1" size="title">
+            Pick your username
+          </Heading>
+          <p className="text-lg leading-relaxed text-ink-soft">
+            This becomes your link, for example biolyn.link/yourname.
+          </p>
+        </div>
+        <Card padding="md">
+          <ClaimUsernameForm />
+        </Card>
       </section>
     );
   }
@@ -70,92 +134,149 @@ async function Dashboard() {
   return (
     <>
       {profile.is_suspended && (
-        <p className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          Your public page is hidden because it was reported for breaking the
-          rules. You can still edit it, but visitors can&apos;t see it.
-        </p>
+        <div
+          role="status"
+          className="flex flex-col gap-1 rounded-3xl border border-danger bg-surface p-6 text-danger"
+        >
+          <p className="font-bold">Your public page is hidden</p>
+          <p className="text-sm leading-relaxed">
+            It was reported for breaking the rules. You can still edit it, but
+            visitors can&apos;t see it.
+          </p>
+        </div>
       )}
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Your Biolyn</h1>
+
+      <header className="flex flex-col gap-4 pb-2">
+        <Heading as="h1" size="title">
+          Your page
+        </Heading>
+        <div
+          className={cx(
+            card({ padding: "none" }),
+            "flex items-center gap-2 p-2",
+          )}
+        >
           <Link
             href={`/${profile.username}`}
             target="_blank"
-            className="text-sm text-neutral-500 underline"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 text-lg font-semibold transition hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
-            biolyn.link/{profile.username}
+            <span className="truncate">
+              <span className="text-ink-muted">biolyn.link/</span>
+              {profile.username}
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+              className="shrink-0 text-ink-muted"
+            >
+              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            </svg>
+            <span className="sr-only">(opens in a new tab)</span>
           </Link>
+          <CopyLinkButton url={`${siteUrl}/${profile.username}`} />
         </div>
-        <form action={signOut}>
-          <button className="text-sm text-neutral-500 underline">
-            Sign out
-          </button>
-        </form>
       </header>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Profile</h2>
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Profile">
+          Your picture, name and bio sit at the top of your page.
+        </SectionTitle>
         <AvatarUpload
           userId={user.id}
           avatarUrl={profile.avatar_url}
           name={profile.display_name ?? profile.username}
         />
-        <form action={updateProfile} className="flex flex-col gap-2">
-          <input
+        <form action={updateProfile} className="flex flex-col gap-4">
+          <Field
+            label="Display name"
             name="display_name"
             defaultValue={profile.display_name ?? ""}
             placeholder="Display name"
-            className="rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
           />
-          <textarea
-            name="bio"
-            defaultValue={profile.bio ?? ""}
-            placeholder="Short bio (160 characters)"
-            maxLength={160}
-            className="rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-          <button className="self-start rounded-lg border px-4 py-2">
-            Save profile
-          </button>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="field-bio" className="text-sm font-bold text-ink">
+              Bio
+            </label>
+            <textarea
+              id="field-bio"
+              name="bio"
+              defaultValue={profile.bio ?? ""}
+              placeholder="Short bio (160 characters)"
+              maxLength={160}
+              aria-describedby="field-bio-note"
+              className={cx(input(), "min-h-24 py-3")}
+            />
+            <p id="field-bio-note" className="text-sm text-ink-muted">
+              Up to 160 characters.
+            </p>
+          </div>
+          <Button className="self-start">Save profile</Button>
         </form>
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Links</h2>
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Links">
+          Drag to reorder. Hidden links stay here but not on your page.
+        </SectionTitle>
         <AddLinkForm />
-        <LinkList
-          key={(links ?? [])
-            .map((l) => `${l.id}:${l.is_visible}:${l.embed}`)
-            .join()}
-          links={links ?? []}
-        />
-      </section>
+        <div className="border-t border-line pt-6">
+          <LinkList
+            key={(links ?? [])
+              .map((l) => `${l.id}:${l.is_visible}:${l.embed}`)
+              .join()}
+            links={links ?? []}
+          />
+        </div>
+      </Card>
 
       <StatsSection stats={stats} links={links ?? []} />
 
       <QrSection url={`${siteUrl}/${profile.username}`} />
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Socials</h2>
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Socials">
+          Shown as icons under your name. Leave a field empty to remove it.
+        </SectionTitle>
         <SocialsForm socials={socialsFrom(profile.socials)} />
-      </section>
+      </Card>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-semibold">Theme</h2>
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Theme">
+          How your public page looks to visitors.
+        </SectionTitle>
         <div className="grid grid-cols-3 gap-3">
-          {(Object.keys(THEMES) as ThemeId[]).map((id) => (
-            <form key={id} action={setTheme.bind(null, id)}>
-              <button
-                aria-pressed={id === currentTheme}
-                className={`flex h-24 w-full flex-col items-center justify-center gap-2 rounded-xl text-sm font-medium ${THEMES[id].page} ${id === currentTheme ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
-              >
-                <span className={`h-3 w-3/4 rounded ${THEMES[id].button}`} />
-                {THEMES[id].label}
-              </button>
-            </form>
-          ))}
+          {(Object.keys(THEMES) as ThemeId[]).map((id) => {
+            const selected = id === currentTheme;
+            return (
+              <form key={id} action={setTheme.bind(null, id)}>
+                <button
+                  aria-pressed={selected}
+                  className={cx(
+                    "flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-edge px-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                    THEMES[id].page,
+                    selected &&
+                      "ring-2 ring-brand ring-offset-2 ring-offset-surface",
+                  )}
+                >
+                  <span
+                    className={cx("h-3 w-3/4 rounded", THEMES[id].button)}
+                  />
+                  {THEMES[id].label}
+                </button>
+                <div className="flex h-8 items-center justify-center">
+                  {selected && <Badge>Current</Badge>}
+                </div>
+              </form>
+            );
+          })}
         </div>
-      </section>
+      </Card>
     </>
   );
 }

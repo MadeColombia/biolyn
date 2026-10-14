@@ -18,7 +18,7 @@ import {
 // Living reference for the design system (docs/design-system.md).
 // Visible locally and on Vercel previews, hidden on biolyn.link.
 export const metadata: Metadata = {
-  title: "Style guide | Biolyn",
+  title: "Style guide | biolyn",
   robots: { index: false },
 };
 
@@ -48,15 +48,15 @@ export default function StyleGuide() {
             Style guide
           </Heading>
           <p className="max-w-xl text-lg text-ink-soft">
-            Every Biolyn screen is built from these pieces. Switch your system
-            to dark mode to check both palettes.
+            Every screen is built from these pieces. Switch your system to dark
+            mode to check both palettes.
           </p>
         </div>
 
         <Section title="Logo">
-          <LogoMotion height={120} title="Biolyn" />
+          <LogoMotion height={120} title="biolyn" />
           <div className="flex flex-wrap items-center gap-6">
-            <LogoMark size={96} title="Biolyn" />
+            <LogoMark size={96} title="biolyn" />
             <LogoMark size={64} />
             <LogoMark size={32} />
             <LogoMark size={16} />
@@ -129,7 +129,11 @@ export default function StyleGuide() {
               <Heading>Brand</Heading>
               <p>One highlight per screen.</p>
             </Card>
-            <Card tone="interactive" padding="md" className="flex flex-col gap-2">
+            <Card
+              tone="interactive"
+              padding="md"
+              className="flex flex-col gap-2"
+            >
               <Heading>Interactive</Heading>
               <p className="text-ink-soft">For cards that are links.</p>
             </Card>
@@ -138,7 +142,12 @@ export default function StyleGuide() {
 
         <Section title="Forms">
           <div className="flex max-w-md flex-col gap-5">
-            <Field label="Email" name="email" type="email" placeholder="you@example.com" />
+            <Field
+              label="Email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+            />
             <Field
               label="Username"
               name="username"

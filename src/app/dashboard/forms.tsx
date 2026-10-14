@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition } from "react";
+import { Button, Input, Field, button, cx } from "@/components/ui";
 import { createClient } from "@/lib/supabase/browser";
 import { displaySocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import {
@@ -11,26 +12,40 @@ import {
   type FormState,
 } from "./actions";
 
-const input =
-  "rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900";
-const button =
-  "rounded-lg bg-black px-4 py-2 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-black";
-
 export function ClaimUsernameForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(
     claimUsername,
     {},
   );
   return (
-    <form action={action} className="flex flex-col gap-3">
-      <label className="flex items-center gap-1 text-lg">
-        <span className="text-neutral-500">biolyn.link/</span>
-        <input name="username" required className={`${input} flex-1`} />
-      </label>
-      <button disabled={pending} className={button}>
+    <form action={action} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="field-username" className="text-sm font-bold text-ink">
+          Username
+        </label>
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-lg font-semibold text-ink-muted">
+            biolyn.link/
+          </span>
+          <Input
+            id="field-username"
+            name="username"
+            required
+            placeholder="yourname"
+            invalid={Boolean(state.error)}
+            aria-describedby={state.error ? "field-username-note" : undefined}
+            className="min-w-0 flex-1 text-lg font-semibold"
+          />
+        </div>
+        {state.error && (
+          <p id="field-username-note" className="text-sm text-danger">
+            {state.error}
+          </p>
+        )}
+      </div>
+      <Button disabled={pending} size="lg" fullWidth>
         {pending ? "Claiming..." : "Claim username"}
-      </button>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      </Button>
     </form>
   );
 }
@@ -57,13 +72,26 @@ export function AddLinkForm() {
     {},
   );
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-2">
-      <input name="title" placeholder="Title" required className={input} />
-      <input name="url" placeholder="https://..." required className={input} />
-      <button disabled={pending} className={button}>
-        {pending ? "Adding..." : "Add link"}
-      </button>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+    <form ref={formRef} action={action} className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Title" name="title" placeholder="My shop" required />
+        <Field
+          label="URL"
+          name="url"
+          type="text"
+          inputMode="url"
+          placeholder="https://..."
+          required
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button disabled={pending}>{pending ? "Adding..." : "Add link"}</Button>
+        {state.error && (
+          <p role="alert" className="text-sm text-danger">
+            {state.error}
+          </p>
+        )}
+      </div>
     </form>
   );
 }
@@ -74,28 +102,64 @@ export function SocialsForm({ socials }: { socials: Socials }) {
     {},
   );
   return (
-    <form action={action} className="flex flex-col gap-2">
-      {SOCIAL_PLATFORMS.map((p) => (
-        <label key={p.id} className="flex items-center gap-2">
-          <span className="w-24 text-sm text-neutral-500">{p.label}</span>
-          <input
+    <form action={action} className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {SOCIAL_PLATFORMS.map((p) => (
+          <Field
+            key={p.id}
+            id={`social-${p.id}`}
+            label={p.label}
             name={p.id}
             defaultValue={displaySocial(p.id, socials[p.id])}
             placeholder={
               p.id === "email" ? "you@example.com" : "@handle or URL"
             }
-            className={`${input} flex-1`}
           />
-        </label>
-      ))}
-      <button disabled={pending} className={`${button} self-start`}>
-        {pending ? "Saving..." : "Save socials"}
-      </button>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.saved && !pending && (
-        <p className="text-sm text-green-600">Saved.</p>
-      )}
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button disabled={pending}>
+          {pending ? "Saving..." : "Save socials"}
+        </Button>
+        {state.error && (
+          <p role="alert" className="text-sm text-danger">
+            {state.error}
+          </p>
+        )}
+        {state.saved && !pending && (
+          <p role="status" className="text-sm font-bold text-success">
+            Saved.
+          </p>
+        )}
+      </div>
     </form>
+  );
+}
+
+/** Copies the public link, then says so for a moment. */
+export function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked (old browser, no permission): the link is still
+      // there to open or select by hand.
+    }
+  }
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onClick={copy}
+      aria-live="polite"
+      className="shrink-0"
+    >
+      {copied ? "Copied" : "Copy link"}
+    </Button>
   );
 }
 
@@ -171,34 +235,43 @@ export function AvatarUpload({
         <img
           src={avatarUrl}
           alt={name}
-          className="h-16 w-16 rounded-full object-cover"
+          className="h-20 w-20 shrink-0 rounded-full border border-edge object-cover"
         />
       ) : (
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-neutral-200 text-xl font-bold text-neutral-600">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-raised font-display text-2xl font-bold text-ink-soft">
           {name.charAt(0).toUpperCase()}
         </div>
       )}
-      <div className="flex flex-col gap-1">
-        <label className="cursor-pointer text-sm underline">
-          {pending ? "Uploading..." : "Change picture"}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={onChange}
-            disabled={pending}
-            className="sr-only"
-          />
-        </label>
-        {avatarUrl && !pending && (
-          <button
-            type="button"
-            onClick={() => startTransition(() => setAvatar(null))}
-            className="self-start text-sm text-neutral-500 underline"
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          <label
+            className={cx(
+              button({ variant: "secondary", size: "sm" }),
+              "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand",
+              pending && "opacity-50",
+            )}
           >
-            Remove
-          </button>
-        )}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+            {pending ? "Uploading..." : "Change picture"}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={onChange}
+              disabled={pending}
+              className="sr-only"
+            />
+          </label>
+          {avatarUrl && !pending && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => startTransition(() => setAvatar(null))}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+        {error && <p className="text-sm text-danger">{error}</p>}
       </div>
     </div>
   );
