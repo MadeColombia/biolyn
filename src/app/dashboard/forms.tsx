@@ -51,6 +51,12 @@ export function ClaimUsernameForm() {
   );
 }
 
+const SERVICE_NAME = {
+  youtube: "a YouTube",
+  spotify: "a Spotify",
+  apple: "an Apple Music",
+};
+
 export function AddLinkForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [url, setUrl] = useState("");
@@ -92,17 +98,25 @@ export function AddLinkForm() {
           onChange={(e) => setUrl(e.target.value)}
         />
       </div>
-      {embed && (
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input
-            type="checkbox"
-            name="embed"
-            defaultChecked
-            className="size-4 accent-brand"
-          />
-          Show as a player on your page
-        </label>
-      )}
+      {/* Always mounted so screen readers announce the detected link. */}
+      <div role="status" aria-live="polite" className="empty:hidden">
+        {embed && (
+          <div className="flex flex-col gap-2 rounded-xl border border-edge bg-raised p-3">
+            <p className="text-sm font-bold text-success">
+              This is {SERVICE_NAME[embed.kind]} link!
+            </p>
+            <label className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                name="embed"
+                defaultChecked
+                className="size-4 accent-brand"
+              />
+              Show it as a player on your page
+            </label>
+          </div>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button disabled={pending}>{pending ? "Adding..." : "Add link"}</Button>
         {state.error && (
