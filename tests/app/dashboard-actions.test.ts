@@ -8,7 +8,18 @@ class Redirect extends Error {
 }
 const updateTag = vi.fn();
 const revalidatePath = vi.fn();
-vi.mock("next/cache", () => ({ updateTag, revalidatePath }));
+const revalidateTag = vi.fn();
+vi.mock("next/cache", () => ({ updateTag, revalidatePath, revalidateTag }));
+// Work scheduled with after() waits here until runAfter() is called.
+let pending: (() => Promise<unknown>)[] = [];
+vi.mock("next/server", () => ({
+  after: (fn: () => Promise<unknown>) => pending.push(fn),
+}));
+async function runAfter() {
+  const jobs = pending;
+  pending = [];
+  for (const job of jobs) await job();
+}
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw new Redirect(to);
@@ -66,6 +77,8 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
   updateTag.mockClear();
   revalidatePath.mockClear();
+  revalidateTag.mockClear();
+  pending = [];
   checkLinkUrl.mockReset().mockResolvedValue(null);
   allow.mockReset().mockResolvedValue(true);
   fetchPreviewImage.mockReset().mockResolvedValue(null);
@@ -227,7 +240,7 @@ describe("addLink", () => {
   });
 
   it("saves the link at the end with its schedule and embed", async () => {
-    signedIn({ links: [{ count: 3 }, { error: null }] });
+    signedIn({ links: [{ count: 3 }, { data: { id: "l9" }, error: null }] });
     expect(
       await actions.addLink(
         {},
@@ -249,18 +262,17 @@ describe("addLink", () => {
         embed: true,
         size: "small",
         image_url: null,
-        preview_url: null,
         starts_at: "2026-10-14T08:00:00.000Z",
         ends_at: null,
       },
     ]);
     // Small buttons don't need the page's preview picture.
-    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    expect(pending).toHaveLength(0);
     expect(updateTag).toHaveBeenCalledWith("profile:ethan");
   });
 
   it("only embeds links that can be embedded", async () => {
-    signedIn({ links: [{ count: null }, { error: null }] });
+    signedIn({ links: [{ count: null }, { data: { id: "l9" }, error: null }] });
     await actions.addLink(
       {},
       form({ title: "x", url: "https://a.com", embed: "on" }),
@@ -272,7 +284,7 @@ describe("addLink", () => {
   });
 
   it("saves a big button with the user's own picture", async () => {
-    signedIn({ links: [{ count: 0 }, { error: null }] });
+    signedIn({ links: [{ count: 0 }, { data: { id: "l9" }, error: null }] });
     expect(
       await actions.addLink(
         {},
@@ -288,52 +300,87 @@ describe("addLink", () => {
       size: "big",
       image_url: `${IMAGES}u1/a.jpg`,
     });
+    expect(pending).toHaveLength(0);
   });
 
-  it("gives a big button without a picture the page's preview", async () => {
-    signedIn({ links: [{ count: 0 }, { error: null }] });
-    fetchPreviewImage.mockResolvedValueOnce("https://cdn.a.com/og.jpg");
-    await actions.addLink(
+  // Inserting returns the new id; the last result is the preview update.
+  const bigAdd = (updated: unknown[] = [{ id: "l9" }]) => {
+    signedIn({
+      links: [{ count: 0 }, { data: { id: "l9" }, error: null }, { data: updated }],
+    });
+    return actions.addLink(
       {},
       form({ title: "x", url: "https://a.com", size: "big" }),
     );
+  };
+
+  it("answers before looking up the preview of a big button", async () => {
+    fetchPreviewImage.mockResolvedValueOnce("https://cdn.a.com/og.jpg");
+    expect(await bigAdd()).toEqual({});
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    expect(lastWrite("links", "insert")?.[0]).not.toHaveProperty("preview_url");
+
+    await runAfter();
     expect(fetchPreviewImage).toHaveBeenCalledWith("https://a.com");
-    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
-      image_url: null,
-      preview_url: "https://cdn.a.com/og.jpg",
-    });
+    expect(fetchScreenshot).not.toHaveBeenCalled();
+    expect(lastWrite("links", "update")).toEqual([
+      { preview_url: "https://cdn.a.com/og.jpg" },
+    ]);
+    // Only while the link still has this URL and no preview.
+    const calls = db.queries.links.at(-1)!.calls;
+    expect(calls).toContainEqual({ method: "eq", args: ["id", "l9"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["url", "https://a.com"] });
+    expect(calls).toContainEqual({ method: "is", args: ["preview_url", null] });
+    expect(revalidateTag).toHaveBeenCalledWith("profile:ethan", { expire: 0 });
   });
 
   it("saves a screenshot when the page has no share picture", async () => {
-    signedIn({ links: [{ count: 0 }, { error: null }] });
     const data = new ArrayBuffer(8);
     fetchScreenshot.mockResolvedValueOnce({ data, type: "image/jpeg" });
-    await actions.addLink(
-      {},
-      form({ title: "x", url: "https://a.com", size: "big" }),
-    );
+    await bigAdd();
+    await runAfter();
     expect(fetchScreenshot).toHaveBeenCalledWith("https://a.com");
     const [path, body, opts] = db.storage.upload.mock.calls[0];
     expect(path).toMatch(/^u1\/preview-[\w-]+\.jpeg$/);
     expect(body).toBe(data);
     expect(opts).toEqual({ contentType: "image/jpeg" });
-    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
-      preview_url: `${IMAGES}${path}`,
-    });
+    expect(lastWrite("links", "update")).toEqual([
+      { preview_url: `${IMAGES}${path}` },
+    ]);
+    expect(db.storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("deletes the screenshot if the link changed or was deleted meanwhile", async () => {
+    fetchScreenshot.mockResolvedValueOnce({ data: new ArrayBuffer(8), type: "image/png" });
+    await bigAdd([]);
+    await runAfter();
+    const [path] = db.storage.upload.mock.calls[0];
+    expect(db.storage.remove).toHaveBeenCalledWith([path]);
+    expect(revalidateTag).not.toHaveBeenCalled();
   });
 
   it("takes a screenshot instead of a site icon, and keeps the icon if that fails", async () => {
-    signedIn({ links: [{ count: 0 }, { error: null }] });
     const icon = "https://a.com/i.svg#biolyn-icon";
     fetchPreviewImage.mockResolvedValueOnce(icon);
     fetchScreenshot.mockResolvedValueOnce({ data: new ArrayBuffer(8), type: "image/png" });
+    await bigAdd();
     db.storage.upload.mockResolvedValueOnce({ data: null, error: { message: "x" } });
-    await actions.addLink(
-      {},
-      form({ title: "x", url: "https://a.com", size: "big" }),
-    );
+    await runAfter();
     expect(fetchScreenshot).toHaveBeenCalled();
-    expect(lastWrite("links", "insert")?.[0]).toMatchObject({ preview_url: icon });
+    expect(lastWrite("links", "update")).toEqual([{ preview_url: icon }]);
+  });
+
+  it("stores nothing when no preview is found, and never throws", async () => {
+    await bigAdd();
+    await runAfter();
+    expect(lastWrite("links", "update")).toBeUndefined();
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchPreviewImage.mockRejectedValueOnce(new Error("boom"));
+    await bigAdd();
+    await expect(runAfter()).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 
   it("refuses a picture from someone else's folder", async () => {
@@ -481,7 +528,7 @@ describe("updateLink", () => {
     const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
     signedIn({ links: [{ data: saved }, { error: null }] });
     await edit({ title: "x", url: "https://a.com", size: "big" });
-    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    expect(pending).toHaveLength(0);
     expect(lastWrite("links", "update")?.[0]).toMatchObject({
       preview_url: "https://p/1.jpg",
     });
@@ -489,13 +536,16 @@ describe("updateLink", () => {
 
   it("looks up a new preview when the URL changes", async () => {
     const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
-    signedIn({ links: [{ data: saved }, { error: null }] });
+    signedIn({ links: [{ data: saved }, { error: null }, { data: [{ id: "l1" }] }] });
     fetchPreviewImage.mockResolvedValueOnce("https://p/2.jpg");
     await edit({ title: "x", url: "https://b.com", size: "big" });
-    expect(fetchPreviewImage).toHaveBeenCalledWith("https://b.com");
     expect(lastWrite("links", "update")?.[0]).toMatchObject({
-      preview_url: "https://p/2.jpg",
+      preview_url: null,
     });
+    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    await runAfter();
+    expect(fetchPreviewImage).toHaveBeenCalledWith("https://b.com");
+    expect(lastWrite("links", "update")).toEqual([{ preview_url: "https://p/2.jpg" }]);
   });
 
   it("removes an old screenshot when the URL changes", async () => {
@@ -510,7 +560,7 @@ describe("updateLink", () => {
     const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
     signedIn({ links: [{ data: saved }, { error: null }] });
     await edit({ title: "x", url: "https://b.com" });
-    expect(fetchPreviewImage).not.toHaveBeenCalled();
+    expect(pending).toHaveLength(0);
     expect(lastWrite("links", "update")?.[0]).toMatchObject({
       preview_url: null,
     });

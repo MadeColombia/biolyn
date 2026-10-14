@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag, updateTag } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { validateUsername } from "@/lib/usernames";
@@ -117,14 +118,16 @@ export async function addLink(
     return { error: `You can have up to ${MAX_LINKS} links.` };
   }
 
-  const { error } = await supabase.from("links").insert({
-    profile_id: profile.id,
-    position: count ?? 0,
-    ...values,
-    preview_url: await previewFor(supabase, user.id, values),
-  });
-  if (error) return { error: "Could not save the link." };
+  const { data: row, error } = await supabase
+    .from("links")
+    .insert({ profile_id: profile.id, position: count ?? 0, ...values })
+    .select("id")
+    .single();
+  if (error || !row) return { error: "Could not save the link." };
 
+  if (needsPreview(values, null)) {
+    after(() => fillPreview(supabase, user.id, profile.username, row.id, values.url));
+  }
   refresh(profile.username);
   return {};
 }
@@ -156,7 +159,8 @@ export async function updateLink(
     .maybeSingle();
   if (!current) return { error: "That link no longer exists." };
 
-  const preview_url = await previewFor(supabase, user.id, values, current);
+  // The saved preview only belongs to the URL it was taken from.
+  const preview_url = current.url === values.url ? current.preview_url : null;
   const { error } = await supabase
     .from("links")
     .update({ ...values, preview_url })
@@ -170,39 +174,66 @@ export async function updateLink(
   if (current.preview_url !== preview_url) {
     await removeLinkImage(supabase, current.preview_url);
   }
+  if (needsPreview(values, preview_url)) {
+    after(() => fillPreview(supabase, user.id, profile.username, linkId, values.url));
+  }
   refresh(profile.username);
   return { saved: true };
 }
 
 // A big button with no picture of its own shows the page's share picture,
 // else a screenshot of the page (saved in the user's storage folder),
-// else the site's icon. It's looked up once when the link is saved, and
-// again when its URL changes, so visitors never wait for it.
-async function previewFor(
+// else the site's icon.
+function needsPreview(values: LinkValues, known: string | null) {
+  return values.size === "big" && !values.image_url && !known;
+}
+
+// Looks the preview up after the save has answered, because a screenshot
+// can take several seconds. It's only stored if the link still has this
+// URL and no preview; otherwise a screenshot we just made is deleted.
+async function fillPreview(
   supabase: Supabase,
   userId: string,
-  values: LinkValues,
-  current?: { url: string; preview_url: string | null },
-): Promise<string | null> {
-  const known = current?.url === values.url ? current.preview_url : null;
-  if (values.size !== "big" || values.image_url || known) return known;
-
-  const found = await fetchPreviewImage(values.url);
-  if (found && !isIconPreview(found)) return found;
-
-  const shot = await fetchScreenshot(values.url);
-  if (shot) {
-    const ext = shot.type.split("/")[1];
-    const path = `${userId}/preview-${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage
-      .from(LINK_IMAGES_BUCKET)
-      .upload(path, shot.data, { contentType: shot.type });
-    if (!error) {
-      return supabase.storage.from(LINK_IMAGES_BUCKET).getPublicUrl(path).data
-        .publicUrl;
+  username: string,
+  linkId: string,
+  url: string,
+) {
+  try {
+    const found = await fetchPreviewImage(url);
+    let preview = found && !isIconPreview(found) ? found : null;
+    if (!preview) {
+      const shot = await fetchScreenshot(url);
+      if (shot) {
+        const ext = shot.type.split("/")[1];
+        const path = `${userId}/preview-${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(LINK_IMAGES_BUCKET)
+          .upload(path, shot.data, { contentType: shot.type });
+        if (!error) {
+          preview = supabase.storage.from(LINK_IMAGES_BUCKET).getPublicUrl(path)
+            .data.publicUrl;
+        }
+      }
     }
+    preview ??= found;
+    if (!preview) return;
+
+    const { data } = await supabase
+      .from("links")
+      .update({ preview_url: preview })
+      .eq("id", linkId)
+      .eq("url", url)
+      .is("preview_url", null)
+      .select("id");
+    if (!data?.length) {
+      await removeLinkImage(supabase, preview);
+      return;
+    }
+    revalidateTag(profileTag(username), { expire: 0 });
+    revalidatePath("/dashboard");
+  } catch (err) {
+    console.error("link preview failed", err);
   }
-  return found;
 }
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;

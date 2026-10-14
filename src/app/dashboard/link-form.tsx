@@ -317,7 +317,7 @@ export function LinkForm({
                 ? isIconPreview(savedPreview)
                   ? "This site has no preview picture, so its icon is used. Add a picture to replace it."
                   : "This is the link's own preview picture. Add yours to replace it."
-                : "Optional. Without one, we use the link's own preview picture, or the site's icon."}
+                : "Optional. Without one, we find a picture of the site for you. It shows up a few seconds after you save."}
           </p>
           {imageError && <p className="text-sm text-danger">{imageError}</p>}
         </div>
