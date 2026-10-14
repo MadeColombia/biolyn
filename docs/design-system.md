@@ -17,6 +17,7 @@ Public profile pages (`/[username]`) are the exception: they use the owner's the
 
 The mark is a bold ring: the one link in your bio. It also replaces the o in the wordmark, so the name reads `bi◯lyn.link` with a terracotta ring and dot. On a tile it is a white ring on terracotta (dark mode: near-black on the brighter terracotta).
 
+- Large uses get the ring in motion ("Dash"): two blurred copies trail to the left, like it is moving. Use `<LogoMotion height={72} />` at 64px tall or more (homepage, splash, social images). Below that the blur becomes a smudge, so small uses (favicon, header, the o in the wordmark) stay sharp.
 - In the app: `<Logo />` (the wordmark with the ring o, links home; `showMark` adds the tile in front) or `<LogoMark size={32} />` (tile only). Both use tokens, so dark mode is automatic. `PageShell` already puts `<Logo />` in the header.
 - Browser tab and home screen: `src/app/icon.svg` (follows light/dark), `src/app/favicon.ico` (older browsers), `src/app/apple-icon.png` (iPhone home screen).
 - Everywhere else, use the files in `public/brand/` (also served at `https://biolyn.link/brand/...`):
@@ -26,10 +27,12 @@ The mark is a bold ring: the one link in your bio. It also replaces the o in the
 | `biolyn-mark.svg`                  | Default tile mark, any size (slides, docs, email signatures)  |
 | `biolyn-mark-dark.svg`             | Tile mark on dark backgrounds                                 |
 | `biolyn-ring.svg`                  | Just the terracotta ring, no tile                             |
+| `biolyn-motion.svg`, `-dark.svg`, `-1536.png` | Ring in motion for large uses (light and dark backgrounds) |
 | `biolyn-mark-512.png`, `-1024.png` | PNG with rounded corners and a transparent background         |
-| `biolyn-profile-1080.png`          | Square, no rounded corners: Instagram and other profile pictures (they crop to a circle) |
+| `biolyn-profile-1080.png`          | Square, ring in motion: Instagram and other profile pictures (they crop to a circle) |
+| `biolyn-profile-sharp-1080.png`    | Same without motion, for places that show the picture very small |
 
-Rules: don't recolor, stretch, rotate or add effects (shadows, gradients, outlines). Keep clear space around the mark of at least a quarter of its width. Don't go smaller than 16px. Don't use the old Next.js icons in `public/` for Biolyn.
+Rules: don't recolor, stretch, rotate or add effects (shadows, gradients, outlines) beyond the motion version. Keep clear space around the mark of at least a quarter of its width. Don't go smaller than 16px. Don't use the old Next.js icons in `public/` for Biolyn.
 
 ## Tokens
 

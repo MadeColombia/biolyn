@@ -13,6 +13,7 @@ describe("@/components/ui", () => {
       "Input",
       "Logo",
       "LogoMark",
+      "LogoMotion",
       "PageShell",
       "button",
       "card",

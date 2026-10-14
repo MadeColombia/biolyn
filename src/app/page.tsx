@@ -3,6 +3,7 @@ import {
   ButtonLink,
   Card,
   Heading,
+  LogoMotion,
   PageShell,
   button,
   card,
@@ -134,6 +135,7 @@ export default function Home() {
             "flex flex-col items-center gap-6 pb-20 text-center",
           )}
         >
+          <LogoMotion height={72} />
           <Heading size="title" className="sm:text-5xl">
             Claim your name before it&apos;s gone.
           </Heading>

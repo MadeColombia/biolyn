@@ -9,6 +9,7 @@ import {
   Heading,
   Logo,
   LogoMark,
+  LogoMotion,
   PageShell,
   container,
   cx,
@@ -53,6 +54,7 @@ export default function StyleGuide() {
         </div>
 
         <Section title="Logo">
+          <LogoMotion height={120} title="Biolyn" />
           <div className="flex flex-wrap items-center gap-6">
             <LogoMark size={96} title="Biolyn" />
             <LogoMark size={64} />

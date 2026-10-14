@@ -86,3 +86,46 @@ export function Logo({
     </Link>
   );
 }
+
+/**
+ * The ring in motion ("Dash"): two blurred copies trail to the left.
+ * For large sizes only (64px tall or more); below that the blur turns
+ * into a smudge, so use LogoMark or Logo instead. Same drawing as
+ * public/brand/biolyn-motion.svg.
+ */
+export function LogoMotion({
+  height = 96,
+  title,
+  className,
+}: {
+  height?: number;
+  title?: string;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 96 64"
+      height={height}
+      width={(height * 96) / 64}
+      role={title ? "img" : undefined}
+      aria-hidden={title ? undefined : true}
+      className={cx("shrink-0 overflow-visible", className)}
+    >
+      {title && <title>{title}</title>}
+      <defs>
+        {/* Blur only sideways ("5 0"), which reads as horizontal speed. */}
+        <filter id="biolyn-dash-near" x="-50%" y="-20%" width="200%" height="140%">
+          <feGaussianBlur stdDeviation="5 0" />
+        </filter>
+        <filter id="biolyn-dash-far" x="-50%" y="-20%" width="200%" height="140%">
+          <feGaussianBlur stdDeviation="8 0" />
+        </filter>
+      </defs>
+      <g fill="none" strokeWidth="12" className="stroke-brand">
+        <circle cx="42" cy="32" r="20" opacity="0.22" filter="url(#biolyn-dash-far)" />
+        <circle cx="52" cy="32" r="20" opacity="0.45" filter="url(#biolyn-dash-near)" />
+        <circle cx="62" cy="32" r="20" />
+      </g>
+    </svg>
+  );
+}
