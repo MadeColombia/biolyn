@@ -1,7 +1,40 @@
 import QRCode from "qrcode";
+import { Card, Heading, button } from "@/components/ui";
 import type { Stats } from "@/lib/analytics";
 
 type Link = { id: string; title: string };
+
+type Row = { key: string; label: string; count: number };
+
+/** Rows with a count and a bar sized against the biggest count. */
+function BarList({ rows, empty }: { rows: Row[]; empty: string }) {
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-2xl bg-raised p-4 text-sm text-ink-soft">{empty}</p>
+    );
+  }
+  const max = Math.max(...rows.map((r) => r.count));
+  // Like the homepage chart: only the top row gets the brand color.
+  const top = rows.findIndex((r) => r.count === max);
+  return (
+    <ul className="flex flex-col divide-y divide-line">
+      {rows.map((r, i) => (
+        <li key={r.key} className="flex flex-col gap-2 py-3">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="truncate">{r.label}</span>
+            <span className="font-bold tabular-nums">{r.count}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-raised" aria-hidden="true">
+            <div
+              className={`h-full rounded-full ${i === top ? "bg-brand" : "bg-ink-muted/40"}`}
+              style={{ width: `${max ? (r.count / max) * 100 : 0}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function StatsSection({
   stats,
@@ -16,53 +49,56 @@ export function StatsSection({
     { label: "Clicks, 30 days", value: stats.clicks30 },
   ];
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold">Analytics</h2>
+    <Card padding="md" className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <Heading size="section">Analytics</Heading>
+        <p className="text-sm text-ink-muted">
+          Who visits your page and what they tap.
+        </p>
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((t) => (
-          <div key={t.label} className="rounded-xl border p-3">
-            <p className="text-2xl font-bold">{t.value}</p>
-            <p className="text-xs text-neutral-500">{t.label}</p>
+          <div
+            key={t.label}
+            className="flex flex-col gap-1 rounded-2xl border border-edge p-3 sm:p-4"
+          >
+            <Heading as="p" size="section" className="tabular-nums sm:text-3xl">
+              {t.value}
+            </Heading>
+            <p className="text-xs text-ink-muted sm:text-sm">{t.label}</p>
           </div>
         ))}
       </div>
 
-      <div>
-        <h3 className="mb-2 font-medium">Clicks per link (30 days)</h3>
-        {links.length === 0 ? (
-          <p className="text-sm text-neutral-500">No links yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {links.map((l) => (
-              <li key={l.id} className="flex justify-between gap-4">
-                <span className="truncate">{l.title}</span>
-                <span className="font-medium">
-                  {stats.clicksByLink[l.id] ?? 0}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="flex flex-col gap-1">
+        <Heading as="h3" size="label">
+          Clicks per link, 30 days
+        </Heading>
+        <BarList
+          empty="No links yet."
+          rows={links.map((l) => ({
+            key: l.id,
+            label: l.title,
+            count: stats.clicksByLink[l.id] ?? 0,
+          }))}
+        />
       </div>
 
-      <div>
-        <h3 className="mb-2 font-medium">Where visitors come from</h3>
-        {stats.topReferrers.length === 0 ? (
-          <p className="text-sm text-neutral-500">
-            No visits yet. Share your link to start seeing data.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {stats.topReferrers.map((r) => (
-              <li key={r.host} className="flex justify-between gap-4">
-                <span className="truncate">{r.host}</span>
-                <span className="font-medium">{r.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="flex flex-col gap-1">
+        <Heading as="h3" size="label">
+          Where visitors come from
+        </Heading>
+        <BarList
+          empty="No visits yet. Share your link to start seeing data."
+          rows={stats.topReferrers.map((r) => ({
+            key: r.host,
+            label: r.host,
+            count: r.count,
+          }))}
+        />
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -71,22 +107,32 @@ export async function QrSection({ url }: { url: string }) {
   const svg = await QRCode.toString(url, { type: "svg", margin: 1 });
   const png = await QRCode.toDataURL(url, { margin: 2, width: 1024 });
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-xl font-semibold">QR code</h2>
-      <div className="flex items-center gap-4">
-        <div
-          className="h-32 w-32 rounded-lg bg-white p-1"
-          // The SVG is generated by the qrcode library from our own URL.
-          dangerouslySetInnerHTML={{ __html: svg }}
-        />
+    <Card
+      padding="md"
+      className="flex flex-col gap-6 sm:flex-row sm:items-center"
+    >
+      <div
+        className="h-40 w-40 shrink-0 overflow-hidden rounded-2xl border border-edge [&_svg]:block [&_svg]:size-full"
+        // The SVG is generated by the qrcode library from our own URL.
+        // It draws its own light background, so it scans in dark mode too.
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+      <div className="flex flex-col items-start gap-4">
+        <div className="flex flex-col gap-1">
+          <Heading size="section">QR code</Heading>
+          <p className="leading-relaxed text-ink-soft">
+            Put it on flyers, menus or your shop counter. Scanning it opens your
+            page.
+          </p>
+        </div>
         <a
           href={png}
           download="biolyn-qr.png"
-          className="rounded-lg border px-4 py-2 text-sm font-medium"
+          className={button({ variant: "secondary", size: "sm" })}
         >
           Download PNG
         </a>
       </div>
-    </section>
+    </Card>
   );
 }

@@ -18,6 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Badge, Button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
 import { deleteLink, reorderLinks, toggleEmbed, toggleLink } from "./actions";
 
@@ -73,7 +74,7 @@ export function LinkList({ links: initial }: { links: Link[] }) {
 
   if (links.length === 0) {
     return (
-      <p className="text-sm text-neutral-500">
+      <p className="rounded-2xl bg-raised p-6 text-center text-ink-soft">
         No links yet. Add your first one above.
       </p>
     );
@@ -87,7 +88,7 @@ export function LinkList({ links: initial }: { links: Link[] }) {
       onDragEnd={onDragEnd}
     >
       <SortableContext items={links} strategy={verticalListSortingStrategy}>
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-3">
           {links.map((link) => (
             <SortableLink key={link.id} link={link} />
           ))}
@@ -108,45 +109,78 @@ function SortableLink({ link }: { link: Link }) {
     isDragging,
   } = useSortable({ id: link.id });
 
+  const schedule = scheduleText(link);
+
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-2 rounded-lg border bg-background p-3 ${link.is_visible ? "" : "opacity-50"} ${isDragging ? "relative z-10 shadow-lg" : ""}`}
+      className={cx(
+        "flex flex-wrap items-center gap-2 rounded-2xl border bg-surface p-2",
+        isDragging ? "relative z-10 border-brand" : "border-edge",
+      )}
     >
       <button
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
         aria-label={`Drag to reorder ${link.title}`}
-        className="cursor-grab touch-none px-1 text-neutral-400 active:cursor-grabbing"
+        className="flex min-h-11 min-w-11 cursor-grab touch-none items-center justify-center rounded-xl text-ink-muted transition hover:bg-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:cursor-grabbing"
       >
-        ⠿
+        <svg viewBox="0 0 12 18" width="12" height="18" aria-hidden>
+          {[3, 9].map((x) =>
+            [3, 9, 15].map((y) => (
+              <circle
+                key={`${x}-${y}`}
+                cx={x}
+                cy={y}
+                r="1.6"
+                fill="currentColor"
+              />
+            )),
+          )}
+        </svg>
       </button>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{link.title}</p>
-        <p className="truncate text-sm text-neutral-500">{link.url}</p>
-        {scheduleText(link) && (
-          <p className="text-xs text-blue-600" suppressHydrationWarning>
-            {scheduleText(link)}
+      <div
+        className={cx(
+          "min-w-0 flex-1 basis-40",
+          !link.is_visible && "opacity-50",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <p className="truncate font-bold">{link.title}</p>
+          {!link.is_visible && (
+            <Badge tone="neutral" className="shrink-0">
+              Hidden
+            </Badge>
+          )}
+        </div>
+        <p className="truncate text-sm text-ink-muted">{link.url}</p>
+        {schedule && (
+          <p className="text-xs text-ink-muted" suppressHydrationWarning>
+            {schedule}
           </p>
         )}
       </div>
-      {embedFor(link.url) && (
-        <form action={toggleEmbed.bind(null, link.id, link.embed)}>
-          <button className="text-sm underline">
-            {link.embed ? "Show as button" : "Show as player"}
-          </button>
+      <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
+        {embedFor(link.url) && (
+          <form action={toggleEmbed.bind(null, link.id, link.embed)}>
+            <Button variant="ghost" size="sm">
+              {link.embed ? "Show as button" : "Show as player"}
+            </Button>
+          </form>
+        )}
+        <form action={toggleLink.bind(null, link.id, link.is_visible)}>
+          <Button variant="ghost" size="sm">
+            {link.is_visible ? "Hide" : "Show"}
+          </Button>
         </form>
-      )}
-      <form action={toggleLink.bind(null, link.id, link.is_visible)}>
-        <button className="text-sm underline">
-          {link.is_visible ? "Hide" : "Show"}
-        </button>
-      </form>
-      <form action={deleteLink.bind(null, link.id)}>
-        <button className="text-sm text-red-600 underline">Delete</button>
-      </form>
+        <form action={deleteLink.bind(null, link.id)}>
+          <Button variant="danger" size="sm">
+            Delete
+          </Button>
+        </form>
+      </div>
     </li>
   );
 }

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { Heading, PageShell, container, cx } from "@/components/ui";
 import { ReportForm } from "./form";
 
 export const metadata: Metadata = {
@@ -9,11 +10,18 @@ export const metadata: Metadata = {
 
 export default function ReportPage(props: PageProps<"/report/[username]">) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-6 py-16">
-      <Suspense>
-        <Report params={props.params} />
-      </Suspense>
-    </main>
+    <PageShell>
+      <main
+        className={cx(
+          container("narrow"),
+          "flex flex-1 flex-col gap-8 py-12 sm:py-16",
+        )}
+      >
+        <Suspense>
+          <Report params={props.params} />
+        </Suspense>
+      </main>
+    </PageShell>
   );
 }
 
@@ -24,9 +32,15 @@ async function Report({
   const name = username.toLowerCase();
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-bold">Report biolyn.link/{name}</h1>
-        <p className="mt-1 text-neutral-600 dark:text-neutral-400">
+      <div className="flex flex-col gap-3">
+        <Heading as="h1" size="title" className="leading-tight">
+          Report a page
+        </Heading>
+        <p className="self-start rounded-xl border border-edge bg-surface px-4 py-2 font-bold wrap-anywhere text-ink">
+          <span className="font-normal text-ink-muted">biolyn.link/</span>
+          {name}
+        </p>
+        <p className="text-lg leading-relaxed text-ink-soft">
           Tell us what breaks the rules on this page. The owner won&apos;t see
           who reported it.
         </p>
