@@ -16,7 +16,12 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/analytics";
 import { socialsFrom } from "@/lib/socials";
-import { THEMES, themeFrom, type ThemeId } from "@/lib/themes";
+import {
+  photoStyleFrom,
+  THEMES,
+  themeFrom,
+  type ThemeId,
+} from "@/lib/themes";
 import { setTheme, signOut, updateProfile } from "./actions";
 import {
   AddLinkForm,
@@ -193,6 +198,7 @@ async function Dashboard() {
           userId={user.id}
           avatarUrl={profile.avatar_url}
           name={profile.display_name ?? profile.username}
+          photoStyle={photoStyleFrom(profile.theme)}
         />
         <form action={updateProfile} className="flex flex-col gap-4">
           <Field

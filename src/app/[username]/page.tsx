@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui";
 import { SocialIcon } from "@/components/social-icon";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
-import { THEMES } from "@/lib/themes";
+import { COVER_FADE, THEMES } from "@/lib/themes";
 import { isIconPreview } from "@/lib/link-form";
 import { ViewTracker } from "./view-tracker";
 
@@ -15,6 +15,11 @@ const PLAYER_HEIGHT = {
   spotify: { short: "h-[152px]", tall: "h-[352px]" },
   apple: { short: "h-[175px]", tall: "h-[450px]" },
 };
+
+// On screens wider than a phone the photo doesn't reach the edges, so its
+// sides fade out too (intersected with the bottom fade).
+const SIDE_FADE =
+  "linear-gradient(to right, transparent, black 15%, black 85%, transparent)";
 
 export async function generateMetadata(
   props: PageProps<"/[username]">,
@@ -65,12 +70,35 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
   const name = profile.display_name ?? profile.username;
   const theme = THEMES[profile.theme];
   const socials = SOCIAL_PLATFORMS.filter((p) => profile.socials[p.id]);
+  // Cover needs a picture; without one the page keeps the round letter.
+  const cover = profile.photo_style === "cover" && Boolean(profile.avatar_url);
 
   return (
     <main className={`flex flex-1 flex-col ${theme.page}`}>
       <ViewTracker profileId={profile.id} />
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 py-16">
-        {profile.avatar_url ? (
+      {cover && (
+        // Big photo across the top. It turns see-through toward the
+        // bottom (and the sides on wide screens), so it melts into the
+        // theme's background, gradients included.
+        <div
+          className="mx-auto w-full max-w-md [mask-image:var(--fade)] md:max-w-lg md:[mask-composite:intersect] md:[mask-image:var(--fade),var(--sides)]"
+          style={{ "--fade": COVER_FADE, "--sides": SIDE_FADE } as React.CSSProperties}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={profile.avatar_url!}
+            alt={name}
+            className="aspect-4/5 w-full object-cover"
+          />
+        </div>
+      )}
+      <div
+        className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 ${
+          // The name and bio sit over the faded bottom of the photo.
+          cover ? "relative -mt-28" : "pt-16"
+        }`}
+      >
+        {cover ? null : profile.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatar_url}
@@ -85,7 +113,9 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
           </div>
         )}
         <div className="text-center">
-          <h1 className="text-2xl font-bold">{name}</h1>
+          <h1 className={`font-bold ${cover ? "text-3xl" : "text-2xl"}`}>
+            {name}
+          </h1>
           {profile.bio && (
             <p className={`mt-1 ${theme.muted}`}>{profile.bio}</p>
           )}

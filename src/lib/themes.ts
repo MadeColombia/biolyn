@@ -41,3 +41,36 @@ export function themeFrom(theme: unknown): ThemeId {
   const preset = (theme as { preset?: unknown } | null)?.preset;
   return isThemeId(preset) ? preset : "classic";
 }
+
+// How the profile picture shows on the public page: a small round
+// picture, or a big cover photo at the top that fades into the page.
+export const PHOTO_STYLES = {
+  round: { label: "Round" },
+  cover: { label: "Cover" },
+} as const;
+
+export type PhotoStyle = keyof typeof PHOTO_STYLES;
+
+export function isPhotoStyle(value: unknown): value is PhotoStyle {
+  return typeof value === "string" && Object.hasOwn(PHOTO_STYLES, value);
+}
+
+// Stored next to the preset, as {"preset": ..., "photo": "cover"}.
+// Anything else means round, so older pages keep their look.
+export function photoStyleFrom(theme: unknown): PhotoStyle {
+  const photo = (theme as { photo?: unknown } | null)?.photo;
+  return isPhotoStyle(photo) ? photo : "round";
+}
+
+// The stored settings object, so one setting can change without
+// dropping the others.
+export function themeSettings(theme: unknown): Record<string, unknown> {
+  return theme && typeof theme === "object" && !Array.isArray(theme)
+    ? { ...(theme as Record<string, unknown>) }
+    : {};
+}
+
+// The cover photo turns see-through toward the bottom, so it melts into
+// any page background: plain colors and Sunset's gradient alike.
+export const COVER_FADE =
+  "linear-gradient(to bottom, black 45%, rgb(0 0 0 / 0.6) 70%, transparent 100%)";

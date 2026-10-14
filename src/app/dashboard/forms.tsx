@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useOptimistic, useState, useTransition } from "react";
 import { Button, Input, Field, button, cx } from "@/components/ui";
 import { createClient } from "@/lib/supabase/browser";
 import { displaySocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
@@ -8,10 +8,13 @@ import {
   addLink,
   claimUsername,
   setAvatar,
+  setPhotoStyle,
   updateSocials,
   type FormState,
 } from "./actions";
+import { PHOTO_STYLES, type PhotoStyle } from "@/lib/themes";
 import { LinkForm } from "./link-form";
+import { PhotoCropper } from "./photo-cropper";
 
 export function ClaimUsernameForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -133,57 +136,41 @@ export function CopyLinkButton({ url }: { url: string }) {
   );
 }
 
-// Crops the picture to a centered square and shrinks it to 512px JPEG,
-// so phone photos upload fast and stay under the 2 MB bucket limit.
-async function toSquareJpeg(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
-  const size = Math.min(512, side);
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  canvas
-    .getContext("2d")!
-    .drawImage(
-      bitmap,
-      (bitmap.width - side) / 2,
-      (bitmap.height - side) / 2,
-      side,
-      side,
-      0,
-      0,
-      size,
-      size,
-    );
-  return new Promise((resolve, reject) =>
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("toBlob failed"))),
-      "image/jpeg",
-      0.85,
-    ),
-  );
-}
+const PHOTO_STYLE_HINTS: Record<PhotoStyle, string> = {
+  round: "A small round picture above your name.",
+  cover: "A big photo across the top that fades into your page.",
+};
 
 export function AvatarUpload({
   userId,
   avatarUrl,
   name,
+  photoStyle,
 }: {
   userId: string;
   avatarUrl: string | null;
   name: string;
+  photoStyle: PhotoStyle;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // The picture being framed in the cropper, before it uploads.
+  const [file, setFile] = useState<File | null>(null);
+  // Shows the new style right away while it saves.
+  const [style, setStyle] = useOptimistic(photoStyle);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (!picked) return;
     setError(null);
+    setFile(picked);
+  }
+
+  function upload(blob: Blob) {
+    setFile(null);
     startTransition(async () => {
       try {
-        const blob = await toSquareJpeg(file);
         const supabase = createClient();
         const path = `${userId}/${crypto.randomUUID()}.jpg`;
         const { error: uploadError } = await supabase.storage
@@ -198,51 +185,131 @@ export function AvatarUpload({
     });
   }
 
+  function pickStyle(next: PhotoStyle) {
+    startTransition(async () => {
+      setStyle(next);
+      await setPhotoStyle(next);
+    });
+  }
+
+  const thumb =
+    style === "cover"
+      ? "h-25 w-20 rounded-2xl"
+      : "h-20 w-20 rounded-full";
+
   return (
-    <div className="flex items-center gap-4">
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={avatarUrl}
-          alt={name}
-          className="h-20 w-20 shrink-0 rounded-full border border-edge object-cover"
-        />
-      ) : (
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-raised font-display text-2xl font-bold text-ink-soft">
-          {name.charAt(0).toUpperCase()}
-        </div>
-      )}
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap gap-2">
-          <label
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-4">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt={name}
+            className={cx(thumb, "shrink-0 border border-edge object-cover")}
+          />
+        ) : (
+          <div
             className={cx(
-              button({ variant: "secondary", size: "sm" }),
-              "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand",
-              pending && "opacity-50",
+              thumb,
+              "flex shrink-0 items-center justify-center bg-raised font-display text-2xl font-bold text-ink-soft",
             )}
           >
-            {pending ? "Uploading..." : "Change picture"}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onChange}
-              disabled={pending}
-              className="sr-only"
-            />
-          </label>
-          {avatarUrl && !pending && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => startTransition(() => setAvatar(null))}
+            {name.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <label
+              className={cx(
+                button({ variant: "secondary", size: "sm" }),
+                "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand",
+                pending && "opacity-50",
+              )}
             >
-              Remove
-            </Button>
-          )}
+              {pending ? "Saving..." : "Change picture"}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onChange}
+                disabled={pending}
+                className="sr-only"
+              />
+            </label>
+            {avatarUrl && !pending && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => startTransition(() => setAvatar(null))}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
         </div>
-        {error && <p className="text-sm text-danger">{error}</p>}
       </div>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="pb-2 text-sm font-bold text-ink">
+          Picture style
+        </legend>
+        <div className="grid grid-cols-2 gap-3">
+          {(Object.keys(PHOTO_STYLES) as PhotoStyle[]).map((id) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={id === style}
+              onClick={() => id !== style && pickStyle(id)}
+              className={cx(
+                "flex items-center gap-3 rounded-2xl border border-edge bg-surface p-3 text-left transition hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                id === style &&
+                  "ring-2 ring-brand ring-offset-2 ring-offset-surface",
+              )}
+            >
+              <StyleSketch style={id} />
+              <span className="text-sm font-bold text-ink">
+                {PHOTO_STYLES[id].label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-sm text-ink-muted">{PHOTO_STYLE_HINTS[style]}</p>
+        {style === "cover" && avatarUrl && (
+          <p className="text-sm text-ink-muted">
+            Tip: choose your picture again to frame it for the tall cover
+            shape.
+          </p>
+        )}
+      </fieldset>
+
+      {file && (
+        <PhotoCropper
+          file={file}
+          style={style}
+          onCancel={() => setFile(null)}
+          onDone={upload}
+        />
+      )}
     </div>
+  );
+}
+
+/** A tiny drawing of each picture style for the picker. */
+function StyleSketch({ style }: { style: PhotoStyle }) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-14 w-11 shrink-0 flex-col items-center gap-1 overflow-hidden rounded-lg border border-edge bg-canvas"
+    >
+      {style === "cover" ? (
+        <span className="h-7 w-full bg-linear-to-b from-ink-muted to-transparent" />
+      ) : (
+        <span className="mt-2 h-4 w-4 rounded-full bg-ink-muted" />
+      )}
+      <span className="h-1 w-6 rounded bg-ink-soft" />
+      <span className="h-1 w-8 rounded bg-raised" />
+      <span className="h-1 w-8 rounded bg-raised" />
+    </span>
   );
 }

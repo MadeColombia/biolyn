@@ -7,7 +7,7 @@ import { validateUsername } from "@/lib/usernames";
 import { profileTag } from "@/lib/profiles";
 import { supabaseEnv } from "@/lib/supabase/env";
 import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
-import { isThemeId } from "@/lib/themes";
+import { isPhotoStyle, isThemeId, themeSettings } from "@/lib/themes";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
 import {
@@ -32,7 +32,7 @@ async function requireOwnProfile() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, avatar_url")
+    .select("id, username, avatar_url, theme")
     .eq("user_id", user.id)
     .single();
   if (!profile) redirect("/dashboard");
@@ -300,14 +300,25 @@ export async function reorderLinks(orderedIds: string[]) {
   refresh(profile.username);
 }
 
-export async function setTheme(themeId: string) {
-  if (!isThemeId(themeId)) return;
+// profiles.theme holds every look setting ({preset, photo, ...}), so
+// each change keeps the others.
+async function saveLook(change: Record<string, string>) {
   const { supabase, profile } = await requireOwnProfile();
   await supabase
     .from("profiles")
-    .update({ theme: { preset: themeId } })
+    .update({ theme: { ...themeSettings(profile.theme), ...change } })
     .eq("id", profile.id);
   refresh(profile.username);
+}
+
+export async function setTheme(themeId: string) {
+  if (!isThemeId(themeId)) return;
+  await saveLook({ preset: themeId });
+}
+
+export async function setPhotoStyle(style: string) {
+  if (!isPhotoStyle(style)) return;
+  await saveLook({ photo: style });
 }
 
 export async function updateSocials(
