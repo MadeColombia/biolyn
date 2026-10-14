@@ -2,9 +2,9 @@ import Link from "next/link";
 import { cx } from "./recipes";
 
 /**
- * The Biolyn mark: a b whose bowl is a chain link, on a terracotta tile.
- * Colors come from tokens, so it switches to the dark palette by itself.
- * Same drawing as public/brand/biolyn-mark.svg and src/app/icon.svg.
+ * The Biolyn mark: a bold ring (the one link in your bio) on a terracotta
+ * tile. Colors come from tokens, so it switches to the dark palette by
+ * itself. Same drawing as public/brand/biolyn-mark.svg and src/app/icon.svg.
  */
 export function LogoMark({
   size = 32,
@@ -27,13 +27,10 @@ export function LogoMark({
     >
       {title && <title>{title}</title>}
       <rect width="64" height="64" rx="16" className="fill-brand" />
-      <rect x="12.5" y="10" width="9" height="40" rx="4.5" className="fill-on-brand" />
-      <rect
-        x="17"
-        y="27"
-        width="30"
-        height="23"
-        rx="11.5"
+      <circle
+        cx="32"
+        cy="32"
+        r="15"
         fill="none"
         strokeWidth="9"
         className="stroke-on-brand"
@@ -42,17 +39,39 @@ export function LogoMark({
   );
 }
 
-/** The mark plus the biolyn.link wordmark, linking home. */
+/** The ring that replaces the o in the wordmark. Sized to the text. */
+function RingO() {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      aria-hidden
+      className="mx-[0.01em] inline-block h-[0.64em] w-[0.64em] align-[-0.04em]"
+    >
+      <circle
+        cx="32"
+        cy="32"
+        r="25"
+        fill="none"
+        strokeWidth="14"
+        className="stroke-brand"
+      />
+    </svg>
+  );
+}
+
+/** The biolyn.link wordmark, with the ring as its o, linking home. */
 export function Logo({
-  showMark = true,
+  showMark = false,
   className,
 }: {
+  /** Also show the tile mark before the wordmark. */
   showMark?: boolean;
   className?: string;
 }) {
   return (
     <Link
       href="/"
+      aria-label="Biolyn home"
       className={cx(
         "inline-flex items-center gap-2.5 font-display text-xl font-extrabold tracking-tight",
         className,
@@ -60,7 +79,9 @@ export function Logo({
     >
       {showMark && <LogoMark size={32} />}
       <span>
-        biolyn<span className="text-brand">.</span>link
+        bi
+        <RingO />
+        lyn<span className="text-brand">.</span>link
       </span>
     </Link>
   );

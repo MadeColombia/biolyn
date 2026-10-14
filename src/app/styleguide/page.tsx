@@ -59,6 +59,7 @@ export default function StyleGuide() {
             <LogoMark size={32} />
             <LogoMark size={16} />
             <Logo />
+            <Logo showMark />
           </div>
           <p className="text-sm text-ink-muted">
             Files for other uses (Instagram, print, slides) are in
