@@ -4,6 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Skeleton } from "@/components/ui";
 import { SocialIcon } from "@/components/social-icon";
+import { FONT_PAGE_CLASS } from "@/components/profile-fonts";
+import { RichBio } from "@/components/rich-bio";
+import { cleanBio, parseBio, plainBio } from "@/lib/rich-bio";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { COVER_FADE, THEMES } from "@/lib/themes";
@@ -29,10 +32,11 @@ export async function generateMetadata(
   const profile = await getPublicProfile(username.toLowerCase());
   if (!profile) return { title: "biolyn" };
   const title = `${profile.display_name ?? profile.username} | biolyn`;
+  const description = plainBio(parseBio(profile.bio), " ").trim() || undefined;
   return {
     title,
-    description: profile.bio ?? undefined,
-    openGraph: { title, description: profile.bio ?? undefined },
+    description,
+    openGraph: { title, description },
   };
 }
 
@@ -75,7 +79,9 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
   const cover = profile.photo_style === "cover" && Boolean(profile.avatar_url);
 
   return (
-    <main className={`flex flex-1 flex-col ${theme.page}`}>
+    <main
+      className={`flex flex-1 flex-col ${theme.page} ${FONT_PAGE_CLASS[profile.font]}`}
+    >
       <ViewTracker profileId={profile.id} />
       {cover && (
         // Big photo across the top. It turns see-through toward the
@@ -118,7 +124,9 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
             {name}
           </h1>
           {profile.bio && (
-            <p className={`mt-1 ${theme.muted}`}>{profile.bio}</p>
+            <p className={`mt-1 break-words ${theme.muted}`}>
+              <RichBio nodes={cleanBio(parseBio(profile.bio))} />
+            </p>
           )}
         </div>
         {socials.length > 0 && (

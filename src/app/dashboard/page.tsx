@@ -5,13 +5,11 @@ import {
   Badge,
   Button,
   Card,
-  Field,
   Heading,
   PageShell,
   card,
   container,
   cx,
-  input,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/analytics";
@@ -23,12 +21,15 @@ import {
   type ThemeId,
 } from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
-import { setTheme, signOut, updateProfile } from "./actions";
+import { setFont, setTheme, signOut } from "./actions";
+import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
+import { FONT_CLASS } from "@/components/profile-fonts";
 import {
   AddLinkForm,
   AvatarUpload,
   ClaimUsernameForm,
   CopyLinkButton,
+  ProfileForm,
   SocialsForm,
 } from "./forms";
 import { LinkList } from "./link-list";
@@ -140,6 +141,7 @@ async function Dashboard() {
   const galleryLayout = galleryLayoutFrom(profile.gallery_layout);
 
   const currentTheme = themeFrom(profile.theme);
+  const currentFont = fontFrom(profile.theme);
   const stats = await getStats(
     supabase,
     profile.id,
@@ -209,32 +211,10 @@ async function Dashboard() {
           name={profile.display_name ?? profile.username}
           photoStyle={photoStyleFrom(profile.theme)}
         />
-        <form action={updateProfile} className="flex flex-col gap-4">
-          <Field
-            label="Display name"
-            name="display_name"
-            defaultValue={profile.display_name ?? ""}
-            placeholder="Display name"
-          />
-          <div className="flex flex-col gap-2">
-            <label htmlFor="field-bio" className="text-sm font-bold text-ink">
-              Bio
-            </label>
-            <textarea
-              id="field-bio"
-              name="bio"
-              defaultValue={profile.bio ?? ""}
-              placeholder="Short bio (160 characters)"
-              maxLength={160}
-              aria-describedby="field-bio-note"
-              className={cx(input(), "min-h-24 py-3")}
-            />
-            <p id="field-bio-note" className="text-sm text-ink-muted">
-              Up to 160 characters.
-            </p>
-          </div>
-          <Button className="self-start">Save profile</Button>
-        </form>
+        <ProfileForm
+          displayName={profile.display_name ?? ""}
+          bio={profile.bio}
+        />
       </Card>
 
       <Card padding="md" className="flex flex-col gap-6">
@@ -298,6 +278,39 @@ async function Dashboard() {
                     className={cx("h-3 w-3/4 rounded", THEMES[id].button)}
                   />
                   {THEMES[id].label}
+                </button>
+                <div className="flex h-8 items-center justify-center">
+                  {selected && <Badge>Current</Badge>}
+                </div>
+              </form>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Font">
+          Used for everything on your public page: name, bio and links.
+        </SectionTitle>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {(Object.keys(FONTS) as FontId[]).map((id) => {
+            const selected = id === currentFont;
+            return (
+              <form key={id} action={setFont.bind(null, id)}>
+                <button
+                  aria-pressed={selected}
+                  className={cx(
+                    "flex h-28 w-full flex-col items-center justify-center gap-1 rounded-2xl border border-edge bg-canvas px-2 text-ink transition hover:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                    selected &&
+                      "ring-2 ring-brand ring-offset-2 ring-offset-surface",
+                  )}
+                >
+                  <span className={cx("text-3xl", FONT_CLASS[id])} aria-hidden>
+                    Aa
+                  </span>
+                  <span className={cx("text-sm", FONT_CLASS[id])}>
+                    {FONTS[id].label}
+                  </span>
                 </button>
                 <div className="flex h-8 items-center justify-center">
                   {selected && <Badge>Current</Badge>}

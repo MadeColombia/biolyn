@@ -8,6 +8,7 @@ import {
   type PhotoStyle,
   type ThemeId,
 } from "@/lib/themes";
+import { fontFrom, type FontId } from "@/lib/fonts";
 import { embedFor, type Embed } from "@/lib/embeds";
 import { isLive, secondsUntilNextChange } from "@/lib/schedule";
 import { isLinkSize, type LinkSize } from "@/lib/link-form";
@@ -35,6 +36,7 @@ export type PublicProfile = {
   avatar_url: string | null;
   theme: ThemeId;
   photo_style: PhotoStyle;
+  font: FontId;
   socials: Socials;
   links: PublicLink[];
   gallery: { layout: GalleryLayout; photos: PublicPhoto[] };
@@ -112,6 +114,7 @@ export async function getPublicProfile(
     avatar_url: profile.avatar_url,
     theme: themeFrom(profile.theme),
     photo_style: photoStyleFrom(profile.theme),
+    font: fontFrom(profile.theme),
     socials: socialsFrom(profile.socials),
     links,
     gallery: {

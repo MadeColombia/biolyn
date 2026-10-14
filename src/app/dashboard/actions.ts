@@ -8,6 +8,8 @@ import { profileTag } from "@/lib/profiles";
 import { supabaseEnv } from "@/lib/supabase/env";
 import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import { isPhotoStyle, isThemeId, themeSettings } from "@/lib/themes";
+import { isFontId } from "@/lib/fonts";
+import { sanitizeBio } from "@/lib/rich-bio";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
 import {
@@ -87,16 +89,28 @@ export async function claimUsername(
   return {};
 }
 
-export async function updateProfile(formData: FormData) {
+export async function updateProfile(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const bio = sanitizeBio(String(formData.get("bio") ?? ""));
+  if ("error" in bio) return { error: bio.error };
+  for (const url of bio.links) {
+    const unsafe = await checkLinkUrl(url);
+    if (unsafe) return { error: `Link in your bio: ${unsafe}` };
+  }
+
   const { supabase, profile } = await requireOwnProfile();
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .update({
       display_name: String(formData.get("display_name") ?? "").slice(0, 60),
-      bio: String(formData.get("bio") ?? "").slice(0, 160),
+      bio: bio.bio,
     })
     .eq("id", profile.id);
+  if (error) return { error: "Could not save. Try again." };
   refresh(profile.username);
+  return { saved: true };
 }
 
 export async function addLink(
@@ -306,7 +320,7 @@ export async function reorderLinks(orderedIds: string[]) {
   refresh(profile.username);
 }
 
-// profiles.theme holds every look setting ({preset, photo, ...}), so
+// profiles.theme holds every look setting ({preset, font, photo}), so
 // each change keeps the others.
 async function saveLook(change: Record<string, string>) {
   const { supabase, profile } = await requireOwnProfile();
@@ -320,6 +334,12 @@ async function saveLook(change: Record<string, string>) {
 export async function setTheme(themeId: string) {
   if (!isThemeId(themeId)) return;
   await saveLook({ preset: themeId });
+}
+
+// The font for the whole public page.
+export async function setFont(fontId: string) {
+  if (!isFontId(fontId)) return;
+  await saveLook({ font: fontId });
 }
 
 export async function setPhotoStyle(style: string) {

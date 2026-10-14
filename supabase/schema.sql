@@ -7,8 +7,10 @@ create table public.profiles (
   username text not null unique
     check (username ~ '^[a-z0-9_.]{3,30}$'),
   display_name text,
-  bio text check (char_length(bio) <= 160),
+  -- Formatted bio (see src/lib/rich-bio.ts); 160 visible characters max.
+  bio text check (char_length(bio) <= 1000),
   avatar_url text,
+  -- {"preset": theme id, "font": font id}, see themes.ts and fonts.ts.
   theme jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
