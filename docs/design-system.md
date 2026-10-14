@@ -18,6 +18,7 @@ Public profile pages (`/[username]`) are the exception: they use the owner's the
 The mark is a bold ring: the one link in your bio. It also replaces the o in the wordmark, so the name reads `bi◯lyn.link` with a terracotta ring and dot. On a tile it is a white ring on terracotta (dark mode: near-black on the brighter terracotta).
 
 - Large uses get the ring in motion ("Dash"): two blurred copies trail to the left, like it is moving. Use `<LogoMotion height={72} />` at 64px tall or more (homepage, splash, social images). Below that the blur becomes a smudge, so small uses (favicon, header, the o in the wordmark) stay sharp.
+- Homepage: the wordmark sits centered above the hero headline as `<Logo animated />`. Its ring o dashes in from the left once on load (keyframes `biolyn-dash-*` in `globals.css`); people who turn on reduced motion in their system settings see it already in place. The homepage hides the header logo with `<PageShell showLogo={false}>`.
 - In the app: `<Logo />` (the wordmark with the ring o, links home; `showMark` adds the tile in front) or `<LogoMark size={32} />` (tile only). Both use tokens, so dark mode is automatic. `PageShell` already puts `<Logo />` in the header.
 - Browser tab and home screen: `src/app/icon.svg` (follows light/dark), `src/app/favicon.ico` (older browsers), `src/app/apple-icon.png` (iPhone home screen).
 - Everywhere else, use the files in `public/brand/` (also served at `https://biolyn.link/brand/...`):

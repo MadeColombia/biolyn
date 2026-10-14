@@ -79,3 +79,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Logo: the ring o dashes in from the left (see Logo animated). */
+@keyframes biolyn-dash-in {
+  from {
+    transform: translateX(-2.4em);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes biolyn-dash-trail {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.biolyn-dash-in {
+  animation: biolyn-dash-in 700ms cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
+}
+
+.biolyn-dash-trail {
+  animation: biolyn-dash-trail 1000ms ease-out 150ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .biolyn-dash-in,
+  .biolyn-dash-trail {
+    animation: none;
+  }
+
+  .biolyn-dash-trail {
+    opacity: 0;
+  }
+}

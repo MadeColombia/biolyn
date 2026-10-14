@@ -59,13 +59,50 @@ function RingO() {
   );
 }
 
+/**
+ * The ring o dashing in: it slides in from the left with two sideways
+ * blurred copies trailing it, which fade out as it lands. The keyframes
+ * live in globals.css (biolyn-dash-*) and turn off for people who ask
+ * their system for reduced motion.
+ */
+function DashingRingO() {
+  return (
+    <span className="relative mx-[0.01em] inline-block h-[0.64em] w-[0.64em] align-[-0.04em]">
+      <svg
+        viewBox="-64 0 128 64"
+        aria-hidden
+        className="biolyn-dash-in absolute top-0 right-0 -z-10 h-full w-[200%] overflow-visible"
+      >
+        <defs>
+          <filter id="biolyn-o-near" x="-50%" y="-20%" width="200%" height="140%">
+            <feGaussianBlur stdDeviation="6 0" />
+          </filter>
+          <filter id="biolyn-o-far" x="-50%" y="-20%" width="200%" height="140%">
+            <feGaussianBlur stdDeviation="10 0" />
+          </filter>
+        </defs>
+        <g fill="none" strokeWidth="14" className="stroke-brand">
+          <g className="biolyn-dash-trail">
+            <circle cx="-8" cy="32" r="25" opacity="0.22" filter="url(#biolyn-o-far)" />
+            <circle cx="12" cy="32" r="25" opacity="0.45" filter="url(#biolyn-o-near)" />
+          </g>
+          <circle cx="32" cy="32" r="25" />
+        </g>
+      </svg>
+    </span>
+  );
+}
+
 /** The biolyn.link wordmark, with the ring as its o, linking home. */
 export function Logo({
   showMark = false,
+  animated = false,
   className,
 }: {
   /** Also show the tile mark before the wordmark. */
   showMark?: boolean;
+  /** Play the dash-in animation on the o once, when the page loads. */
+  animated?: boolean;
   className?: string;
 }) {
   return (
@@ -73,14 +110,14 @@ export function Logo({
       href="/"
       aria-label="Biolyn home"
       className={cx(
-        "inline-flex items-center gap-2.5 font-display text-xl font-extrabold tracking-tight",
+        "isolate inline-flex items-center gap-2.5 font-display text-xl font-extrabold tracking-tight",
         className,
       )}
     >
       {showMark && <LogoMark size={32} />}
       <span>
         bi
-        <RingO />
+        {animated ? <DashingRingO /> : <RingO />}
         lyn<span className="text-brand">.</span>link
       </span>
     </Link>

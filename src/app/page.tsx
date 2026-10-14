@@ -3,6 +3,7 @@ import {
   ButtonLink,
   Card,
   Heading,
+  Logo,
   LogoMotion,
   PageShell,
   button,
@@ -16,7 +17,7 @@ const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
 
 export default function Home() {
   return (
-    <PageShell>
+    <PageShell showLogo={false}>
       <main className="flex flex-1 flex-col">
         <section
           className={cx(
@@ -24,6 +25,7 @@ export default function Home() {
             "flex flex-col items-center gap-7 pt-16 pb-16 text-center sm:pt-20",
           )}
         >
+          <Logo animated className="text-3xl sm:text-4xl" />
           <Heading as="h1" size="display" className="max-w-4xl">
             Your bio fits <span className="text-brand">one link.</span> Make it
             count.

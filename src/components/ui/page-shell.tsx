@@ -10,8 +10,11 @@ import { container, cx } from "./recipes";
 export function PageShell({
   children,
   header = <AccountLink />,
+  showLogo = true,
 }: {
   children: React.ReactNode;
+  /** Hide the header logo when the page shows its own (the homepage). */
+  showLogo?: boolean;
   /** Right side of the header. Pass null to hide it. */
   header?: React.ReactNode;
 }) {
@@ -20,10 +23,11 @@ export function PageShell({
       <header
         className={cx(
           container(),
-          "flex items-center justify-between gap-4 py-5",
+          "flex items-center gap-4 py-5",
+          showLogo ? "justify-between" : "justify-end",
         )}
       >
-        <Logo />
+        {showLogo && <Logo />}
         {header}
       </header>
       {children}
