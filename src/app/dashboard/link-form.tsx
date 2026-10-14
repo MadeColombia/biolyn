@@ -150,6 +150,9 @@ export function LinkForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      <p className="text-sm text-ink-muted">
+        Fields marked <span className="text-danger">*</span> are required.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id={`${idPrefix}-title`}

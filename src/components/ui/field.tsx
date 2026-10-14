@@ -17,7 +17,7 @@ export function Input({
 
 /**
  * Label + input + optional hint or error, wired together for screen
- * readers. Extra props go to the input. The id comes from `id`, else
+ * readers. A `required` field gets a * after its label. Extra props go to the input. The id comes from `id`, else
  * `name`, else the label, so keep them unique on a screen.
  */
 export function Field({
@@ -38,6 +38,13 @@ export function Field({
     <div className="flex flex-col gap-2">
       <label htmlFor={inputId} className="text-sm font-bold text-ink">
         {label}
+        {/* Screen readers already announce the input as required. */}
+        {props.required && (
+          <span aria-hidden className="text-danger">
+            {" "}
+            *
+          </span>
+        )}
       </label>
       <Input
         id={inputId}
