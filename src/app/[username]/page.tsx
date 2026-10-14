@@ -99,7 +99,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   aria-label={p.label}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block opacity-90 transition hover:opacity-100"
+                  className="block opacity-90 transition hover:opacity-100 motion-safe:hover:scale-110 motion-safe:focus-visible:scale-110"
                 >
                   <SocialIcon id={p.id} />
                 </a>
