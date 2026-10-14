@@ -78,22 +78,14 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
       className={`flex flex-1 flex-col ${theme.page} ${FONT_PAGE_CLASS[profile.font]}`}
     >
       <ViewTracker profileId={profile.id} />
-      {/* With a cover photo, wide screens show the page as a card on a
-          darker backdrop, so the photo's straight sides line up with the
-          card's edges. Phones stay edge to edge. */}
+      {/* Wide screens show the page as a card on a tinted backdrop (a
+          cover photo's straight sides line up with the card's edges).
+          Phones stay edge to edge. */}
       <div
-        className={
-          cover
-            ? `flex flex-1 flex-col md:px-6 md:py-10 ${theme.backdrop}`
-            : "contents"
-        }
+        className={`flex flex-1 flex-col md:px-6 md:py-10 ${theme.backdrop}`}
       >
         <div
-          className={
-            cover
-              ? `mx-auto flex w-full flex-1 flex-col md:max-w-lg md:overflow-hidden md:rounded-[2rem] md:shadow-2xl ${theme.page}`
-              : "contents"
-          }
+          className={`mx-auto flex w-full flex-1 flex-col md:max-w-lg md:overflow-hidden md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
         >
           {cover && (
             // Big photo across the top. It turns see-through toward the
