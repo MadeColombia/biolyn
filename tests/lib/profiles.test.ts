@@ -133,6 +133,39 @@ describe("getPublicProfile", () => {
 
   it("handles a page with no links", async () => {
     db = fakeClient({ profiles: [{ data: profile }], links: [{ data: null }] });
-    expect((await getPublicProfile("ethan"))?.links).toEqual([]);
+    const page = await getPublicProfile("ethan");
+    expect(page?.links).toEqual([]);
+    expect(page?.gallery).toEqual({ layout: "carousel", photos: [] });
+  });
+
+  it("returns the gallery with only photos from the photos bucket", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://x.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
+    const bucket = "https://x.supabase.co/storage/v1/object/public/photos/";
+    db = fakeClient({
+      profiles: [{ data: { ...profile, gallery_layout: "grid" } }],
+      links: [{ data: [] }],
+      photos: [
+        {
+          data: [
+            { id: "a", url: `${bucket}u1/a.jpg`, alt: "Dog" },
+            { id: "b", url: "https://tracker.example/pixel.gif", alt: "" },
+            { id: "c", url: `${bucket}u1/c.jpg`, alt: null },
+          ],
+        },
+      ],
+    });
+    const page = await getPublicProfile("ethan");
+    expect(page?.gallery).toEqual({
+      layout: "grid",
+      photos: [
+        { id: "a", url: `${bucket}u1/a.jpg`, alt: "Dog" },
+        { id: "c", url: `${bucket}u1/c.jpg`, alt: "" },
+      ],
+    });
+    expect(db.queries.photos[0].calls).toContainEqual({
+      method: "order",
+      args: ["position"],
+    });
   });
 });
