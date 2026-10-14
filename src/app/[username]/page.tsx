@@ -9,6 +9,15 @@ import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { THEMES } from "@/lib/themes";
 import { ViewTracker } from "./view-tracker";
 
+// Apple's own embed code. Its player stays on a blank music note in some
+// browsers without these exact permissions, so copy them as published.
+const APPLE_FRAME = {
+  allow: "autoplay *; encrypted-media *; fullscreen *; clipboard-write",
+  sandbox:
+    "allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation",
+  style: { background: "transparent", overflow: "hidden" },
+} as const;
+
 // Heights the Spotify and Apple Music players are designed for.
 const PLAYER_HEIGHT = {
   spotify: { short: "h-[152px]", tall: "h-[352px]" },
@@ -113,9 +122,14 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                 <iframe
                   src={link.embed.src}
                   title={link.title}
-                  loading="lazy"
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  allowFullScreen
+                  {...(link.embed.kind === "apple"
+                    ? APPLE_FRAME
+                    : {
+                        loading: "lazy",
+                        allow:
+                          "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture",
+                        allowFullScreen: true,
+                      })}
                   className={`w-full rounded-xl border-0 ${
                     link.embed.kind === "youtube"
                       ? "aspect-video"
