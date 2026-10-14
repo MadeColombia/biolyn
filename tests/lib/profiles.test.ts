@@ -10,6 +10,10 @@ vi.mock("@/lib/supabase/public", () => ({ createPublicClient: () => db }));
 
 const { getPublicProfile, profileTag } = await import("@/lib/profiles");
 
+// The links on a page, without the galleries.
+const linksOf = (page: Awaited<ReturnType<typeof getPublicProfile>>) =>
+  (page?.items ?? []).filter((i) => i.kind === "link");
+
 const NOW = Date.parse("2026-10-13T12:00:00Z");
 const profile = {
   id: "p1",
@@ -80,18 +84,19 @@ describe("getPublicProfile", () => {
       ],
     });
     const page = await getPublicProfile("ethan");
-    expect(page?.links.map((l) => l.id)).toEqual(["a", "d", "e", "f", "g"]);
-    expect(page?.links[0]).toMatchObject({ size: "small", image_url: null });
-    expect(page?.links[2]).toMatchObject({
+    const links = linksOf(page);
+    expect(links.map((l) => l.id)).toEqual(["a", "d", "e", "f", "g"]);
+    expect(links[0]).toMatchObject({ size: "small", image_url: null });
+    expect(links[2]).toMatchObject({
       size: "big",
       image_url: "https://img/a.jpg",
     });
     // Unknown sizes fall back to the small button.
-    expect(page?.links[3].size).toBe("small");
+    expect(links[3].size).toBe("small");
     // Without an uploaded picture, the page's preview is used.
-    expect(page?.links[4].image_url).toBe("https://og/x.jpg");
-    expect(page?.links[0].embed).toBeNull();
-    expect(page?.links[1].embed?.kind).toBe("youtube");
+    expect(links[4].image_url).toBe("https://og/x.jpg");
+    expect(links[0].embed).toBeNull();
+    expect(links[1].embed?.kind).toBe("youtube");
     expect(page?.theme).toBe("midnight");
     expect(page?.photo_style).toBe("round");
     expect(page?.socials).toEqual({ x: "https://x.com/e" });
@@ -134,35 +139,58 @@ describe("getPublicProfile", () => {
   it("handles a page with no links", async () => {
     db = fakeClient({ profiles: [{ data: profile }], links: [{ data: null }] });
     const page = await getPublicProfile("ethan");
-    expect(page?.links).toEqual([]);
-    expect(page?.gallery).toEqual({ layout: "carousel", photos: [] });
+    expect(page?.items).toEqual([]);
   });
 
-  it("returns the gallery with only photos from the photos bucket", async () => {
+  it("puts each gallery in its place, with only photos from the photos bucket", async () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://x.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     const bucket = "https://x.supabase.co/storage/v1/object/public/photos/";
     db = fakeClient({
-      profiles: [{ data: { ...profile, gallery_layout: "grid" } }],
-      links: [{ data: [] }],
+      profiles: [{ data: profile }],
+      links: [
+        {
+          data: [
+            link({ id: "a" }),
+            link({ id: "g1", kind: "gallery", url: null, layout: "grid" }),
+            link({ id: "b" }),
+            // Empty galleries and links without an address show nothing.
+            link({ id: "g2", kind: "gallery", url: null, layout: null }),
+            link({ id: "c", url: null }),
+            link({ id: "g3", kind: "gallery", url: null, layout: "slideshow" }),
+          ],
+        },
+      ],
       photos: [
         {
           data: [
-            { id: "a", url: `${bucket}u1/a.jpg`, alt: "Dog" },
-            { id: "b", url: "https://tracker.example/pixel.gif", alt: "" },
-            { id: "c", url: `${bucket}u1/c.jpg`, alt: null },
+            { id: "p1", link_id: "g1", url: `${bucket}u1/a.jpg`, alt: "Dog" },
+            {
+              id: "p2",
+              link_id: "g1",
+              url: "https://tracker.example/pixel.gif",
+              alt: "",
+            },
+            { id: "p3", link_id: "g1", url: `${bucket}u1/c.jpg`, alt: null },
+            { id: "p4", link_id: "g3", url: `${bucket}u1/d.jpg`, alt: "" },
           ],
         },
       ],
     });
     const page = await getPublicProfile("ethan");
-    expect(page?.gallery).toEqual({
+    expect(page?.items.map((i) => i.id)).toEqual(["a", "g1", "b", "g3"]);
+    expect(page?.items[1]).toEqual({
+      kind: "gallery",
+      id: "g1",
+      title: "T",
       layout: "grid",
       photos: [
-        { id: "a", url: `${bucket}u1/a.jpg`, alt: "Dog" },
-        { id: "c", url: `${bucket}u1/c.jpg`, alt: "" },
+        { id: "p1", url: `${bucket}u1/a.jpg`, alt: "Dog" },
+        { id: "p3", url: `${bucket}u1/c.jpg`, alt: "" },
       ],
     });
+    // Unknown layouts fall back to the carousel.
+    expect(page?.items[3]).toMatchObject({ layout: "carousel" });
     expect(db.queries.photos[0].calls).toContainEqual({
       method: "order",
       args: ["position"],

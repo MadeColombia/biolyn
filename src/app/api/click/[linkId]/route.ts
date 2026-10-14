@@ -22,7 +22,7 @@ export async function GET(
     .eq("profiles.is_suspended", false)
     .maybeSingle();
 
-  if (!link || !isLive(link, Date.now())) {
+  if (!link?.url || !isLive(link, Date.now())) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

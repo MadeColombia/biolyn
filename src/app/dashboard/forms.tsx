@@ -5,7 +5,6 @@ import { Button, Input, Field, button, cx } from "@/components/ui";
 import { createClient } from "@/lib/supabase/browser";
 import { displaySocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import {
-  addLink,
   claimUsername,
   updateProfile,
   setAvatar,
@@ -14,7 +13,6 @@ import {
   type FormState,
 } from "./actions";
 import { PHOTO_STYLES, type PhotoStyle } from "@/lib/themes";
-import { LinkForm } from "./link-form";
 import { PhotoCropper } from "./photo-cropper";
 import { BioEditor } from "./bio-editor";
 
@@ -89,21 +87,6 @@ export function ProfileForm({
         </p>
       </div>
     </form>
-  );
-}
-
-export function AddLinkForm({ userId }: { userId: string }) {
-  // A new key after each save gives a fresh, empty form.
-  const [round, setRound] = useState(0);
-  return (
-    <LinkForm
-      key={round}
-      userId={userId}
-      action={addLink}
-      submitLabel="Add link"
-      pendingLabel="Adding..."
-      onSaved={() => setRound((n) => n + 1)}
-    />
   );
 }
 

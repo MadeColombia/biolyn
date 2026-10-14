@@ -8,17 +8,19 @@ import type { PublicPhoto } from "@/lib/profiles";
 // the page's text color (bg-current), so it fits every theme. The arrow
 // buttons sit on the photo itself, so they use a dark see-through circle.
 export function Gallery({
+  title,
   layout,
   photos,
 }: {
+  title: string;
   layout: GalleryLayout;
   photos: PublicPhoto[];
 }) {
   if (photos.length === 0) return null;
   return layout === "grid" ? (
-    <PhotoGrid photos={photos} />
+    <PhotoGrid title={title} photos={photos} />
   ) : (
-    <Carousel photos={photos} />
+    <Carousel title={title} photos={photos} />
   );
 }
 
@@ -26,7 +28,7 @@ const circle =
   "absolute flex size-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 const arrow = `${circle} top-1/2 -translate-y-1/2`;
 
-function Carousel({ photos }: { photos: PublicPhoto[] }) {
+function Carousel({ title, photos }: { title: string; photos: PublicPhoto[] }) {
   const track = useRef<HTMLUListElement>(null);
   const [index, setIndex] = useState(0);
   const many = photos.length > 1;
@@ -41,7 +43,7 @@ function Carousel({ photos }: { photos: PublicPhoto[] }) {
   return (
     <section
       aria-roledescription="carousel"
-      aria-label="Photos"
+      aria-label={title}
       className="flex w-full flex-col gap-3"
     >
       <div className="relative">
@@ -116,7 +118,7 @@ function Carousel({ photos }: { photos: PublicPhoto[] }) {
   );
 }
 
-function PhotoGrid({ photos }: { photos: PublicPhoto[] }) {
+function PhotoGrid({ title, photos }: { title: string; photos: PublicPhoto[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState<PublicPhoto | null>(null);
   const cols =
@@ -132,7 +134,7 @@ function PhotoGrid({ photos }: { photos: PublicPhoto[] }) {
   }
 
   return (
-    <section aria-label="Photos" className="w-full">
+    <section aria-label={title} className="w-full">
       <ul className={`grid gap-2 ${cols}`}>
         {photos.map((photo, i) => (
           <li key={photo.id}>

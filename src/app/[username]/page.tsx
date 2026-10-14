@@ -159,9 +159,15 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
               </ul>
             )}
             <ul className="flex w-full flex-col gap-3">
-              {profile.links.map((link) => (
+              {profile.items.map((link) => (
                 <li key={link.id}>
-                  {link.embed ? (
+                  {link.kind === "gallery" ? (
+                    <Gallery
+                      title={link.title}
+                      layout={link.layout}
+                      photos={link.photos}
+                    />
+                  ) : link.embed ? (
                     <iframe
                       src={link.embed.src}
                       title={link.title}
@@ -224,10 +230,6 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                 </li>
               ))}
             </ul>
-            <Gallery
-              layout={profile.gallery.layout}
-              photos={profile.gallery.photos}
-            />
             <div
               className={`mt-auto flex items-center gap-4 pt-8 text-sm ${theme.muted}`}
             >

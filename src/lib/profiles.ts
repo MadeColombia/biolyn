@@ -19,6 +19,7 @@ import {
 } from "@/lib/gallery";
 
 export type PublicLink = {
+  kind: "link";
   id: string;
   title: string;
   url: string;
@@ -28,6 +29,15 @@ export type PublicLink = {
   image_url: string | null;
 };
 export type PublicPhoto = { id: string; url: string; alt: string };
+export type PublicGallery = {
+  kind: "gallery";
+  id: string;
+  title: string;
+  layout: GalleryLayout;
+  photos: PublicPhoto[];
+};
+// Links and photo galleries share one list, in the owner's order.
+export type PublicItem = PublicLink | PublicGallery;
 export type PublicProfile = {
   id: string;
   username: string;
@@ -38,8 +48,7 @@ export type PublicProfile = {
   photo_style: PhotoStyle;
   font: FontId;
   socials: Socials;
-  links: PublicLink[];
-  gallery: { layout: GalleryLayout; photos: PublicPhoto[] };
+  items: PublicItem[];
 };
 
 export const profileTag = (username: string) => `profile:${username}`;
@@ -59,7 +68,7 @@ export async function getPublicProfile(
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended, gallery_layout",
+      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended",
     )
     .eq("username", username)
     .maybeSingle();
@@ -74,14 +83,14 @@ export async function getPublicProfile(
     supabase
       .from("links")
       .select(
-        "id, title, url, embed, size, image_url, preview_url, starts_at, ends_at",
+        "id, kind, title, url, layout, embed, size, image_url, preview_url, starts_at, ends_at",
       )
       .eq("profile_id", profile.id)
       .eq("is_visible", true)
       .order("position"),
     supabase
       .from("photos")
-      .select("id, url, alt")
+      .select("id, link_id, url, alt")
       .eq("profile_id", profile.id)
       .order("position"),
   ]);
@@ -95,16 +104,44 @@ export async function getPublicProfile(
     expire: 86400,
   });
 
-  const links: PublicLink[] = all
+  // Only files from our own photos bucket, even if a row was written
+  // outside the app.
+  const photos = (photoRows ?? []).filter((p) =>
+    p.url.startsWith(photoPrefix()),
+  );
+
+  const items: PublicItem[] = all
     .filter((l) => isLive(l, now))
-    .map((l) => ({
-      id: l.id,
-      title: l.title,
-      url: l.url,
-      embed: l.embed ? embedFor(l.url) : null,
-      size: isLinkSize(l.size) ? l.size : "small",
-      image_url: l.image_url ?? l.preview_url ?? null,
-    }));
+    .flatMap((l): PublicItem[] => {
+      if (l.kind === "gallery") {
+        const own = photos
+          .filter((p) => p.link_id === l.id)
+          .map((p) => ({ id: p.id, url: p.url, alt: p.alt ?? "" }));
+        // An empty gallery shows nothing.
+        if (own.length === 0) return [];
+        return [
+          {
+            kind: "gallery",
+            id: l.id,
+            title: l.title,
+            layout: galleryLayoutFrom(l.layout),
+            photos: own,
+          },
+        ];
+      }
+      if (!l.url) return [];
+      return [
+        {
+          kind: "link",
+          id: l.id,
+          title: l.title,
+          url: l.url,
+          embed: l.embed ? embedFor(l.url) : null,
+          size: isLinkSize(l.size) ? l.size : "small",
+          image_url: l.image_url ?? l.preview_url ?? null,
+        },
+      ];
+    });
 
   return {
     id: profile.id,
@@ -116,18 +153,6 @@ export async function getPublicProfile(
     photo_style: photoStyleFrom(profile.theme),
     font: fontFrom(profile.theme),
     socials: socialsFrom(profile.socials),
-    links,
-    gallery: {
-      layout: galleryLayoutFrom(profile.gallery_layout),
-      // Only files from our own photos bucket, even if a row was written
-      // outside the app.
-      photos: (photoRows ?? [])
-        .filter((p) => p.url.startsWith(photoPrefix()))
-        .map((p) => ({
-        id: p.id,
-        url: p.url,
-        alt: p.alt ?? "",
-      })),
-    },
+    items,
   };
 }

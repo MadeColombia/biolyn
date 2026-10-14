@@ -1,7 +1,9 @@
 import { supabaseEnv } from "@/lib/supabase/env";
 
 // Photo gallery rules shared by the dashboard and the public page.
-export const MAX_PHOTOS = 12;
+export const MAX_PHOTOS = 12; // per gallery
+export const MAX_PAGE_PHOTOS = 60; // across all galleries on a page
+export const MAX_GALLERIES = 5;
 export const MAX_ALT_LENGTH = 120;
 
 export const GALLERY_LAYOUTS = ["carousel", "grid"] as const;

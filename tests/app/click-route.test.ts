@@ -57,6 +57,13 @@ describe("GET /api/click/[linkId]", () => {
     expect(admin!.rpc).not.toHaveBeenCalled();
   });
 
+  it("sends photo galleries (no address) home without counting", async () => {
+    pub = fakeClient({ links: [{ data: { ...live, url: null } }] });
+    const res = await click("g1");
+    expect(res.headers.get("location")).toBe("https://biolyn.link/");
+    expect(admin!.rpc).not.toHaveBeenCalled();
+  });
+
   it("sends ended scheduled links home", async () => {
     pub = fakeClient({
       links: [{ data: { ...live, ends_at: "2000-01-01T00:00:00Z" } }],
