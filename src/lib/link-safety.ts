@@ -2,6 +2,18 @@ import "server-only";
 
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
+// False for localhost, IP addresses and single-word names, so the
+// server never fetches anything on a private network.
+export function isPublicHost(hostname: string) {
+  const host = hostname.toLowerCase();
+  return !(
+    host === "localhost" ||
+    host.startsWith("[") ||
+    IPV4.test(host) ||
+    !host.includes(".")
+  );
+}
+
 // Basic checks every link must pass. Returns an error message, or null
 // when the link is fine.
 export async function checkLinkUrl(raw: string): Promise<string | null> {
@@ -14,13 +26,7 @@ export async function checkLinkUrl(raw: string): Promise<string | null> {
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     return "Links must start with http:// or https://.";
   }
-  const host = url.hostname.toLowerCase();
-  if (
-    host === "localhost" ||
-    host.startsWith("[") ||
-    IPV4.test(host) ||
-    !host.includes(".")
-  ) {
+  if (!isPublicHost(url.hostname)) {
     return "Use a public website address, not a local or IP address.";
   }
   if (await isFlaggedByGoogle(url.href)) {

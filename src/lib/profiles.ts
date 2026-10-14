@@ -13,6 +13,7 @@ export type PublicLink = {
   url: string;
   embed: Embed | null;
   size: LinkSize;
+  // The uploaded picture, else the page's own share picture.
   image_url: string | null;
 };
 export type PublicProfile = {
@@ -56,7 +57,7 @@ export async function getPublicProfile(
 
   const { data: rows } = await supabase
     .from("links")
-    .select("id, title, url, embed, size, image_url, starts_at, ends_at")
+    .select("id, title, url, embed, size, image_url, preview_url, starts_at, ends_at")
     .eq("profile_id", profile.id)
     .eq("is_visible", true)
     .order("position");
@@ -78,7 +79,7 @@ export async function getPublicProfile(
       url: l.url,
       embed: l.embed ? embedFor(l.url) : null,
       size: isLinkSize(l.size) ? l.size : "small",
-      image_url: l.image_url ?? null,
+      image_url: l.image_url ?? l.preview_url ?? null,
     }));
 
   return {

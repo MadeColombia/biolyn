@@ -120,7 +120,7 @@ async function Dashboard() {
   const { data: links } = await supabase
     .from("links")
     .select(
-      "id, title, url, is_visible, embed, size, image_url, starts_at, ends_at",
+      "id, title, url, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
     )
     .eq("profile_id", profile.id)
     .order("position");

@@ -147,10 +147,11 @@ function SortableLink({ link, userId }: { link: Link; userId: string }) {
           )}
         </svg>
       </button>
-      {link.size === "big" && link.image_url && (
+      {link.size === "big" && (link.image_url || link.preview_url) && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={link.image_url}
+          src={(link.image_url ?? link.preview_url)!}
+          referrerPolicy="no-referrer"
           alt=""
           className={cx(
             "aspect-video w-16 shrink-0 rounded-lg border border-edge object-cover",

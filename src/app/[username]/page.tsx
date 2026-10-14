@@ -135,6 +135,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                       src={link.image_url}
                       alt=""
                       loading="lazy"
+                      referrerPolicy="no-referrer"
                       className="aspect-video w-full rounded-2xl object-cover"
                     />
                   )}
