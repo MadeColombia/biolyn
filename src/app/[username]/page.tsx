@@ -124,6 +124,26 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                         ]
                   }`}
                 />
+              ) : link.size === "big" ? (
+                <a
+                  href={`/api/click/${link.id}`}
+                  className={`block w-full overflow-hidden rounded-3xl p-2 text-center font-semibold transition ${theme.card}`}
+                >
+                  {link.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={link.image_url}
+                      alt=""
+                      loading="lazy"
+                      className="aspect-video w-full rounded-2xl object-cover"
+                    />
+                  )}
+                  <span
+                    className={`block px-4 text-lg ${link.image_url ? "py-4" : "py-8"}`}
+                  >
+                    {link.title}
+                  </span>
+                </a>
               ) : (
                 <a
                   href={`/api/click/${link.id}`}

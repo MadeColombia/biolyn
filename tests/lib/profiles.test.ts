@@ -72,12 +72,21 @@ describe("getPublicProfile", () => {
               embed: true,
               url: "https://youtu.be/dQw4w9WgXcQ",
             }),
+            link({ id: "e", size: "big", image_url: "https://img/a.jpg" }),
+            link({ id: "f", size: "huge" }),
           ],
         },
       ],
     });
     const page = await getPublicProfile("ethan");
-    expect(page?.links.map((l) => l.id)).toEqual(["a", "d"]);
+    expect(page?.links.map((l) => l.id)).toEqual(["a", "d", "e", "f"]);
+    expect(page?.links[0]).toMatchObject({ size: "small", image_url: null });
+    expect(page?.links[2]).toMatchObject({
+      size: "big",
+      image_url: "https://img/a.jpg",
+    });
+    // Unknown sizes fall back to the small button.
+    expect(page?.links[3].size).toBe("small");
     expect(page?.links[0].embed).toBeNull();
     expect(page?.links[1].embed?.kind).toBe("youtube");
     expect(page?.theme).toBe("midnight");

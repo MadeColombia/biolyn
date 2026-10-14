@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useRef, useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Button, Input, Field, button, cx } from "@/components/ui";
-import { embedFor } from "@/lib/embeds";
 import { createClient } from "@/lib/supabase/browser";
 import { displaySocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import {
@@ -12,6 +11,7 @@ import {
   updateSocials,
   type FormState,
 } from "./actions";
+import { LinkForm } from "./link-form";
 
 export function ClaimUsernameForm() {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -51,81 +51,18 @@ export function ClaimUsernameForm() {
   );
 }
 
-const SERVICE_NAME = {
-  youtube: "a YouTube",
-  spotify: "a Spotify",
-  apple: "an Apple Music",
-};
-
-export function AddLinkForm() {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [url, setUrl] = useState("");
-  const embed = embedFor(url.trim());
-  const [state, action, pending] = useActionState<FormState, FormData>(
-    async (prev, formData) => {
-      // datetime-local values have no time zone; turn them into exact
-      // moments using this browser's zone before sending.
-      for (const [local, field] of [
-        ["starts_local", "starts_at"],
-        ["ends_local", "ends_at"],
-      ]) {
-        const value = formData.get(local);
-        if (typeof value === "string" && value) {
-          formData.set(field, new Date(value).toISOString());
-        }
-      }
-      const result = await addLink(prev, formData);
-      if (!result.error) {
-        formRef.current?.reset();
-        setUrl("");
-      }
-      return result;
-    },
-    {},
-  );
+export function AddLinkForm({ userId }: { userId: string }) {
+  // A new key after each save gives a fresh, empty form.
+  const [round, setRound] = useState(0);
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Title" name="title" placeholder="My shop" required />
-        <Field
-          label="URL"
-          name="url"
-          type="text"
-          inputMode="url"
-          placeholder="https://..."
-          required
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-        />
-      </div>
-      {/* Always mounted so screen readers announce the detected link. */}
-      <div role="status" aria-live="polite" className="empty:hidden">
-        {embed && (
-          <div className="flex flex-col gap-2 rounded-xl border border-edge bg-raised p-3">
-            <p className="text-sm font-bold text-success">
-              This is {SERVICE_NAME[embed.kind]} link!
-            </p>
-            <label className="flex items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                name="embed"
-                defaultChecked
-                className="size-4 accent-brand"
-              />
-              Show it as a player on your page
-            </label>
-          </div>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button disabled={pending}>{pending ? "Adding..." : "Add link"}</Button>
-        {state.error && (
-          <p role="alert" className="text-sm text-danger">
-            {state.error}
-          </p>
-        )}
-      </div>
-    </form>
+    <LinkForm
+      key={round}
+      userId={userId}
+      action={addLink}
+      submitLabel="Add link"
+      pendingLabel="Adding..."
+      onSaved={() => setRound((n) => n + 1)}
+    />
   );
 }
 

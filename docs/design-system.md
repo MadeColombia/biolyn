@@ -94,7 +94,7 @@ All in `src/components/ui/`, exported from `@/components/ui`.
 | `Button`               | `<button>`. Props: `variant` (`primary`, `secondary`, `ghost`, `danger`), `size` (`sm`, `md`, `lg`), `fullWidth`. |
 | `ButtonLink`           | Same look on a Next.js `<Link>`.                                           |
 | `Card`                 | Panel. Props: `tone` (`plain`, `brand`, `interactive`), `padding` (`none`, `md`, `lg`). |
-| `Field`                | Label + input + hint or error, linked for screen readers.                  |
+| `Field`                | Label + input + hint or error, linked for screen readers. `required` adds a * to the label. |
 | `Input`                | Just the input, when you need your own label layout.                       |
 | `Badge`                | Small pill. `tone`: `brand` or `neutral`.                                  |
 | `Logo`                 | The biolyn.link wordmark.                                                  |

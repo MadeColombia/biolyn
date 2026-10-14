@@ -20,17 +20,16 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Badge, Button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
-import { deleteLink, reorderLinks, toggleEmbed, toggleLink } from "./actions";
+import {
+  deleteLink,
+  reorderLinks,
+  toggleEmbed,
+  toggleLink,
+  updateLink,
+} from "./actions";
+import { LinkForm, type EditableLink } from "./link-form";
 
-type Link = {
-  id: string;
-  title: string;
-  url: string;
-  is_visible: boolean;
-  embed: boolean;
-  starts_at: string | null;
-  ends_at: string | null;
-};
+type Link = EditableLink & { is_visible: boolean };
 
 // Shown in the creator's own time zone. The server renders UTC first,
 // so the text is allowed to change once the browser takes over.
@@ -52,7 +51,13 @@ function scheduleText(link: Link) {
 
 // The parent gives this a `key` built from the server data, so the list
 // starts fresh whenever the saved links change.
-export function LinkList({ links: initial }: { links: Link[] }) {
+export function LinkList({
+  links: initial,
+  userId,
+}: {
+  links: Link[];
+  userId: string;
+}) {
   const [links, setLinks] = useState(initial);
   const [, startTransition] = useTransition();
   const sensors = useSensors(
@@ -90,7 +95,7 @@ export function LinkList({ links: initial }: { links: Link[] }) {
       <SortableContext items={links} strategy={verticalListSortingStrategy}>
         <ul className="flex flex-col gap-3">
           {links.map((link) => (
-            <SortableLink key={link.id} link={link} />
+            <SortableLink key={link.id} link={link} userId={userId} />
           ))}
         </ul>
       </SortableContext>
@@ -98,7 +103,8 @@ export function LinkList({ links: initial }: { links: Link[] }) {
   );
 }
 
-function SortableLink({ link }: { link: Link }) {
+function SortableLink({ link, userId }: { link: Link; userId: string }) {
+  const [editing, setEditing] = useState(false);
   const {
     attributes,
     listeners,
@@ -141,6 +147,17 @@ function SortableLink({ link }: { link: Link }) {
           )}
         </svg>
       </button>
+      {link.size === "big" && link.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={link.image_url}
+          alt=""
+          className={cx(
+            "aspect-video w-16 shrink-0 rounded-lg border border-edge object-cover",
+            !link.is_visible && "opacity-50",
+          )}
+        />
+      )}
       <div
         className={cx(
           "min-w-0 flex-1 basis-40",
@@ -149,6 +166,11 @@ function SortableLink({ link }: { link: Link }) {
       >
         <div className="flex items-center gap-2">
           <p className="truncate font-bold">{link.title}</p>
+          {link.size === "big" && !(link.embed && embedFor(link.url)) && (
+            <Badge tone="neutral" className="shrink-0">
+              Big
+            </Badge>
+          )}
           {!link.is_visible && (
             <Badge tone="neutral" className="shrink-0">
               Hidden
@@ -163,6 +185,16 @@ function SortableLink({ link }: { link: Link }) {
         )}
       </div>
       <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-expanded={editing}
+          aria-controls={`edit-${link.id}`}
+          onClick={() => setEditing((on) => !on)}
+        >
+          {editing ? "Close" : "Edit"}
+        </Button>
         {embedFor(link.url) && (
           <form action={toggleEmbed.bind(null, link.id, link.embed)}>
             <Button variant="ghost" size="sm">
@@ -181,6 +213,22 @@ function SortableLink({ link }: { link: Link }) {
           </Button>
         </form>
       </div>
+      {editing && (
+        <div
+          id={`edit-${link.id}`}
+          className="w-full border-t border-line px-2 pt-4 pb-2"
+        >
+          <LinkForm
+            userId={userId}
+            link={link}
+            action={updateLink.bind(null, link.id)}
+            submitLabel="Save changes"
+            pendingLabel="Saving..."
+            onSaved={() => setEditing(false)}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )}
     </li>
   );
 }
