@@ -25,6 +25,8 @@ import { fetchPreviewImage, fetchScreenshot } from "@/lib/link-preview";
 import {
   cleanAlt,
   isGalleryLayout,
+  MAX_GALLERIES,
+  MAX_PAGE_PHOTOS,
   MAX_PHOTOS,
   ownPhotoPath,
 } from "@/lib/gallery";
@@ -174,6 +176,7 @@ export async function updateLink(
     .select("url, image_url, preview_url")
     .eq("id", linkId)
     .eq("profile_id", profile.id)
+    .eq("kind", "link")
     .maybeSingle();
   if (!current) return { error: "That link no longer exists." };
 
@@ -269,18 +272,29 @@ export async function toggleEmbed(linkId: string, embed: boolean) {
 }
 
 export async function deleteLink(linkId: string) {
-  const { supabase, profile } = await requireOwnProfile();
+  const { supabase, profile, user } = await requireOwnProfile();
   const { data: link } = await supabase
     .from("links")
     .select("image_url, preview_url")
     .eq("id", linkId)
     .eq("profile_id", profile.id)
     .maybeSingle();
+  // A gallery's photo rows go with it (on delete cascade), so collect
+  // their files first.
+  const { data: photos } = await supabase
+    .from("photos")
+    .select("url")
+    .eq("link_id", linkId)
+    .eq("profile_id", profile.id);
   await supabase.from("links").delete().eq("id", linkId);
   if (link) {
     await removeLinkImage(supabase, link.image_url);
     await removeLinkImage(supabase, link.preview_url);
   }
+  const paths = (photos ?? [])
+    .map((p) => ownPhotoPath(p.url, user.id))
+    .filter((p): p is string => p !== null);
+  if (paths.length > 0) await supabase.storage.from("photos").remove(paths);
   refresh(profile.username);
 }
 
@@ -397,9 +411,46 @@ export async function setAvatar(url: string | null) {
   refresh(profile.username);
 }
 
+// Adds an empty photo gallery at the end of the list. Its photos are
+// added afterwards with addPhoto.
+export async function addGallery(): Promise<FormState> {
+  const { supabase, profile } = await requireOwnProfile();
+  if (!(await allow(`addlink:${profile.id}`, 30, 600))) {
+    return { error: "You're adding things very fast. Wait a few minutes." };
+  }
+  const { data: items } = await supabase
+    .from("links")
+    .select("kind")
+    .eq("profile_id", profile.id);
+  const all = items ?? [];
+  if (all.length >= MAX_LINKS) {
+    return { error: `You can have up to ${MAX_LINKS} items.` };
+  }
+  if (all.filter((l) => l.kind === "gallery").length >= MAX_GALLERIES) {
+    return { error: `You can have up to ${MAX_GALLERIES} photo galleries.` };
+  }
+
+  const { error } = await supabase.from("links").insert({
+    profile_id: profile.id,
+    title: "Photos",
+    kind: "gallery",
+    layout: "carousel",
+    position: all.length,
+  });
+  if (error) return { error: "Could not add the gallery." };
+
+  refresh(profile.username);
+  return {};
+}
+
 // Called after the browser uploads a photo to Storage. Only accepts a file
-// inside the user's own folder of the photos bucket.
-export async function addPhoto(url: string, alt: string): Promise<FormState> {
+// inside the user's own folder of the photos bucket, for one of the
+// user's own galleries.
+export async function addPhoto(
+  galleryId: string,
+  url: string,
+  alt: string,
+): Promise<FormState> {
   const { supabase, profile, user } = await requireOwnProfile();
   const path = ownPhotoPath(url, user.id);
   if (!path) return { error: "Could not add that photo." };
@@ -411,22 +462,36 @@ export async function addPhoto(url: string, alt: string): Promise<FormState> {
     return { error };
   };
 
+  const { data: gallery } = await supabase
+    .from("links")
+    .select("id")
+    .eq("id", galleryId)
+    .eq("profile_id", profile.id)
+    .eq("kind", "gallery")
+    .maybeSingle();
+  if (!gallery) return discard("That gallery no longer exists.");
+
   if (!(await allow(`addphoto:${profile.id}`, 30, 600))) {
     return discard("You're adding photos very fast. Wait a few minutes.");
   }
-  const { count } = await supabase
+  const { data: photos } = await supabase
     .from("photos")
-    .select("id", { count: "exact", head: true })
+    .select("link_id")
     .eq("profile_id", profile.id);
-  if ((count ?? 0) >= MAX_PHOTOS) {
-    return discard(`You can have up to ${MAX_PHOTOS} photos.`);
+  const inGallery = (photos ?? []).filter((p) => p.link_id === galleryId);
+  if (inGallery.length >= MAX_PHOTOS) {
+    return discard(`A gallery can have up to ${MAX_PHOTOS} photos.`);
+  }
+  if ((photos ?? []).length >= MAX_PAGE_PHOTOS) {
+    return discard(`Your page can have up to ${MAX_PAGE_PHOTOS} photos.`);
   }
 
   const { error } = await supabase.from("photos").insert({
     profile_id: profile.id,
+    link_id: galleryId,
     url,
     alt: cleanAlt(alt),
-    position: count ?? 0,
+    position: inGallery.length,
   });
   if (error) return discard("Could not save the photo.");
 
@@ -461,14 +526,15 @@ export async function deletePhoto(photoId: string) {
   refresh(profile.username);
 }
 
-// Same rules as reorderLinks: `orderedIds` must be exactly the user's own
-// photo ids, otherwise nothing changes.
-export async function reorderPhotos(orderedIds: string[]) {
+// Same rules as reorderLinks: `orderedIds` must be exactly the photo ids
+// of one of the user's galleries, otherwise nothing changes.
+export async function reorderPhotos(galleryId: string, orderedIds: string[]) {
   const { supabase, profile } = await requireOwnProfile();
   const { data: photos } = await supabase
     .from("photos")
     .select("id")
-    .eq("profile_id", profile.id);
+    .eq("profile_id", profile.id)
+    .eq("link_id", galleryId);
   if (!photos) return;
 
   const own = new Set(photos.map((p) => p.id));
@@ -488,13 +554,15 @@ export async function reorderPhotos(orderedIds: string[]) {
   refresh(profile.username);
 }
 
-export async function setGalleryLayout(layout: string) {
+export async function setGalleryLayout(galleryId: string, layout: string) {
   if (!isGalleryLayout(layout)) return;
   const { supabase, profile } = await requireOwnProfile();
   await supabase
-    .from("profiles")
-    .update({ gallery_layout: layout })
-    .eq("id", profile.id);
+    .from("links")
+    .update({ layout })
+    .eq("id", galleryId)
+    .eq("profile_id", profile.id)
+    .eq("kind", "gallery");
   refresh(profile.username);
 }
 

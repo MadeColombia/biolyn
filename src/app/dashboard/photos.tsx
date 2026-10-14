@@ -44,10 +44,12 @@ const LAYOUTS: { id: GalleryLayout; label: string; hint: string }[] = [
 // The parent gives this a `key` built from the server data, so it starts
 // fresh whenever the saved photos change.
 export function PhotoManager({
+  galleryId,
   userId,
   layout: savedLayout,
   photos: initial,
 }: {
+  galleryId: string;
   userId: string;
   layout: GalleryLayout;
   photos: Photo[];
@@ -78,7 +80,7 @@ export function PhotoManager({
             .upload(path, blob, { contentType: "image/jpeg" });
           if (uploadError) throw uploadError;
           const { data } = supabase.storage.from("photos").getPublicUrl(path);
-          const result = await addPhoto(data.publicUrl, "");
+          const result = await addPhoto(galleryId, data.publicUrl, "");
           if (result.error) {
             setError(result.error);
             break;
@@ -95,7 +97,7 @@ export function PhotoManager({
             : `${failed} photos could not be uploaded. Try JPG or PNG files.`,
         );
       } else if (files.length > batch.length) {
-        setError(`Only ${MAX_PHOTOS} photos fit, so some were left out.`);
+        setError(`A gallery holds ${MAX_PHOTOS} photos, so some were left out.`);
       }
     });
   }
@@ -105,7 +107,7 @@ export function PhotoManager({
     const [photo] = next.splice(index, 1);
     next.splice(index + by, 0, photo);
     setPhotos(next);
-    startTransition(() => reorderPhotos(next.map((p) => p.id)));
+    startTransition(() => reorderPhotos(galleryId, next.map((p) => p.id)));
   }
 
   function remove(id: string) {
@@ -115,7 +117,7 @@ export function PhotoManager({
 
   function pickLayout(id: GalleryLayout) {
     setLayout(id);
-    startTransition(() => setGalleryLayout(id));
+    startTransition(() => setGalleryLayout(galleryId, id));
   }
 
   return (
@@ -183,7 +185,7 @@ export function PhotoManager({
 
       {photos.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-edge bg-raised px-4 py-8 text-center text-sm text-ink-muted">
-          No photos yet. They show under your links.
+          No photos yet. Until you add some, this gallery stays hidden on your page.
         </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">

@@ -25,15 +25,14 @@ import { setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
 import { FONT_CLASS } from "@/components/profile-fonts";
 import {
-  AddLinkForm,
   AvatarUpload,
   ClaimUsernameForm,
   CopyLinkButton,
   ProfileForm,
   SocialsForm,
 } from "./forms";
-import { LinkList } from "./link-list";
-import { PhotoManager } from "./photos";
+import { AddItemMenu } from "./add-item";
+import { LinkList, type LinkItem, type ListItem } from "./link-list";
 import { QrSection, StatsSection } from "./stats";
 
 export default function DashboardPage() {
@@ -102,7 +101,7 @@ async function Dashboard() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended, gallery_layout",
+      "id, username, display_name, bio, avatar_url, theme, socials, is_suspended",
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -125,27 +124,43 @@ async function Dashboard() {
     );
   }
 
-  const { data: links } = await supabase
+  const { data: rows } = await supabase
     .from("links")
     .select(
-      "id, title, url, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
+      "id, kind, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
     )
     .eq("profile_id", profile.id)
     .order("position");
 
   const { data: photos } = await supabase
     .from("photos")
-    .select("id, url, alt")
+    .select("id, link_id, url, alt")
     .eq("profile_id", profile.id)
     .order("position");
-  const galleryLayout = galleryLayoutFrom(profile.gallery_layout);
+
+  // Galleries and links share one list, so they can be dragged in any order.
+  const items: ListItem[] = (rows ?? []).map((row) =>
+    row.kind === "gallery"
+      ? {
+          kind: "gallery" as const,
+          id: row.id,
+          title: row.title,
+          is_visible: row.is_visible,
+          layout: galleryLayoutFrom(row.layout),
+          photos: (photos ?? [])
+            .filter((p) => p.link_id === row.id)
+            .map(({ id, url, alt }) => ({ id, url, alt })),
+        }
+      : { ...row, kind: "link" as const, url: row.url ?? "" },
+  );
+  const links = items.filter((i): i is LinkItem => i.kind === "link");
 
   const currentTheme = themeFrom(profile.theme);
   const currentFont = fontFrom(profile.theme);
   const stats = await getStats(
     supabase,
     profile.id,
-    (links ?? []).map((l) => l.id),
+    links.map((l) => l.id),
   );
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
 
@@ -219,33 +234,20 @@ async function Dashboard() {
 
       <Card padding="md" className="flex flex-col gap-6">
         <SectionTitle title="Links">
-          Drag to reorder, or tap Edit to change a link. Hidden links stay here but not on your page.
+          Add links and photo carousels, then drag them into any order. Hidden
+          items stay here but not on your page.
         </SectionTitle>
-        <AddLinkForm userId={user.id} />
+        <AddItemMenu userId={user.id} />
         <div className="border-t border-line pt-6">
           <LinkList
-            key={JSON.stringify(links ?? [])}
+            key={JSON.stringify(items)}
             userId={user.id}
-            links={links ?? []}
+            items={items}
           />
         </div>
       </Card>
 
-      <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title="Photos">
-          Up to 12 pictures under your links, as a carousel or a grid.
-        </SectionTitle>
-        <PhotoManager
-          key={`${galleryLayout}|${(photos ?? [])
-            .map((p) => `${p.id}:${p.alt}`)
-            .join()}`}
-          userId={user.id}
-          layout={galleryLayout}
-          photos={photos ?? []}
-        />
-      </Card>
-
-      <StatsSection stats={stats} links={links ?? []} />
+      <StatsSection stats={stats} links={links} />
 
       <QrSection url={`${siteUrl}/${profile.username}`} />
 

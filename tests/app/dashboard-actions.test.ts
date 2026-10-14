@@ -94,11 +94,18 @@ describe("signed-out users", () => {
     ["setFont", () => actions.setFont("elegant")],
     ["setAvatar", () => actions.setAvatar(null)],
     ["setPhotoStyle", () => actions.setPhotoStyle("cover")],
-    ["claimUsername", () => actions.claimUsername({}, form({ username: "ethan" }))],
+    [
+      "claimUsername",
+      () => actions.claimUsername({}, form({ username: "ethan" })),
+    ],
     [
       "updateLink",
       () =>
-        actions.updateLink("l1", {}, form({ title: "a", url: "https://a.com" })),
+        actions.updateLink(
+          "l1",
+          {},
+          form({ title: "a", url: "https://a.com" }),
+        ),
     ],
     [
       "addLink",
@@ -131,7 +138,9 @@ describe("signed-out users", () => {
 describe("claimUsername", () => {
   it("validates before touching the database", async () => {
     db = fakeClient();
-    expect(await actions.claimUsername({}, form({ username: "admin" }))).toEqual({
+    expect(
+      await actions.claimUsername({}, form({ username: "admin" })),
+    ).toEqual({
       error: "That username is reserved.",
     });
     expect(db.auth.getUser).not.toHaveBeenCalled();
@@ -155,7 +164,9 @@ describe("claimUsername", () => {
   ])("explains database error %s", async (code, message) => {
     db = fakeClient({ profiles: [{ error: { code } }] });
     db.auth.getUser.mockResolvedValue({ data: { user: USER } } as never);
-    expect(await actions.claimUsername({}, form({ username: "ethan" }))).toEqual({
+    expect(
+      await actions.claimUsername({}, form({ username: "ethan" })),
+    ).toEqual({
       error: message,
     });
   });
@@ -246,7 +257,10 @@ describe("addLink", () => {
     checkLinkUrl.mockResolvedValueOnce("unsafe!");
     db = fakeClient();
     expect(
-      await actions.addLink({}, form({ title: "x", url: "javascript:alert(1)" })),
+      await actions.addLink(
+        {},
+        form({ title: "x", url: "javascript:alert(1)" }),
+      ),
     ).toEqual({ error: "unsafe!" });
     expect(db.from).not.toHaveBeenCalled();
   });
@@ -361,7 +375,10 @@ describe("addLink", () => {
   });
 
   it("refuses a preview from someone else's folder or not on https", async () => {
-    for (const preview_url of [`${IMAGES}u2/preview-a.jpeg`, "http://a.com/og.jpg"]) {
+    for (const preview_url of [
+      `${IMAGES}u2/preview-a.jpeg`,
+      "http://a.com/og.jpg",
+    ]) {
       signedIn();
       expect(
         await actions.addLink(
@@ -434,6 +451,31 @@ describe("single-link actions", () => {
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/preview-b.jpeg"]);
   });
+
+  it("deleteLink on a gallery removes its photo files from the user's folder", async () => {
+    signedIn({
+      links: [{ data: { image_url: null, preview_url: null } }, {}],
+      photos: [
+        {
+          data: [
+            {
+              url: "https://x.supabase.co/storage/v1/object/public/photos/u1/a.jpg",
+            },
+            {
+              url: "https://x.supabase.co/storage/v1/object/public/photos/u2/b.jpg",
+            },
+          ],
+        },
+      ],
+    });
+    await actions.deleteLink("g1");
+    expect(db.queries.photos[0].calls).toContainEqual({
+      method: "eq",
+      args: ["link_id", "g1"],
+    });
+    expect(db.storage.from).toHaveBeenCalledWith("photos");
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
 });
 
 describe("updateLink", () => {
@@ -455,7 +497,11 @@ describe("updateLink", () => {
   it("refuses a picture from someone else's folder", async () => {
     signedIn();
     expect(
-      await edit({ title: "x", url: "https://a.com", image_url: `${IMAGES}u2/a.jpg` }),
+      await edit({
+        title: "x",
+        url: "https://a.com",
+        image_url: `${IMAGES}u2/a.jpg`,
+      }),
     ).toEqual({ error: "Could not use that picture. Upload it again." });
   });
 
@@ -514,9 +560,18 @@ describe("updateLink", () => {
   });
 
   it("saves the preview the form sends", async () => {
-    const saved = { url: "https://a.com", image_url: null, preview_url: "https://p/1.jpg" };
+    const saved = {
+      url: "https://a.com",
+      image_url: null,
+      preview_url: "https://p/1.jpg",
+    };
     signedIn({ links: [{ data: saved }, { error: null }] });
-    await edit({ title: "x", url: "https://a.com", size: "big", preview_url: "https://p/1.jpg" });
+    await edit({
+      title: "x",
+      url: "https://a.com",
+      size: "big",
+      preview_url: "https://p/1.jpg",
+    });
     expect(lastWrite("links", "update")?.[0]).toMatchObject({
       preview_url: "https://p/1.jpg",
     });
@@ -524,23 +579,34 @@ describe("updateLink", () => {
   });
 
   it("removes an old screenshot when the preview changes or is dropped", async () => {
-    const saved = { url: "https://a.com", image_url: null, preview_url: `${IMAGES}u1/preview-old.jpeg` };
+    const saved = {
+      url: "https://a.com",
+      image_url: null,
+      preview_url: `${IMAGES}u1/preview-old.jpeg`,
+    };
     signedIn({ links: [{ data: saved }, { error: null }] });
     await edit({ title: "x", url: "https://b.com", size: "big" });
-    expect(lastWrite("links", "update")?.[0]).toMatchObject({ preview_url: null });
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      preview_url: null,
+    });
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/preview-old.jpeg"]);
   });
 
   it("leaves pictures it doesn't host alone", async () => {
     signedIn({
-      links: [{ data: { image_url: "https://elsewhere/a.jpg" } }, { error: null }],
+      links: [
+        { data: { image_url: "https://elsewhere/a.jpg" } },
+        { error: null },
+      ],
     });
     await edit({ title: "x", url: "https://a.com" });
     expect(db.storage.remove).not.toHaveBeenCalled();
   });
 
   it("reports a failed save", async () => {
-    signedIn({ links: [{ data: { image_url: null } }, { error: { message: "x" } }] });
+    signedIn({
+      links: [{ data: { image_url: null } }, { error: { message: "x" } }],
+    });
     expect(await edit({ title: "x", url: "https://a.com" })).toEqual({
       error: "Could not save the link.",
     });
@@ -550,7 +616,9 @@ describe("updateLink", () => {
 describe("loadPreview", () => {
   it("needs a safe URL", async () => {
     db = fakeClient();
-    expect(await actions.loadPreview("  ")).toEqual({ error: "Add the URL first." });
+    expect(await actions.loadPreview("  ")).toEqual({
+      error: "Add the URL first.",
+    });
     checkLinkUrl.mockResolvedValueOnce("unsafe!");
     expect(await actions.loadPreview("bad.com")).toEqual({ error: "unsafe!" });
     expect(checkLinkUrl).toHaveBeenCalledWith("https://bad.com");
@@ -591,11 +659,21 @@ describe("loadPreview", () => {
     signedIn();
     const icon = "https://a.com/i.svg#biolyn-icon";
     fetchPreviewImage.mockResolvedValueOnce(icon);
-    fetchScreenshot.mockResolvedValueOnce({ data: new ArrayBuffer(8), type: "image/png" });
-    db.storage.upload.mockResolvedValueOnce({ data: null, error: { message: "x" } });
-    expect(await actions.loadPreview("https://a.com")).toEqual({ preview_url: icon });
+    fetchScreenshot.mockResolvedValueOnce({
+      data: new ArrayBuffer(8),
+      type: "image/png",
+    });
+    db.storage.upload.mockResolvedValueOnce({
+      data: null,
+      error: { message: "x" },
+    });
+    expect(await actions.loadPreview("https://a.com")).toEqual({
+      preview_url: icon,
+    });
 
-    const none = { error: "Could not find a preview for this link. Add a picture instead." };
+    const none = {
+      error: "Could not find a preview for this link. Add a picture instead.",
+    };
     signedIn();
     expect(await actions.loadPreview("https://a.com")).toEqual(none);
     signedIn();
@@ -842,6 +920,7 @@ describe("signOut", () => {
 });
 
 const PHOTOS = "https://x.supabase.co/storage/v1/object/public/photos/";
+const GALLERY = { data: { id: "g1" } };
 
 describe("photo actions when signed out", () => {
   beforeEach(() => {
@@ -849,26 +928,92 @@ describe("photo actions when signed out", () => {
   });
 
   it.each([
-    ["addPhoto", () => actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")],
+    ["addGallery", () => actions.addGallery()],
+    ["addPhoto", () => actions.addPhoto("g1", `${PHOTOS}u1/a.jpg`, "")],
     ["updatePhotoAlt", () => actions.updatePhotoAlt("ph1", "x")],
     ["deletePhoto", () => actions.deletePhoto("ph1")],
-    ["reorderPhotos", () => actions.reorderPhotos([])],
-    ["setGalleryLayout", () => actions.setGalleryLayout("grid")],
+    ["reorderPhotos", () => actions.reorderPhotos("g1", [])],
+    ["setGalleryLayout", () => actions.setGalleryLayout("g1", "grid")],
   ])("%s sends them to login and writes nothing", async (_name, run) => {
     await expect(run()).rejects.toMatchObject({ to: "/login" });
     expect(db.from).not.toHaveBeenCalledWith("photos");
+    expect(db.from).not.toHaveBeenCalledWith("links");
     expect(db.storage.remove).not.toHaveBeenCalled();
   });
 });
 
+describe("addGallery", () => {
+  it("adds an empty carousel at the end of the list", async () => {
+    signedIn({
+      links: [{ data: [{ kind: "link" }, { kind: "gallery" }] }, {}],
+    });
+    expect(await actions.addGallery()).toEqual({});
+    expect(lastWrite("links", "insert")).toEqual([
+      {
+        profile_id: "p1",
+        title: "Photos",
+        kind: "gallery",
+        layout: "carousel",
+        position: 2,
+      },
+    ]);
+    expect(allow).toHaveBeenCalledWith("addlink:p1", 30, 600);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("stops at 5 galleries", async () => {
+    signedIn({ links: [{ data: Array(5).fill({ kind: "gallery" }) }] });
+    expect(await actions.addGallery()).toEqual({
+      error: "You can have up to 5 photo galleries.",
+    });
+    expect(lastWrite("links", "insert")).toBeUndefined();
+  });
+
+  it("counts galleries toward the item limit", async () => {
+    signedIn({ links: [{ data: Array(100).fill({ kind: "link" }) }] });
+    expect((await actions.addGallery()).error).toMatch(/up to \d+ items/);
+    expect(lastWrite("links", "insert")).toBeUndefined();
+  });
+
+  it("rate limits", async () => {
+    allow.mockResolvedValue(false);
+    signedIn();
+    expect((await actions.addGallery()).error).toMatch(/very fast/);
+    expect(db.from).not.toHaveBeenCalledWith("links");
+  });
+
+  it("reports a failed save", async () => {
+    signedIn({ links: [{ data: null }, { error: { code: "x" } }] });
+    expect(await actions.addGallery()).toEqual({
+      error: "Could not add the gallery.",
+    });
+  });
+});
+
 describe("addPhoto", () => {
-  it("saves a photo from the user's own folder at the end", async () => {
-    signedIn({ photos: [{ count: 3 }, { error: null }] });
+  it("saves a photo from the user's own folder at the end of its gallery", async () => {
+    signedIn({
+      links: [GALLERY],
+      photos: [
+        { data: [{ link_id: "g1" }, { link_id: "g1" }, { link_id: "g2" }] },
+        { error: null },
+      ],
+    });
     expect(
-      await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "  My   dog "),
+      await actions.addPhoto("g1", `${PHOTOS}u1/a.jpg`, "  My   dog "),
     ).toEqual({});
+    expect(db.queries.links[0].calls).toContainEqual({
+      method: "eq",
+      args: ["kind", "gallery"],
+    });
     expect(lastWrite("photos", "insert")).toEqual([
-      { profile_id: "p1", url: `${PHOTOS}u1/a.jpg`, alt: "My dog", position: 3 },
+      {
+        profile_id: "p1",
+        link_id: "g1",
+        url: `${PHOTOS}u1/a.jpg`,
+        alt: "My dog",
+        position: 2,
+      },
     ]);
     expect(allow).toHaveBeenCalledWith("addphoto:p1", 30, 600);
     expect(updateTag).toHaveBeenCalledWith("profile:ethan");
@@ -879,35 +1024,61 @@ describe("addPhoto", () => {
     ["an outside site", "https://evil.example/u1/a.jpg"],
   ])("refuses %s and deletes nothing", async (_label, url) => {
     signedIn();
-    expect(await actions.addPhoto(url, "")).toEqual({
+    expect(await actions.addPhoto("g1", url, "")).toEqual({
       error: "Could not add that photo.",
     });
     expect(db.from).not.toHaveBeenCalledWith("photos");
     expect(db.storage.remove).not.toHaveBeenCalled();
   });
 
-  it("stops at 12 photos and removes the extra upload", async () => {
-    signedIn({ photos: [{ count: 12 }] });
-    expect(await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")).toEqual({
-      error: "You can have up to 12 photos.",
+  it("refuses a gallery that isn't theirs and removes the upload", async () => {
+    signedIn({ links: [{ data: null }] });
+    expect(await actions.addPhoto("g9", `${PHOTOS}u1/a.jpg`, "")).toEqual({
+      error: "That gallery no longer exists.",
+    });
+    expect(db.from).not.toHaveBeenCalledWith("photos");
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
+
+  it("stops at 12 photos in a gallery and removes the extra upload", async () => {
+    signedIn({
+      links: [GALLERY],
+      photos: [{ data: Array(12).fill({ link_id: "g1" }) }],
+    });
+    expect(await actions.addPhoto("g1", `${PHOTOS}u1/a.jpg`, "")).toEqual({
+      error: "A gallery can have up to 12 photos.",
     });
     expect(lastWrite("photos", "insert")).toBeUndefined();
     expect(db.storage.from).toHaveBeenCalledWith("photos");
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
   });
 
+  it("stops at 60 photos on the page", async () => {
+    signedIn({
+      links: [GALLERY],
+      photos: [{ data: Array(60).fill({ link_id: "g2" }) }],
+    });
+    expect(await actions.addPhoto("g1", `${PHOTOS}u1/a.jpg`, "")).toEqual({
+      error: "Your page can have up to 60 photos.",
+    });
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
+
   it("rate limits and removes the upload", async () => {
     allow.mockResolvedValue(false);
-    signedIn();
-    expect(await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")).toEqual({
+    signedIn({ links: [GALLERY] });
+    expect(await actions.addPhoto("g1", `${PHOTOS}u1/a.jpg`, "")).toEqual({
       error: "You're adding photos very fast. Wait a few minutes.",
     });
     expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
   });
 
   it("removes the upload when the row can't be saved", async () => {
-    signedIn({ photos: [{ count: null }, { error: { code: "P0001" } }] });
-    expect(await actions.addPhoto(`${PHOTOS}u1/a.jpg`, "")).toEqual({
+    signedIn({
+      links: [GALLERY],
+      photos: [{ data: null }, { error: { code: "P0001" } }],
+    });
+    expect(await actions.addPhoto("g1", `${PHOTOS}u1/a.jpg`, "")).toEqual({
       error: "Could not save the photo.",
     });
     expect(lastWrite("photos", "insert")?.[0]).toMatchObject({ position: 0 });
@@ -962,9 +1133,13 @@ describe("deletePhoto", () => {
 describe("reorderPhotos", () => {
   const own = { data: [{ id: "a" }, { id: "b" }] };
 
-  it("saves the new positions", async () => {
+  it("saves the new positions inside one gallery", async () => {
     signedIn({ photos: [own] });
-    await actions.reorderPhotos(["b", "a"]);
+    await actions.reorderPhotos("g1", ["b", "a"]);
+    expect(db.queries.photos[0].calls).toContainEqual({
+      method: "eq",
+      args: ["link_id", "g1"],
+    });
     const updates = db.queries.photos
       .slice(1)
       .map((q) => [q.calls[0].args[0], q.calls[1].args[1]]);
@@ -980,30 +1155,34 @@ describe("reorderPhotos", () => {
     ["a repeated photo", ["a", "a"]],
   ])("ignores a list with %s", async (_label, ids) => {
     signedIn({ photos: [own] });
-    await actions.reorderPhotos(ids);
+    await actions.reorderPhotos("g1", ids);
     expect(db.queries.photos).toHaveLength(1);
     expect(updateTag).not.toHaveBeenCalled();
   });
 
   it("does nothing when the photos can't be read", async () => {
     signedIn({ photos: [{ data: null }] });
-    await actions.reorderPhotos(["a"]);
+    await actions.reorderPhotos("g1", ["a"]);
     expect(db.queries.photos).toHaveLength(1);
   });
 });
 
 describe("setGalleryLayout", () => {
-  it("saves a known layout", async () => {
+  it("saves a known layout on the user's own gallery", async () => {
     signedIn();
-    await actions.setGalleryLayout("grid");
-    expect(lastWrite("profiles", "update")).toEqual([
-      { gallery_layout: "grid" },
+    await actions.setGalleryLayout("g1", "grid");
+    expect(lastWrite("links", "update")).toEqual([{ layout: "grid" }]);
+    const filters = db.queries.links[0].calls.filter((c) => c.method === "eq");
+    expect(filters.map((c) => c.args)).toEqual([
+      ["id", "g1"],
+      ["profile_id", "p1"],
+      ["kind", "gallery"],
     ]);
   });
 
   it("ignores anything else without signing in", async () => {
     db = fakeClient();
-    await actions.setGalleryLayout("slideshow");
+    await actions.setGalleryLayout("g1", "slideshow");
     expect(db.auth.getUser).not.toHaveBeenCalled();
   });
 });
