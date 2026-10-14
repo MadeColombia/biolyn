@@ -14,7 +14,12 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/analytics";
 import { socialsFrom } from "@/lib/socials";
-import { THEMES, themeFrom, type ThemeId } from "@/lib/themes";
+import {
+  photoStyleFrom,
+  THEMES,
+  themeFrom,
+  type ThemeId,
+} from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
 import { setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
@@ -204,6 +209,7 @@ async function Dashboard() {
           userId={user.id}
           avatarUrl={profile.avatar_url}
           name={profile.display_name ?? profile.username}
+          photoStyle={photoStyleFrom(profile.theme)}
         />
         <ProfileForm
           displayName={profile.display_name ?? ""}

@@ -35,7 +35,12 @@ vi.mock("@/lib/link-preview", () => ({ fetchPreviewImage, fetchScreenshot }));
 const actions = await import("@/app/dashboard/actions");
 
 const USER = { id: "u1" };
-const PROFILE = { id: "p1", username: "ethan", avatar_url: null as string | null };
+const PROFILE = {
+  id: "p1",
+  username: "ethan",
+  avatar_url: null as string | null,
+  theme: {} as unknown,
+};
 const AVATARS = "https://x.supabase.co/storage/v1/object/public/avatars/";
 const IMAGES = "https://x.supabase.co/storage/v1/object/public/link-images/";
 
@@ -71,6 +76,7 @@ beforeEach(() => {
   fetchPreviewImage.mockReset().mockResolvedValue(null);
   fetchScreenshot.mockReset().mockResolvedValue(null);
   PROFILE.avatar_url = null;
+  PROFILE.theme = {};
 });
 
 describe("signed-out users", () => {
@@ -87,6 +93,7 @@ describe("signed-out users", () => {
     ["setTheme", () => actions.setTheme("midnight")],
     ["setFont", () => actions.setFont("elegant")],
     ["setAvatar", () => actions.setAvatar(null)],
+    ["setPhotoStyle", () => actions.setPhotoStyle("cover")],
     ["claimUsername", () => actions.claimUsername({}, form({ username: "ethan" }))],
     [
       "updateLink",
@@ -666,7 +673,15 @@ describe("setTheme", () => {
     signedIn();
     await actions.setTheme("sunset");
     expect(lastWrite("profiles", "update")).toEqual([
-      { theme: { preset: "sunset", font: "clean" } },
+      { theme: { preset: "sunset" } },
+    ]);
+  });
+  it("keeps the picture style", async () => {
+    PROFILE.theme = { preset: "classic", photo: "cover" };
+    signedIn();
+    await actions.setTheme("midnight");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { theme: { preset: "midnight", photo: "cover" } },
     ]);
   });
 
@@ -702,6 +717,36 @@ describe("setFont", () => {
       { theme: { preset: "sunset", font: "handwritten" } },
     ]);
     expect(lastWrite("profiles", "eq")).toEqual(["id", "p1"]);
+  });
+});
+
+describe("setPhotoStyle", () => {
+  it.each(["square", "toString", ""])(
+    "ignores unknown style %s",
+    async (style) => {
+      db = fakeClient();
+      await actions.setPhotoStyle(style);
+      expect(db.from).not.toHaveBeenCalled();
+    },
+  );
+
+  it("saves the style and keeps the theme", async () => {
+    PROFILE.theme = { preset: "sunset" };
+    signedIn();
+    await actions.setPhotoStyle("cover");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { theme: { preset: "sunset", photo: "cover" } },
+    ]);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("works on a page that never saved a theme", async () => {
+    PROFILE.theme = null;
+    signedIn();
+    await actions.setPhotoStyle("round");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { theme: { photo: "round" } },
+    ]);
   });
 });
 

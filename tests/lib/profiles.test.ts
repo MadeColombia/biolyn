@@ -93,6 +93,7 @@ describe("getPublicProfile", () => {
     expect(page?.links[0].embed).toBeNull();
     expect(page?.links[1].embed?.kind).toBe("youtube");
     expect(page?.theme).toBe("midnight");
+    expect(page?.photo_style).toBe("round");
     expect(page?.socials).toEqual({ x: "https://x.com/e" });
     expect(page).not.toHaveProperty("is_suspended");
 

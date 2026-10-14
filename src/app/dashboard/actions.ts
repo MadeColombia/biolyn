@@ -7,8 +7,8 @@ import { validateUsername } from "@/lib/usernames";
 import { profileTag } from "@/lib/profiles";
 import { supabaseEnv } from "@/lib/supabase/env";
 import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
-import { isThemeId, themeFrom } from "@/lib/themes";
-import { fontFrom, isFontId } from "@/lib/fonts";
+import { isPhotoStyle, isThemeId, themeSettings } from "@/lib/themes";
+import { isFontId } from "@/lib/fonts";
 import { sanitizeBio } from "@/lib/rich-bio";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
@@ -320,26 +320,31 @@ export async function reorderLinks(orderedIds: string[]) {
   refresh(profile.username);
 }
 
-export async function setTheme(themeId: string) {
-  if (!isThemeId(themeId)) return;
+// profiles.theme holds every look setting ({preset, font, photo}), so
+// each change keeps the others.
+async function saveLook(change: Record<string, string>) {
   const { supabase, profile } = await requireOwnProfile();
   await supabase
     .from("profiles")
-    .update({ theme: { preset: themeId, font: fontFrom(profile.theme) } })
+    .update({ theme: { ...themeSettings(profile.theme), ...change } })
     .eq("id", profile.id);
   refresh(profile.username);
 }
 
-// The font for the whole public page. Kept in the theme column with the
-// preset, so changing one keeps the other.
+export async function setTheme(themeId: string) {
+  if (!isThemeId(themeId)) return;
+  await saveLook({ preset: themeId });
+}
+
+// The font for the whole public page.
 export async function setFont(fontId: string) {
   if (!isFontId(fontId)) return;
-  const { supabase, profile } = await requireOwnProfile();
-  await supabase
-    .from("profiles")
-    .update({ theme: { preset: themeFrom(profile.theme), font: fontId } })
-    .eq("id", profile.id);
-  refresh(profile.username);
+  await saveLook({ font: fontId });
+}
+
+export async function setPhotoStyle(style: string) {
+  if (!isPhotoStyle(style)) return;
+  await saveLook({ photo: style });
 }
 
 export async function updateSocials(
