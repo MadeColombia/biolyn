@@ -30,6 +30,7 @@ const actions = await import("@/app/dashboard/actions");
 const USER = { id: "u1" };
 const PROFILE = { id: "p1", username: "ethan", avatar_url: null as string | null };
 const AVATARS = "https://x.supabase.co/storage/v1/object/public/avatars/";
+const IMAGES = "https://x.supabase.co/storage/v1/object/public/link-images/";
 
 const form = (fields: Record<string, string>) => {
   const fd = new FormData();
@@ -77,6 +78,11 @@ describe("signed-out users", () => {
     ["setTheme", () => actions.setTheme("midnight")],
     ["setAvatar", () => actions.setAvatar(null)],
     ["claimUsername", () => actions.claimUsername({}, form({ username: "ethan" }))],
+    [
+      "updateLink",
+      () =>
+        actions.updateLink("l1", {}, form({ title: "a", url: "https://a.com" })),
+    ],
     [
       "addLink",
       () => actions.addLink({}, form({ title: "a", url: "https://a.com" })),
@@ -232,6 +238,8 @@ describe("addLink", () => {
         url: "https://youtu.be/dQw4w9WgXcQ",
         position: 3,
         embed: true,
+        size: "small",
+        image_url: null,
         starts_at: "2026-10-14T08:00:00.000Z",
         ends_at: null,
       },
@@ -249,6 +257,41 @@ describe("addLink", () => {
       embed: false,
       position: 0,
     });
+  });
+
+  it("saves a big button with the user's own picture", async () => {
+    signedIn({ links: [{ count: 0 }, { error: null }] });
+    expect(
+      await actions.addLink(
+        {},
+        form({
+          title: "x",
+          url: "https://a.com",
+          size: "big",
+          image_url: `${IMAGES}u1/a.jpg`,
+        }),
+      ),
+    ).toEqual({});
+    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
+      size: "big",
+      image_url: `${IMAGES}u1/a.jpg`,
+    });
+  });
+
+  it("refuses a picture from someone else's folder", async () => {
+    signedIn();
+    expect(
+      await actions.addLink(
+        {},
+        form({
+          title: "x",
+          url: "https://a.com",
+          size: "big",
+          image_url: `${IMAGES}u2/a.jpg`,
+        }),
+      ),
+    ).toEqual({ error: "Could not use that picture. Upload it again." });
+    expect(db.from).not.toHaveBeenCalledWith("links");
   });
 
   it("reports a failed save", async () => {
@@ -277,7 +320,106 @@ describe("single-link actions", () => {
     await actions.deleteLink("l1");
     expect(lastWrite("links", "delete")).toEqual([]);
     expect(lastWrite("links", "eq")).toEqual(["id", "l1"]);
+    expect(db.storage.remove).not.toHaveBeenCalled();
     expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("deleteLink also removes the link's picture", async () => {
+    signedIn({ links: [{ data: { image_url: `${IMAGES}u1/a.jpg` } }] });
+    await actions.deleteLink("l1");
+    expect(db.storage.from).toHaveBeenCalledWith("link-images");
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/a.jpg"]);
+  });
+});
+
+describe("updateLink", () => {
+  const edit = (fields: Record<string, string>) =>
+    actions.updateLink("l1", {}, form(fields));
+
+  it("checks the fields before touching the database", async () => {
+    db = fakeClient();
+    expect(await edit({ title: "", url: "https://a.com" })).toEqual({
+      error: "Add a title and a URL.",
+    });
+    checkLinkUrl.mockResolvedValueOnce("unsafe!");
+    expect(await edit({ title: "x", url: "https://bad.com" })).toEqual({
+      error: "unsafe!",
+    });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("refuses a picture from someone else's folder", async () => {
+    signedIn();
+    expect(
+      await edit({ title: "x", url: "https://a.com", image_url: `${IMAGES}u2/a.jpg` }),
+    ).toEqual({ error: "Could not use that picture. Upload it again." });
+  });
+
+  it("refuses links the user doesn't own", async () => {
+    signedIn({ links: [{ data: null }] });
+    expect(await edit({ title: "x", url: "https://a.com" })).toEqual({
+      error: "That link no longer exists.",
+    });
+    const read = db.queries.links[0].calls;
+    expect(read).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+    expect(lastWrite("links", "update")).toBeUndefined();
+  });
+
+  it("saves every field in place and keeps an unchanged picture", async () => {
+    signedIn({
+      links: [{ data: { image_url: `${IMAGES}u1/a.jpg` } }, { error: null }],
+    });
+    expect(
+      await edit({
+        title: " New ",
+        url: "example.com",
+        size: "big",
+        image_url: `${IMAGES}u1/a.jpg`,
+        starts_at: "2026-10-14T10:00:00Z",
+      }),
+    ).toEqual({ saved: true });
+    expect(lastWrite("links", "update")).toEqual([
+      {
+        title: "New",
+        url: "https://example.com",
+        embed: false,
+        size: "big",
+        image_url: `${IMAGES}u1/a.jpg`,
+        starts_at: "2026-10-14T10:00:00.000Z",
+        ends_at: null,
+      },
+    ]);
+    const write = db.queries.links[1].calls;
+    expect(write).toContainEqual({ method: "eq", args: ["id", "l1"] });
+    expect(write).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+    expect(db.storage.remove).not.toHaveBeenCalled();
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("removes the old picture when it changes", async () => {
+    signedIn({
+      links: [{ data: { image_url: `${IMAGES}u1/old.jpg` } }, { error: null }],
+    });
+    await edit({ title: "x", url: "https://a.com", image_url: "" });
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      image_url: null,
+    });
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/old.jpg"]);
+  });
+
+  it("leaves pictures it doesn't host alone", async () => {
+    signedIn({
+      links: [{ data: { image_url: "https://elsewhere/a.jpg" } }, { error: null }],
+    });
+    await edit({ title: "x", url: "https://a.com" });
+    expect(db.storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed save", async () => {
+    signedIn({ links: [{ data: { image_url: null } }, { error: { message: "x" } }] });
+    expect(await edit({ title: "x", url: "https://a.com" })).toEqual({
+      error: "Could not save the link.",
+    });
   });
 });
 

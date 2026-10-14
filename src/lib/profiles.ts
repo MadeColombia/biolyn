@@ -5,12 +5,15 @@ import { socialsFrom, type Socials } from "@/lib/socials";
 import { themeFrom, type ThemeId } from "@/lib/themes";
 import { embedFor, type Embed } from "@/lib/embeds";
 import { isLive, secondsUntilNextChange } from "@/lib/schedule";
+import { isLinkSize, type LinkSize } from "@/lib/link-form";
 
 export type PublicLink = {
   id: string;
   title: string;
   url: string;
   embed: Embed | null;
+  size: LinkSize;
+  image_url: string | null;
 };
 export type PublicProfile = {
   id: string;
@@ -53,7 +56,7 @@ export async function getPublicProfile(
 
   const { data: rows } = await supabase
     .from("links")
-    .select("id, title, url, embed, starts_at, ends_at")
+    .select("id, title, url, embed, size, image_url, starts_at, ends_at")
     .eq("profile_id", profile.id)
     .eq("is_visible", true)
     .order("position");
@@ -74,6 +77,8 @@ export async function getPublicProfile(
       title: l.title,
       url: l.url,
       embed: l.embed ? embedFor(l.url) : null,
+      size: isLinkSize(l.size) ? l.size : "small",
+      image_url: l.image_url ?? null,
     }));
 
   return {

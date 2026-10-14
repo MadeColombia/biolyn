@@ -10,7 +10,12 @@ import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import { isThemeId } from "@/lib/themes";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
-import { embedFor } from "@/lib/embeds";
+import {
+  isOwnLinkImage,
+  LINK_IMAGES_BUCKET,
+  linkImagePath,
+  parseLinkForm,
+} from "@/lib/link-form";
 
 const MAX_LINKS = 100;
 
@@ -88,23 +93,16 @@ export async function addLink(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const title = String(formData.get("title") ?? "").trim();
-  let url = String(formData.get("url") ?? "").trim();
-  if (!title || !url) return { error: "Add a title and a URL." };
-  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-  const unsafe = await checkLinkUrl(url);
+  const parsed = parseLinkForm(formData);
+  if ("error" in parsed) return parsed;
+  const { values } = parsed;
+  const unsafe = await checkLinkUrl(values.url);
   if (unsafe) return { error: unsafe };
 
-  // The form converts the optional schedule to ISO time in the browser,
-  // so it matches the creator's own time zone.
-  const startsAt = isoOrNull(formData.get("starts_at"));
-  const endsAt = isoOrNull(formData.get("ends_at"));
-  if (startsAt && endsAt && endsAt <= startsAt) {
-    return { error: "The end time must be after the start time." };
+  const { supabase, profile, user } = await requireOwnProfile();
+  if (values.image_url && !isOwnLinkImage(values.image_url, user.id)) {
+    return { error: PICTURE_ERROR };
   }
-  const embed = formData.get("embed") === "on" && embedFor(url) !== null;
-
-  const { supabase, profile } = await requireOwnProfile();
   if (!(await allow(`addlink:${profile.id}`, 30, 600))) {
     return { error: "You're adding links very fast. Wait a few minutes." };
   }
@@ -118,12 +116,8 @@ export async function addLink(
 
   const { error } = await supabase.from("links").insert({
     profile_id: profile.id,
-    title,
-    url,
     position: count ?? 0,
-    embed,
-    starts_at: startsAt,
-    ends_at: endsAt,
+    ...values,
   });
   if (error) return { error: "Could not save the link." };
 
@@ -131,10 +125,54 @@ export async function addLink(
   return {};
 }
 
-function isoOrNull(value: FormDataEntryValue | null): string | null {
-  if (typeof value !== "string" || !value) return null;
-  const ms = Date.parse(value);
-  return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+const PICTURE_ERROR = "Could not use that picture. Upload it again.";
+
+// Changes one link in place: title, URL, size, picture, schedule and
+// player setting. Its position, visibility and clicks stay as they are.
+export async function updateLink(
+  linkId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = parseLinkForm(formData);
+  if ("error" in parsed) return parsed;
+  const { values } = parsed;
+  const unsafe = await checkLinkUrl(values.url);
+  if (unsafe) return { error: unsafe };
+
+  const { supabase, profile, user } = await requireOwnProfile();
+  if (values.image_url && !isOwnLinkImage(values.image_url, user.id)) {
+    return { error: PICTURE_ERROR };
+  }
+  const { data: current } = await supabase
+    .from("links")
+    .select("image_url")
+    .eq("id", linkId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  if (!current) return { error: "That link no longer exists." };
+
+  const { error } = await supabase
+    .from("links")
+    .update(values)
+    .eq("id", linkId)
+    .eq("profile_id", profile.id);
+  if (error) return { error: "Could not save the link." };
+
+  if (current.image_url !== values.image_url) {
+    await removeLinkImage(supabase, current.image_url);
+  }
+  refresh(profile.username);
+  return { saved: true };
+}
+
+// Deletes a picture we host. Anything else (or nothing) is ignored.
+async function removeLinkImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  url: string | null,
+) {
+  const path = linkImagePath(url);
+  if (path) await supabase.storage.from(LINK_IMAGES_BUCKET).remove([path]);
 }
 
 export async function toggleEmbed(linkId: string, embed: boolean) {
@@ -145,7 +183,14 @@ export async function toggleEmbed(linkId: string, embed: boolean) {
 
 export async function deleteLink(linkId: string) {
   const { supabase, profile } = await requireOwnProfile();
+  const { data: link } = await supabase
+    .from("links")
+    .select("image_url")
+    .eq("id", linkId)
+    .eq("profile_id", profile.id)
+    .maybeSingle();
   await supabase.from("links").delete().eq("id", linkId);
+  if (link) await removeLinkImage(supabase, link.image_url);
   refresh(profile.username);
 }
 

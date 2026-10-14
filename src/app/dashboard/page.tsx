@@ -119,7 +119,9 @@ async function Dashboard() {
 
   const { data: links } = await supabase
     .from("links")
-    .select("id, title, url, is_visible, embed, starts_at, ends_at")
+    .select(
+      "id, title, url, is_visible, embed, size, image_url, starts_at, ends_at",
+    )
     .eq("profile_id", profile.id)
     .order("position");
 
@@ -222,14 +224,13 @@ async function Dashboard() {
 
       <Card padding="md" className="flex flex-col gap-6">
         <SectionTitle title="Links">
-          Drag to reorder. Hidden links stay here but not on your page.
+          Drag to reorder, or tap Edit to change a link. Hidden links stay here but not on your page.
         </SectionTitle>
-        <AddLinkForm />
+        <AddLinkForm userId={user.id} />
         <div className="border-t border-line pt-6">
           <LinkList
-            key={(links ?? [])
-              .map((l) => `${l.id}:${l.is_visible}:${l.embed}`)
-              .join()}
+            key={JSON.stringify(links ?? [])}
+            userId={user.id}
             links={links ?? []}
           />
         </div>
