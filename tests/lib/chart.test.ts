@@ -4,6 +4,7 @@ import {
   addDays,
   buildChart,
   change,
+  compactNumber,
   dayList,
   isRange,
   niceScale,
@@ -165,5 +166,20 @@ describe("niceScale", () => {
     expect(scale.top).toBe(top);
     expect(scale.ticks).toHaveLength(5);
     expect(scale.top).toBeGreaterThanOrEqual(max);
+  });
+});
+
+describe("compactNumber", () => {
+  it.each([
+    [0, "0"],
+    [999, "999"],
+    [1000, "1k"],
+    [1971, "1.9k"],
+    [12_345, "12k"],
+    [999_999, "999k"],
+    [1_250_000, "1.2M"],
+    [42_000_000, "42M"],
+  ])("%s is %s", (n, out) => {
+    expect(compactNumber(n)).toBe(out);
   });
 });

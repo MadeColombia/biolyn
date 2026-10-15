@@ -8,6 +8,7 @@ import {
   RANGES,
   buildChart,
   change,
+  compactNumber,
   niceScale,
   ranked,
   shortDate,
@@ -525,7 +526,7 @@ function LineChart({
               textAnchor="end"
               className="fill-ink-muted text-xs tabular-nums"
             >
-              {t.toLocaleString("en-US")}
+              {compactNumber(t)}
             </text>
           </g>
         ))}

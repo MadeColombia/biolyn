@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 import { Card, Heading, button } from "@/components/ui";
 import type { Stats } from "@/lib/analytics";
-import type { Analytics } from "@/lib/chart";
+import { compactNumber, type Analytics } from "@/lib/chart";
 import { channelLabel } from "@/lib/sources";
 import { AnalyticsModes } from "./analytics-chart";
 
@@ -62,14 +62,19 @@ export function StatsSection({
           {tiles.map((t) => (
             <div
               key={t.label}
-              className="flex flex-col gap-1 rounded-2xl border border-edge p-3 sm:p-4"
+              className="flex min-w-0 flex-col gap-1 rounded-2xl border border-edge p-3 sm:p-4"
             >
+              {/* 1971 becomes 1.9k so it fits a phone-width tile; the
+                  exact number stays in the tooltip and for screen readers. */}
               <Heading
                 as="p"
                 size="section"
                 className="tabular-nums sm:text-3xl"
               >
-                {t.value}
+                <span aria-hidden title={t.value.toLocaleString("en-US")}>
+                  {compactNumber(t.value)}
+                </span>
+                <span className="sr-only">{t.value}</span>
               </Heading>
               <p className="text-xs text-ink-muted sm:text-sm">{t.label}</p>
             </div>

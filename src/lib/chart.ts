@@ -198,3 +198,25 @@ export function shortDate(day: string): string {
     timeZone: "UTC",
   });
 }
+
+/**
+ * Short numbers for tight spaces: 999, 1.9k, 12k, 1.2M. Rounds down, so
+ * a stat never claims more than happened.
+ */
+export function compactNumber(n: number): string {
+  const units: [number, string][] = [
+    [1e6, "M"],
+    [1e3, "k"],
+  ];
+  for (const [size, suffix] of units) {
+    if (Math.abs(n) >= size) {
+      const value = n / size;
+      const shown =
+        Math.abs(value) < 10
+          ? Math.floor(value * 10) / 10
+          : Math.floor(value);
+      return `${shown}${suffix}`;
+    }
+  }
+  return String(n);
+}
