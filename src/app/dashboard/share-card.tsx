@@ -10,7 +10,28 @@ export type CardChoice = {
   src: string;
   /** Same picture, sent as a file to save. */
   download: string;
+  /** Add to Apple Wallet / Google Wallet, when their keys are set up. */
+  apple?: string;
+  google?: string;
 };
+
+function WalletIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+      <path d="M4 9h16M15 14h2" />
+    </svg>
+  );
+}
 
 /**
  * Preview of the share card with a style picker and a Download button.
@@ -81,6 +102,26 @@ export function ShareCardPicker({
           >
             Download card
           </a>
+          {choice.apple && (
+            <a
+              href={choice.apple}
+              className={button({ variant: "secondary", size: "sm" })}
+            >
+              <WalletIcon />
+              Add to Apple Wallet
+            </a>
+          )}
+          {choice.google && (
+            <a
+              href={choice.google}
+              target="_blank"
+              rel="noopener"
+              className={button({ variant: "secondary", size: "sm" })}
+            >
+              <WalletIcon />
+              Add to Google Wallet
+            </a>
+          )}
         </div>
       </div>
     </div>

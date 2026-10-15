@@ -171,14 +171,30 @@ export function cardVersion(parts: unknown[]): string {
 /** Every style with its preview and download address, for the dashboard. */
 export function cardChoices(
   username: string,
-  { code, v }: { code?: string; v?: string } = {},
+  {
+    code,
+    v,
+    wallets = {},
+  }: {
+    code?: string;
+    v?: string;
+    /** Which wallets have their keys set up. */
+    wallets?: { apple?: boolean; google?: boolean };
+  } = {},
 ) {
-  return (Object.keys(CARD_STYLES) as CardStyle[]).map((style) => ({
-    id: style,
-    label: CARD_STYLES[style].label,
-    src: cardUrl(username, { style, code, v }),
-    download: cardUrl(username, { style, code, v, download: true }),
-  }));
+  return (Object.keys(CARD_STYLES) as CardStyle[]).map((style) => {
+    const query = cardUrl(username, { style, code, v }).split("?")[1];
+    const pass = (wallet: string) =>
+      `/api/wallet/${wallet}/${encodeURIComponent(username)}?${query}`;
+    return {
+      id: style,
+      label: CARD_STYLES[style].label,
+      src: cardUrl(username, { style, code, v }),
+      download: cardUrl(username, { style, code, v, download: true }),
+      ...(wallets.apple ? { apple: pass("apple") } : {}),
+      ...(wallets.google ? { google: pass("google") } : {}),
+    };
+  });
 }
 
 /**
