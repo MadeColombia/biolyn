@@ -21,7 +21,12 @@ import { channelLabel } from "@/lib/sources";
 
 // Written out in full so Tailwind finds them. A line keeps its slot (and
 // color) while other lines are added or removed.
-const STROKE = ["stroke-chart-1", "stroke-chart-2", "stroke-chart-3", "stroke-chart-4"];
+const STROKE = [
+  "stroke-chart-1",
+  "stroke-chart-2",
+  "stroke-chart-3",
+  "stroke-chart-4",
+];
 const FILL = ["fill-chart-1", "fill-chart-2", "fill-chart-3", "fill-chart-4"];
 const SWATCH = ["bg-chart-1", "bg-chart-2", "bg-chart-3", "bg-chart-4"];
 
@@ -90,6 +95,76 @@ function Select({
         {children}
       </select>
     </label>
+  );
+}
+
+const MODE_KEY = "biolyn:analytics-mode";
+
+/**
+ * The Analytics card with a Simple / Pro switch. Simple is the totals
+ * and lists (`children`); Pro adds the chart with filters above them.
+ * The choice is remembered in this browser.
+ */
+export function AnalyticsModes({
+  data,
+  sourceNames,
+  links,
+  children,
+}: {
+  data: Analytics;
+  sourceNames: Record<string, string>;
+  links: Link[];
+  children: React.ReactNode;
+}) {
+  const [mode, setMode] = useState<"simple" | "pro">("simple");
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read after hydration so server and browser HTML match
+      if (localStorage.getItem(MODE_KEY) === "pro") setMode("pro");
+    } catch {
+      // Storage blocked (private mode): stay on Simple.
+    }
+  }, []);
+  function pick(next: "simple" | "pro") {
+    setMode(next);
+    try {
+      localStorage.setItem(MODE_KEY, next);
+    } catch {}
+  }
+  const pro = mode === "pro";
+  return (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Heading size="section">Analytics</Heading>
+          <p className="text-sm text-ink-muted">
+            {pro
+              ? "Pick what to see and compare."
+              : "Who visits your page and what they tap."}
+          </p>
+        </div>
+        <Segmented
+          label="Analytics view"
+          value={mode}
+          onChange={pick}
+          options={[
+            { value: "simple", label: "Simple" },
+            { value: "pro", label: "Pro" },
+          ]}
+        />
+      </div>
+      {pro && (
+        <AnalyticsChart data={data} sourceNames={sourceNames} links={links} />
+      )}
+      <div
+        className={cx(
+          "flex flex-col gap-6",
+          pro && "border-t border-line pt-6",
+        )}
+      >
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -255,9 +330,7 @@ export function AnalyticsChart({
             Pick up to {MAX_LINES} {compare === "sources" ? "sources" : "links"}
           </legend>
           {options.length === 0 ? (
-            <p className="text-sm text-ink-muted">
-              Nothing to compare yet.
-            </p>
+            <p className="text-sm text-ink-muted">Nothing to compare yet.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {options.map((key) => {
@@ -304,8 +377,8 @@ export function AnalyticsChart({
           {delta && (
             <>
               {", "}
-              <span className="font-bold text-ink">{delta}</span> vs the{" "}
-              {range} days before
+              <span className="font-bold text-ink">{delta}</span> vs the {range}{" "}
+              days before
             </>
           )}
         </p>
@@ -356,7 +429,11 @@ function LineKey({ series, slot }: { series: Series; slot: number }) {
         strokeWidth="2"
         strokeLinecap="round"
         strokeDasharray={series.kind === "previous" ? "3 3" : undefined}
-        className={series.kind === "previous" ? "stroke-ink-muted" : STROKE[series.kind === "main" ? 0 : slot]}
+        className={
+          series.kind === "previous"
+            ? "stroke-ink-muted"
+            : STROKE[series.kind === "main" ? 0 : slot]
+        }
       />
     </svg>
   );
@@ -422,7 +499,10 @@ function LineChart({
             e.preventDefault();
             const d = e.key === "ArrowLeft" ? -1 : 1;
             setHover((h) =>
-              Math.min(days.length - 1, Math.max(0, (h ?? days.length - 1) + (h === null ? 0 : d))),
+              Math.min(
+                days.length - 1,
+                Math.max(0, (h ?? days.length - 1) + (h === null ? 0 : d)),
+              ),
             );
           }
         }}
@@ -454,7 +534,9 @@ function LineChart({
             key={days[i]}
             x={x(i)}
             y={HEIGHT - 8}
-            textAnchor={i === days.length - 1 ? "end" : i === 0 ? "start" : "middle"}
+            textAnchor={
+              i === days.length - 1 ? "end" : i === 0 ? "start" : "middle"
+            }
             className="fill-ink-muted text-xs"
           >
             {shortDate(days[i])}
@@ -474,12 +556,17 @@ function LineChart({
 
         {/* The previous period sits behind the current lines. */}
         {[...series]
-          .sort((a, b) => (a.kind === "previous" ? -1 : b.kind === "previous" ? 1 : 0))
+          .sort((a, b) =>
+            a.kind === "previous" ? -1 : b.kind === "previous" ? 1 : 0,
+          )
           .map((s) => (
             <path
               key={s.key}
               d={s.values
-                .map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+                .map(
+                  (v, i) =>
+                    `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`,
+                )
                 .join("")}
               fill="none"
               strokeWidth="2"
@@ -566,7 +653,11 @@ function ChartTable({ days, series }: { days: string[]; series: Series[] }) {
               Day
             </th>
             {series.map((s) => (
-              <th key={s.key} scope="col" className="px-3 py-2 text-right font-bold">
+              <th
+                key={s.key}
+                scope="col"
+                className="px-3 py-2 text-right font-bold"
+              >
                 {s.label}
               </th>
             ))}
@@ -578,7 +669,10 @@ function ChartTable({ days, series }: { days: string[]; series: Series[] }) {
             .reverse()
             .map(({ d, i }) => (
               <tr key={d}>
-                <th scope="row" className="px-3 py-2 text-left font-normal text-ink-soft">
+                <th
+                  scope="row"
+                  className="px-3 py-2 text-left font-normal text-ink-soft"
+                >
                   {shortDate(d)}
                 </th>
                 {series.map((s) => (

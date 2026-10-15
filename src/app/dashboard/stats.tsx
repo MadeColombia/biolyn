@@ -3,7 +3,7 @@ import { Card, Heading, button } from "@/components/ui";
 import type { Stats } from "@/lib/analytics";
 import type { Analytics } from "@/lib/chart";
 import { channelLabel } from "@/lib/sources";
-import { AnalyticsChart } from "./analytics-chart";
+import { AnalyticsModes } from "./analytics-chart";
 
 type Link = { id: string; title: string };
 
@@ -57,56 +57,53 @@ export function StatsSection({
   ];
   return (
     <Card padding="md" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Heading size="section">Analytics</Heading>
-        <p className="text-sm text-ink-muted">
-          Who visits your page and what they tap. Days are counted in UTC.
-        </p>
-      </div>
+      <AnalyticsModes data={data} links={links} sourceNames={sourceNames}>
+        <div className="grid grid-cols-3 gap-3">
+          {tiles.map((t) => (
+            <div
+              key={t.label}
+              className="flex flex-col gap-1 rounded-2xl border border-edge p-3 sm:p-4"
+            >
+              <Heading
+                as="p"
+                size="section"
+                className="tabular-nums sm:text-3xl"
+              >
+                {t.value}
+              </Heading>
+              <p className="text-xs text-ink-muted sm:text-sm">{t.label}</p>
+            </div>
+          ))}
+        </div>
 
-      <AnalyticsChart data={data} links={links} sourceNames={sourceNames} />
+        <div className="flex flex-col gap-1">
+          <Heading as="h3" size="label">
+            Clicks per link, 30 days
+          </Heading>
+          <BarList
+            empty="No links yet."
+            rows={links.map((l) => ({
+              key: l.id,
+              label: l.title,
+              count: stats.clicksByLink[l.id] ?? 0,
+            }))}
+          />
+        </div>
 
-      <div className="grid grid-cols-3 gap-3 border-t border-line pt-6">
-        {tiles.map((t) => (
-          <div
-            key={t.label}
-            className="flex flex-col gap-1 rounded-2xl border border-edge p-3 sm:p-4"
-          >
-            <Heading as="p" size="section" className="tabular-nums sm:text-3xl">
-              {t.value}
-            </Heading>
-            <p className="text-xs text-ink-muted sm:text-sm">{t.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Heading as="h3" size="label">
-          Clicks per link, 30 days
-        </Heading>
-        <BarList
-          empty="No links yet."
-          rows={links.map((l) => ({
-            key: l.id,
-            label: l.title,
-            count: stats.clicksByLink[l.id] ?? 0,
-          }))}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <Heading as="h3" size="label">
-          Where visitors come from, 30 days
-        </Heading>
-        <BarList
-          empty="No visits yet. Share your link to start seeing data."
-          rows={stats.topChannels.map((r) => ({
-            key: r.key,
-            label: channelLabel(r.key, sourceNames),
-            count: r.count,
-          }))}
-        />
-      </div>
+        <div className="flex flex-col gap-1">
+          <Heading as="h3" size="label">
+            Where visitors come from, 30 days
+          </Heading>
+          <BarList
+            empty="No visits yet. Share your link to start seeing data."
+            rows={stats.topChannels.map((r) => ({
+              key: r.key,
+              label: channelLabel(r.key, sourceNames),
+              count: r.count,
+            }))}
+          />
+        </div>
+      </AnalyticsModes>
     </Card>
   );
 }

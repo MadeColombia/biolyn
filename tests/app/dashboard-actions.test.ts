@@ -1226,7 +1226,7 @@ describe("addSource", () => {
   it("saves the name and code for the owner's page", async () => {
     signedIn({ sources: [{ count: 2 }, { error: null }] });
     expect(
-      await actions.addSource({}, form({ label: "TikTok bio", code: "" })),
+      await actions.addSource({}, form({ label: "TikTok bio" })),
     ).toEqual({ saved: true });
     const insert = db.queries.sources[1].calls.find((c) => c.method === "insert");
     expect(insert?.args[0]).toEqual({
@@ -1247,7 +1247,7 @@ describe("addSource", () => {
   it("explains a code that is already taken", async () => {
     signedIn({ sources: [{ count: 1 }, { error: { code: "23505" } }] });
     expect(await actions.addSource({}, form({ label: "TikTok" }))).toEqual({
-      error: 'You already have a link with the code "tiktok".',
+      error: "You already have a link with that name.",
     });
   });
 

@@ -575,7 +575,8 @@ export async function setGalleryLayout(galleryId: string, layout: string) {
 }
 
 // Tracking links: a name ("TikTok") and the code in the address
-// (?s=tiktok). They only change the dashboard, not the public page.
+// (?s=tiktok), made from the name. They only change the dashboard, not
+// the public page.
 export async function addSource(
   _prev: FormState,
   formData: FormData,
@@ -602,7 +603,7 @@ export async function addSource(
     return {
       error:
         error.code === "23505"
-          ? `You already have a link with the code "${parsed.values.code}".`
+          ? "You already have a link with that name."
           : "Could not save the tracking link.",
     };
   }

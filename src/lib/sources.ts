@@ -125,10 +125,10 @@ export function parseSourceForm(
   const label = String(formData.get("label") ?? "").trim();
   if (!label) return { error: "Give the link a name, like TikTok." };
   if (label.length > 40) return { error: "Keep the name under 40 characters." };
-  const typed = String(formData.get("code") ?? "").trim();
-  const code = cleanSource(typed || label);
+  // The code in the address is made from the name; owners never see it.
+  const code = cleanSource(label);
   if (!code || !CODE.test(code)) {
-    return { error: "Use letters or numbers in the code." };
+    return { error: "Use at least one letter or number in the name." };
   }
   return { values: { label, code } };
 }

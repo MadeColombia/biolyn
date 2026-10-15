@@ -104,13 +104,8 @@ describe("siteName and channels", () => {
 
 describe("parseSourceForm", () => {
   it("makes the code from the name", () => {
-    expect(parseSourceForm(form({ label: " TikTok bio ", code: "" }))).toEqual({
+    expect(parseSourceForm(form({ label: " TikTok bio " }))).toEqual({
       values: { label: "TikTok bio", code: "tiktok-bio" },
-    });
-  });
-  it("cleans a typed code", () => {
-    expect(parseSourceForm(form({ label: "Flyer", code: "Spring 26" }))).toEqual({
-      values: { label: "Flyer", code: "spring-26" },
     });
   });
   it("needs a name", () => {
@@ -125,7 +120,7 @@ describe("parseSourceForm", () => {
   });
   it("needs letters or numbers somewhere", () => {
     expect(parseSourceForm(form({ label: "!!!" }))).toEqual({
-      error: "Use letters or numbers in the code.",
+      error: "Use at least one letter or number in the name.",
     });
   });
 });
