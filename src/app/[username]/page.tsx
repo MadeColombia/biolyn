@@ -163,7 +163,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   ) : link.size === "big" ? (
                     <a
                       href={`/api/click/${link.id}`}
-                      className={`block w-full overflow-hidden rounded-3xl p-4 text-center font-semibold transition ${theme.card}`}
+                      className={`block w-full overflow-hidden rounded-2xl p-4 text-center font-semibold transition ${theme.card}`}
                     >
                       {link.image_url && isIconPreview(link.image_url) ? (
                         // The site's icon, centered on a tinted panel.

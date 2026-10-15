@@ -144,7 +144,7 @@ function PhotoGrid({ title, photos }: { title: string; photos: PublicPhoto[] }) 
               aria-label={
                 photo.alt ? `Open photo: ${photo.alt}` : `Open photo ${i + 1}`
               }
-              className="block w-full overflow-hidden rounded-xl transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+              className="block w-full overflow-hidden rounded-2xl transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
