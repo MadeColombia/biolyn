@@ -20,7 +20,8 @@ function WalletIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="size-5"
+      // Hidden on phones, where two buttons share one row.
+      className="hidden size-5 shrink-0 sm:block"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -66,7 +67,7 @@ export function ShareCardPicker({
         />
       </div>
 
-      <div className="flex flex-col items-start gap-5">
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-bold text-ink">Style</legend>
           <div className="flex flex-wrap gap-2">
@@ -94,33 +95,48 @@ export function ShareCardPicker({
           </div>
         </fieldset>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2">
           <a
             href={choice.download}
             download={`${fileName}.png`}
-            className={button({ size: "sm" })}
+            className={button({ fullWidth: true })}
           >
             Download card
           </a>
-          {choice.apple && (
-            <a
-              href={choice.apple}
-              className={button({ variant: "secondary", size: "sm" })}
-            >
-              <WalletIcon />
-              Add to Apple Wallet
-            </a>
-          )}
-          {choice.google && (
-            <a
-              href={choice.google}
-              target="_blank"
-              rel="noopener"
-              className={button({ variant: "secondary", size: "sm" })}
-            >
-              <WalletIcon />
-              Add to Google Wallet
-            </a>
+          {(choice.apple || choice.google) && (
+            <div className="grid grid-cols-2 gap-2">
+              {choice.apple && (
+                <a
+                  href={choice.apple}
+                  aria-label="Add to Apple Wallet"
+                  className={cx(
+                    button({ variant: "secondary", size: "sm" }),
+                    "whitespace-nowrap",
+                    // Alone, it takes the whole row.
+                    !choice.google && "col-span-2",
+                  )}
+                >
+                  <WalletIcon />
+                  Apple Wallet
+                </a>
+              )}
+              {choice.google && (
+                <a
+                  href={choice.google}
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Add to Google Wallet"
+                  className={cx(
+                    button({ variant: "secondary", size: "sm" }),
+                    "whitespace-nowrap",
+                    !choice.apple && "col-span-2",
+                  )}
+                >
+                  <WalletIcon />
+                  Google Wallet
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
