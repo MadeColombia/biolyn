@@ -18,7 +18,7 @@ import { sourceNames as namesFor } from "@/lib/sources";
 import { socialsFrom } from "@/lib/socials";
 import { photoStyleFrom, THEMES, themeFrom, type ThemeId } from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
-import { cardVersion } from "@/lib/qr-card";
+import { cardDesign, cardVersion } from "@/lib/qr-card";
 import { setCorners, setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
 import {
@@ -187,6 +187,7 @@ async function Dashboard() {
     profile.avatar_url,
     profile.display_name,
     currentTheme,
+    cardDesign(),
   ]);
 
   return (

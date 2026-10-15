@@ -2,7 +2,7 @@
 // sized for phones (4:5, like an Instagram post). It is drawn on the
 // server by src/app/api/qr-card/[username]/route.tsx.
 import QRCode from "qrcode";
-import { isThemeId, type ThemeId } from "@/lib/themes";
+import { isThemeId, THEMES, type CardColors } from "@/lib/themes";
 
 export const CARD_SIZE = { width: 1080, height: 1350 } as const;
 
@@ -22,21 +22,7 @@ export function cardStyleFrom(value: unknown): CardStyle {
     : "brand";
 }
 
-export type CardPalette = {
-  /** CSS background of the whole card (a color or a gradient). */
-  background: string;
-  text: string;
-  muted: string;
-  /** Avatar ring and the page address. */
-  accent: string;
-  /** The tile behind the QR code. Always light so phones can scan it. */
-  tile: string;
-  tileBorder: string;
-  /** The QR dots. */
-  dots: string;
-  /** The three big QR corner squares and the ring in the middle. */
-  corners: string;
-};
+export type CardPalette = CardColors;
 
 const BRAND: CardPalette = {
   background: "#f5efe6",
@@ -60,43 +46,12 @@ const NIGHT: CardPalette = {
   corners: "#b9532d",
 };
 
-// The public page themes, in the same colors as src/lib/themes.ts.
-const PAGE: Record<ThemeId, CardPalette> = {
-  classic: {
-    background: "#ffffff",
-    text: "#171717",
-    muted: "#737373",
-    accent: "#171717",
-    tile: "#ffffff",
-    tileBorder: "#d4d4d4",
-    dots: "#171717",
-    corners: "#171717",
-  },
-  midnight: {
-    background: "#020617",
-    text: "#ffffff",
-    muted: "#94a3b8",
-    accent: "#ffffff",
-    tile: "#ffffff",
-    tileBorder: "#1e293b",
-    dots: "#020617",
-    corners: "#020617",
-  },
-  sunset: {
-    background: "linear-gradient(180deg, #fb923c, #ec4899, #9333ea)",
-    text: "#ffffff",
-    muted: "rgba(255,255,255,0.85)",
-    accent: "#ffffff",
-    tile: "#ffffff",
-    tileBorder: "rgba(255,255,255,0.6)",
-    dots: "#171717",
-    corners: "#db2777",
-  },
-};
-
 export function cardPalette(style: CardStyle, theme: unknown): CardPalette {
   if (style === "night") return NIGHT;
-  if (style === "page") return PAGE[isThemeId(theme) ? theme : "classic"];
+  // Each theme keeps its card colors next to its page colors, so a new
+  // theme gets a matching card without touching this file.
+  if (style === "page")
+    return THEMES[isThemeId(theme) ? theme : "classic"].shareCard;
   return BRAND;
 }
 
@@ -224,4 +179,19 @@ export function cardChoices(
     src: cardUrl(username, { style, code, v }),
     download: cardUrl(username, { style, code, v, download: true }),
   }));
+}
+
+/**
+ * Changes whenever a card could look different after an update: any card
+ * colors (a new or edited theme included) or a new deploy (layout
+ * changes). Part of `v`, so nobody gets an old design from the cache.
+ */
+export function cardDesign(): string {
+  return cardVersion([
+    BRAND,
+    NIGHT,
+    Object.values(THEMES).map((t) => t.shareCard),
+    CARD_SIZE,
+    process.env.VERCEL_DEPLOYMENT_ID ?? process.env.VERCEL_GIT_COMMIT_SHA,
+  ]);
 }

@@ -1,8 +1,10 @@
 import QRCode from "qrcode";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { THEMES } from "@/lib/themes";
 import {
   CARD_STYLES,
   cardChoices,
+  cardDesign,
   cardPalette,
   cardStyleFrom,
   cardUrl,
@@ -40,15 +42,38 @@ describe("cardPalette", () => {
     expect(cardPalette("page", "nope").background).toBe("#ffffff");
   });
 
+  it("gives every page theme its own card, new themes included", () => {
+    for (const [id, theme] of Object.entries(THEMES)) {
+      expect(cardPalette("page", id)).toBe(theme.shareCard);
+    }
+  });
+
   it("keeps the QR on a light tile with dark dots, so it scans", () => {
     for (const style of ["brand", "night", "page"] as const) {
-      for (const theme of ["classic", "midnight", "sunset"]) {
+      for (const theme of Object.keys(THEMES)) {
         const p = cardPalette(style, theme);
-        expect(p.tile).toMatch(/^#f|^#fff/);
+        expect(luminance(p.tile)).toBeGreaterThan(0.8);
+        expect(luminance(p.dots)).toBeLessThan(0.2);
         expect(p.dots).not.toBe(p.tile);
         expect(p.corners).not.toBe(p.tile);
       }
     }
+  });
+});
+
+// Relative brightness of a #rrggbb color, 0 (black) to 1 (white).
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+describe("cardDesign", () => {
+  it("changes with every deploy", () => {
+    vi.stubEnv("VERCEL_DEPLOYMENT_ID", "dpl_a");
+    const a = cardDesign();
+    expect(cardDesign()).toBe(a);
+    vi.stubEnv("VERCEL_DEPLOYMENT_ID", "dpl_b");
+    expect(cardDesign()).not.toBe(a);
   });
 });
 
