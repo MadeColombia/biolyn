@@ -8,6 +8,7 @@ import {
   referrerHost,
   siteName,
   sourceFromSearch,
+  sourceNames,
   sourceUrl,
 } from "@/lib/sources";
 
@@ -36,13 +37,11 @@ describe("cleanSource", () => {
 });
 
 describe("sourceFromSearch", () => {
-  it("prefers ?s= over utm_source", () => {
-    expect(sourceFromSearch("?s=tiktok&utm_source=mail")).toBe("tiktok");
+  it("reads ?s=", () => {
+    expect(sourceFromSearch("?s=TikTok&utm_source=mail")).toBe("tiktok");
   });
-  it("falls back to utm_source", () => {
-    expect(sourceFromSearch(new URLSearchParams("utm_source=News Letter"))).toBe(
-      "news-letter",
-    );
+  it("ignores UTM tags, which anyone can type", () => {
+    expect(sourceFromSearch(new URLSearchParams("utm_source=mail"))).toBeNull();
   });
   it("is null without either", () => {
     expect(sourceFromSearch("")).toBeNull();
@@ -122,6 +121,17 @@ describe("parseSourceForm", () => {
     expect(parseSourceForm(form({ label: "!!!" }))).toEqual({
       error: "Use at least one letter or number in the name.",
     });
+  });
+});
+
+describe("sourceNames", () => {
+  it("marks deleted links", () => {
+    expect(
+      sourceNames([
+        { code: "tiktok", label: "TikTok bio", deleted_at: null },
+        { code: "flyer", label: "Flyer", deleted_at: "2026-10-15T00:00:00Z" },
+      ]),
+    ).toEqual({ tiktok: "TikTok bio", flyer: "Flyer (deleted)" });
   });
 });
 

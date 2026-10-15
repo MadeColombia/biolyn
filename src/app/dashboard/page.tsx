@@ -14,17 +14,18 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getAnalytics, summarize } from "@/lib/analytics";
 import { ranked } from "@/lib/chart";
+import { sourceNames as namesFor } from "@/lib/sources";
 import { socialsFrom } from "@/lib/socials";
-import {
-  photoStyleFrom,
-  THEMES,
-  themeFrom,
-  type ThemeId,
-} from "@/lib/themes";
+import { photoStyleFrom, THEMES, themeFrom, type ThemeId } from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
 import { setCorners, setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
-import { CORNERS, CORNER_CLASSES, cornerStyleFrom, type CornerStyle } from "@/lib/corners";
+import {
+  CORNERS,
+  CORNER_CLASSES,
+  cornerStyleFrom,
+  type CornerStyle,
+} from "@/lib/corners";
 import { FONT_CLASS } from "@/components/profile-fonts";
 import {
   AvatarUpload,
@@ -161,18 +162,20 @@ async function Dashboard() {
   const currentTheme = themeFrom(profile.theme);
   const currentFont = fontFrom(profile.theme);
   const currentCorners = cornerStyleFrom(profile.theme);
-  const [analytics, { data: sources }] = await Promise.all([
-    getAnalytics(supabase, profile.id),
-    supabase
-      .from("sources")
-      .select("id, code, label")
-      .eq("profile_id", profile.id)
-      .order("created_at"),
-  ]);
-  const stats = summarize(analytics);
-  const sourceNames = Object.fromEntries(
-    (sources ?? []).map((s) => [s.code, s.label]),
+  // Every tracking link ever made: deleted ones still name past visits.
+  const { data: allSources } = await supabase
+    .from("sources")
+    .select("id, code, label, deleted_at")
+    .eq("profile_id", profile.id)
+    .order("created_at");
+  const sources = (allSources ?? []).filter((s) => !s.deleted_at);
+  const analytics = await getAnalytics(
+    supabase,
+    profile.id,
+    (allSources ?? []).map((s) => s.code),
   );
+  const stats = summarize(analytics);
+  const sourceNames = namesFor(allSources ?? []);
   const sourceViews = Object.fromEntries(
     ranked(analytics, "views", "channel", 30)
       .filter((r) => r.key.startsWith("s:"))
@@ -271,7 +274,7 @@ async function Dashboard() {
       />
 
       <SourcesSection
-        sources={sources ?? []}
+        sources={sources}
         siteUrl={siteUrl}
         username={profile.username}
         views30={sourceViews}
@@ -370,7 +373,10 @@ async function Dashboard() {
                   )}
                 >
                   <span
-                    className={cx("h-9 w-20 bg-brand", CORNER_CLASSES[id].block)}
+                    className={cx(
+                      "h-9 w-20 bg-brand",
+                      CORNER_CLASSES[id].block,
+                    )}
                     aria-hidden
                   />
                   <span className="text-sm">{CORNERS[id].label}</span>

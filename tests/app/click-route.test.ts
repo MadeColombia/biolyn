@@ -64,7 +64,7 @@ describe("GET /api/click/[linkId]", () => {
 
   it("reads the source from the page address without JavaScript", async () => {
     pub = fakeClient({ links: [{ data: live }] });
-    await click("l1", "", "https://biolyn.link/ethan?utm_source=Newsletter");
+    await click("l1", "", "https://biolyn.link/ethan?s=Newsletter");
     expect(admin!.rpc).toHaveBeenCalledWith(
       "log_click",
       expect.objectContaining({ p_source: "newsletter" }),

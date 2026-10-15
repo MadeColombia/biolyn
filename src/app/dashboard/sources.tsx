@@ -1,9 +1,8 @@
 import QRCode from "qrcode";
-import { Button, Card, Heading, button } from "@/components/ui";
+import { Card, Heading, button } from "@/components/ui";
 import { MAX_SOURCES, sourceUrl } from "@/lib/sources";
-import { deleteSource } from "./actions";
 import { CopyLinkButton } from "./forms";
-import { AddSourceForm } from "./source-forms";
+import { AddSourceForm, DeleteSource } from "./source-forms";
 
 const visits = (n: number) => (n === 1 ? "1 visit" : `${n} visits`);
 
@@ -69,15 +68,7 @@ export async function SourcesSection({
                 >
                   QR code
                 </a>
-                <form action={deleteSource.bind(null, s.id)}>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    aria-label={`Delete ${s.label}`}
-                  >
-                    Delete
-                  </Button>
-                </form>
+                <DeleteSource id={s.id} label={s.label} />
               </div>
             </li>
           ))}
