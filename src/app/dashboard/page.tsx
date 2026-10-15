@@ -18,6 +18,7 @@ import { sourceNames as namesFor } from "@/lib/sources";
 import { socialsFrom } from "@/lib/socials";
 import { photoStyleFrom, THEMES, themeFrom, type ThemeId } from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
+import { cardVersion } from "@/lib/qr-card";
 import { setCorners, setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
 import {
@@ -182,6 +183,11 @@ async function Dashboard() {
       .map((r) => [r.key.slice(2), r.count]),
   );
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
+  const version = cardVersion([
+    profile.avatar_url,
+    profile.display_name,
+    currentTheme,
+  ]);
 
   return (
     <>
@@ -278,9 +284,17 @@ async function Dashboard() {
         siteUrl={siteUrl}
         username={profile.username}
         views30={sourceViews}
+        cardVersion={version}
       />
 
-      <QrSection url={`${siteUrl}/${profile.username}`} />
+      {/* A hidden page has no card to show. */}
+      {!profile.is_suspended && (
+        <QrSection
+          url={`${siteUrl}/${profile.username}`}
+          username={profile.username}
+          version={version}
+        />
+      )}
 
       <Card padding="md" className="flex flex-col gap-6">
         <SectionTitle title="Socials">

@@ -1,8 +1,10 @@
 import QRCode from "qrcode";
-import { Card, Heading, button } from "@/components/ui";
+import { Card, Heading } from "@/components/ui";
+import { cardChoices } from "@/lib/qr-card";
 import { MAX_SOURCES, sourceUrl } from "@/lib/sources";
 import { CopyLinkButton } from "./forms";
 import { AddSourceForm, DeleteSource } from "./source-forms";
+import { ShareCardDialog } from "./share-card";
 
 const visits = (n: number) => (n === 1 ? "1 visit" : `${n} visits`);
 
@@ -17,12 +19,15 @@ export async function SourcesSection({
   siteUrl,
   username,
   views30,
+  cardVersion,
 }: {
   sources: Source[];
   siteUrl: string;
   username: string;
   /** Views in the last 30 days per source code. */
   views30: Record<string, number>;
+  /** Changes when the share card looks different, see cardVersion(). */
+  cardVersion: string;
 }) {
   const rows = await Promise.all(
     sources.map(async (s) => {
@@ -61,13 +66,15 @@ export async function SourcesSection({
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 <CopyLinkButton url={s.url} />
-                <a
-                  href={s.qr}
-                  download={`biolyn-qr-${s.code}.png`}
-                  className={button({ variant: "secondary", size: "sm" })}
-                >
-                  QR code
-                </a>
+                <ShareCardDialog
+                  label={s.label}
+                  choices={cardChoices(username, {
+                    code: s.code,
+                    v: cardVersion,
+                  })}
+                  fileName={`${username}-${s.code}-biolyn`}
+                  qrPng={s.qr}
+                />
                 <DeleteSource id={s.id} label={s.label} />
               </div>
             </li>
