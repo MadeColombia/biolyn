@@ -291,7 +291,6 @@ async function Dashboard() {
       {/* A hidden page has no card to show. */}
       {!profile.is_suspended && (
         <QrSection
-          url={`${siteUrl}/${profile.username}`}
           username={profile.username}
           version={version}
         />

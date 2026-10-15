@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { Card, Heading } from "@/components/ui";
 import { cardChoices } from "@/lib/qr-card";
 import { MAX_SOURCES, sourceUrl } from "@/lib/sources";
@@ -14,7 +13,7 @@ export type Source = { id: string; code: string; label: string };
  * Tracking links: the page address with ?s=<code> on the end. Share a
  * different one in each place, and analytics shows which one people used.
  */
-export async function SourcesSection({
+export function SourcesSection({
   sources,
   siteUrl,
   username,
@@ -29,16 +28,10 @@ export async function SourcesSection({
   /** Changes when the share card looks different, see cardVersion(). */
   cardVersion: string;
 }) {
-  const rows = await Promise.all(
-    sources.map(async (s) => {
-      const url = sourceUrl(siteUrl, username, s.code);
-      return {
-        ...s,
-        url,
-        qr: await QRCode.toDataURL(url, { margin: 2, width: 1024 }),
-      };
-    }),
-  );
+  const rows = sources.map((s) => ({
+    ...s,
+    url: sourceUrl(siteUrl, username, s.code),
+  }));
 
   return (
     <Card padding="md" className="flex flex-col gap-6">
@@ -73,7 +66,6 @@ export async function SourcesSection({
                     v: cardVersion,
                   })}
                   fileName={`${username}-${s.code}-biolyn`}
-                  qrPng={s.qr}
                 />
                 <DeleteSource id={s.id} label={s.label} />
               </div>

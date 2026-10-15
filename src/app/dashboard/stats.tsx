@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { Card, Heading } from "@/components/ui";
 import type { Stats } from "@/lib/analytics";
 import { compactNumber, type Analytics } from "@/lib/chart";
@@ -117,16 +116,13 @@ export function StatsSection({
 
 // The share card: a picture with the page's QR code and name, to post
 // or print. Scanning the code opens the page.
-export async function QrSection({
-  url,
+export function QrSection({
   username,
   version,
 }: {
-  url: string;
   username: string;
   version: string;
 }) {
-  const png = await QRCode.toDataURL(url, { margin: 2, width: 1024 });
   return (
     <Card padding="md" className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -139,7 +135,6 @@ export async function QrSection({
       <ShareCardPicker
         choices={cardChoices(username, { v: version })}
         fileName={`${username}-biolyn`}
-        qrPng={png}
       />
     </Card>
   );

@@ -19,12 +19,9 @@ export type CardChoice = {
 export function ShareCardPicker({
   choices,
   fileName,
-  qrPng,
 }: {
   choices: CardChoice[];
   fileName: string;
-  /** The plain QR code, for printing on its own. */
-  qrPng?: string;
 }) {
   const [id, setId] = useState(choices[0].id);
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
@@ -84,15 +81,6 @@ export function ShareCardPicker({
           >
             Download card
           </a>
-          {qrPng && (
-            <a
-              href={qrPng}
-              download={`${fileName}-qr.png`}
-              className={button({ variant: "secondary", size: "sm" })}
-            >
-              QR code only
-            </a>
-          )}
         </div>
       </div>
     </div>
@@ -104,12 +92,10 @@ export function ShareCardDialog({
   label,
   choices,
   fileName,
-  qrPng,
 }: {
   label: string;
   choices: CardChoice[];
   fileName: string;
-  qrPng: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -154,13 +140,7 @@ export function ShareCardDialog({
             </Button>
           </div>
           {/* Only load the pictures once someone opens it. */}
-          {open && (
-            <ShareCardPicker
-              choices={choices}
-              fileName={fileName}
-              qrPng={qrPng}
-            />
-          )}
+          {open && <ShareCardPicker choices={choices} fileName={fileName} />}
         </div>
       </dialog>
     </>
