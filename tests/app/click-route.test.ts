@@ -11,10 +11,14 @@ vi.mock("@/lib/rate-limit", () => ({ allow, visitorId: () => "visitor" }));
 
 const { GET } = await import("@/app/api/click/[linkId]/route");
 
-const click = (linkId = "l1") =>
+const click = (
+  linkId = "l1",
+  query = "",
+  referer = "https://biolyn.link/ethan",
+) =>
   GET(
-    new NextRequest(`https://biolyn.link/api/click/${linkId}`, {
-      headers: { referer: "https://biolyn.link/ethan" },
+    new NextRequest(`https://biolyn.link/api/click/${linkId}${query}`, {
+      headers: { referer },
     }),
     { params: Promise.resolve({ linkId }) } as never,
   );
@@ -34,8 +38,55 @@ describe("GET /api/click/[linkId]", () => {
     expect(res.headers.get("location")).toBe("https://example.com/x");
     expect(admin!.rpc).toHaveBeenCalledWith("log_click", {
       p_link_id: "l1",
-      p_referrer: "https://biolyn.link/ethan",
+      p_referrer: null,
+      p_source: null,
     });
+  });
+
+  it("logs the source and site the page added to the link", async () => {
+    pub = fakeClient({ links: [{ data: live }] });
+    await click("l1", "?s=tiktok&r=l.instagram.com");
+    expect(admin!.rpc).toHaveBeenCalledWith("log_click", {
+      p_link_id: "l1",
+      p_referrer: "l.instagram.com",
+      p_source: "tiktok",
+    });
+  });
+
+  it("drops a site name that isn't one", async () => {
+    pub = fakeClient({ links: [{ data: live }] });
+    await click("l1", "?r=%3Cscript%3E");
+    expect(admin!.rpc).toHaveBeenCalledWith(
+      "log_click",
+      expect.objectContaining({ p_referrer: null }),
+    );
+  });
+
+  it("reads the source from the page address without JavaScript", async () => {
+    pub = fakeClient({ links: [{ data: live }] });
+    await click("l1", "", "https://biolyn.link/ethan?utm_source=Newsletter");
+    expect(admin!.rpc).toHaveBeenCalledWith(
+      "log_click",
+      expect.objectContaining({ p_source: "newsletter" }),
+    );
+  });
+
+  it("ignores tags on other sites' addresses", async () => {
+    pub = fakeClient({ links: [{ data: live }] });
+    await click("l1", "", "https://evil.example/?s=fake");
+    expect(admin!.rpc).toHaveBeenCalledWith(
+      "log_click",
+      expect.objectContaining({ p_source: null }),
+    );
+  });
+
+  it("copes with no referer at all", async () => {
+    pub = fakeClient({ links: [{ data: live }] });
+    await click("l1", "", "");
+    expect(admin!.rpc).toHaveBeenCalledWith(
+      "log_click",
+      expect.objectContaining({ p_source: null }),
+    );
   });
 
   it("only follows visible links on pages that aren't suspended", async () => {

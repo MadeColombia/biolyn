@@ -35,6 +35,10 @@ const COLORS = [
   ["brand-hover", "bg-brand-hover", "Primary hover"],
   ["danger", "bg-danger", "Errors, delete"],
   ["success", "bg-success", "Saved, done"],
+  ["chart-1", "bg-chart-1", "Chart line 1"],
+  ["chart-2", "bg-chart-2", "Chart line 2"],
+  ["chart-3", "bg-chart-3", "Chart line 3"],
+  ["chart-4", "bg-chart-4", "Chart line 4"],
 ] as const;
 
 export default function StyleGuide() {

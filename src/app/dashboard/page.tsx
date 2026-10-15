@@ -12,7 +12,8 @@ import {
   cx,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
-import { getStats } from "@/lib/analytics";
+import { getAnalytics, summarize } from "@/lib/analytics";
+import { ranked } from "@/lib/chart";
 import { socialsFrom } from "@/lib/socials";
 import {
   photoStyleFrom,
@@ -35,6 +36,7 @@ import {
 import { AddItemMenu } from "./add-item";
 import { LinkList, type LinkItem, type ListItem } from "./link-list";
 import { QrSection, StatsSection } from "./stats";
+import { SourcesSection } from "./sources";
 
 export default function DashboardPage() {
   return (
@@ -159,10 +161,22 @@ async function Dashboard() {
   const currentTheme = themeFrom(profile.theme);
   const currentFont = fontFrom(profile.theme);
   const currentCorners = cornerStyleFrom(profile.theme);
-  const stats = await getStats(
-    supabase,
-    profile.id,
-    links.map((l) => l.id),
+  const [analytics, { data: sources }] = await Promise.all([
+    getAnalytics(supabase, profile.id),
+    supabase
+      .from("sources")
+      .select("id, code, label")
+      .eq("profile_id", profile.id)
+      .order("created_at"),
+  ]);
+  const stats = summarize(analytics);
+  const sourceNames = Object.fromEntries(
+    (sources ?? []).map((s) => [s.code, s.label]),
+  );
+  const sourceViews = Object.fromEntries(
+    ranked(analytics, "views", "channel", 30)
+      .filter((r) => r.key.startsWith("s:"))
+      .map((r) => [r.key.slice(2), r.count]),
   );
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
 
@@ -249,7 +263,19 @@ async function Dashboard() {
         </div>
       </Card>
 
-      <StatsSection stats={stats} links={links} />
+      <StatsSection
+        stats={stats}
+        data={analytics}
+        links={links}
+        sourceNames={sourceNames}
+      />
+
+      <SourcesSection
+        sources={sources ?? []}
+        siteUrl={siteUrl}
+        username={profile.username}
+        views30={sourceViews}
+      />
 
       <QrSection url={`${siteUrl}/${profile.username}`} />
 

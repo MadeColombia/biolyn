@@ -1,6 +1,9 @@
 import QRCode from "qrcode";
 import { Card, Heading, button } from "@/components/ui";
 import type { Stats } from "@/lib/analytics";
+import type { Analytics } from "@/lib/chart";
+import { channelLabel } from "@/lib/sources";
+import { AnalyticsChart } from "./analytics-chart";
 
 type Link = { id: string; title: string };
 
@@ -38,10 +41,14 @@ function BarList({ rows, empty }: { rows: Row[]; empty: string }) {
 
 export function StatsSection({
   stats,
+  data,
   links,
+  sourceNames,
 }: {
   stats: Stats;
+  data: Analytics;
   links: Link[];
+  sourceNames: Record<string, string>;
 }) {
   const tiles = [
     { label: "Views, 7 days", value: stats.views7 },
@@ -53,11 +60,13 @@ export function StatsSection({
       <div className="flex flex-col gap-1">
         <Heading size="section">Analytics</Heading>
         <p className="text-sm text-ink-muted">
-          Who visits your page and what they tap.
+          Who visits your page and what they tap. Days are counted in UTC.
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <AnalyticsChart data={data} links={links} sourceNames={sourceNames} />
+
+      <div className="grid grid-cols-3 gap-3 border-t border-line pt-6">
         {tiles.map((t) => (
           <div
             key={t.label}
@@ -87,13 +96,13 @@ export function StatsSection({
 
       <div className="flex flex-col gap-1">
         <Heading as="h3" size="label">
-          Where visitors come from
+          Where visitors come from, 30 days
         </Heading>
         <BarList
           empty="No visits yet. Share your link to start seeing data."
-          rows={stats.topReferrers.map((r) => ({
-            key: r.host,
-            label: r.host,
+          rows={stats.topChannels.map((r) => ({
+            key: r.key,
+            label: channelLabel(r.key, sourceNames),
             count: r.count,
           }))}
         />

@@ -21,6 +21,12 @@
   --on-brand: #ffffff; /* text on a brand background */
   --danger: #b42318;
   --success: #2f7a4b;
+  /* Chart lines, in this order. Checked for color blindness with the
+     dataviz palette validator; see docs/design-system.md. */
+  --chart-1: #b9532d;
+  --chart-2: #2a78d6;
+  --chart-3: #1baf7a;
+  --chart-4: #6250d6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,6 +45,10 @@
     --on-brand: #15110f;
     --danger: #f97066;
     --success: #6cc596;
+    --chart-1: #d2693f;
+    --chart-2: #3987e5;
+    --chart-3: #199e70;
+    --chart-4: #9085e9;
   }
 }
 
@@ -56,6 +66,10 @@
   --color-on-brand: var(--on-brand);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
 
   /* Fonts are loaded in src/app/layout.tsx. */
   --font-sans: var(--font-geist-sans);

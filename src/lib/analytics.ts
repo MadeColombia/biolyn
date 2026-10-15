@@ -1,70 +1,102 @@
 import "server-only";
 import { connection } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { channelKey } from "./sources";
+import { addDays, type Analytics, type DailyRow } from "./chart";
 
-const DAY = 24 * 60 * 60 * 1000;
+/** Days of history the dashboard loads: 90 shown + 90 to compare with. */
+export const HISTORY_DAYS = 180;
+
+type RawRow = {
+  d: string;
+  k: "v" | "c";
+  l: string | null;
+  s: string | null;
+  r: string | null;
+  n: number;
+};
+
+/**
+ * Loads views and clicks per day for the signed-in owner. The counting
+ * happens in the database (analytics_daily), and Row Level Security keeps
+ * it to the owner's own rows.
+ */
+export async function getAnalytics(
+  supabase: SupabaseClient,
+  profileId: string,
+): Promise<Analytics> {
+  // Reading the clock needs a real request; cookies alone don't count,
+  // because Next.js can prerender with them ahead of time.
+  await connection();
+  const today = new Date().toISOString().slice(0, 10);
+  const since = addDays(today, -(HISTORY_DAYS - 1));
+
+  const { data, error } = await supabase.rpc("analytics_daily", {
+    p_profile_id: profileId,
+    p_since: `${since}T00:00:00Z`,
+  });
+  if (error || !Array.isArray(data)) return { today, rows: [] };
+
+  // Old rows can land in the same channel (two spellings of one site),
+  // so add them up again.
+  const merged = new Map<string, DailyRow>();
+  for (const raw of data as RawRow[]) {
+    const kind = raw.k === "c" ? "click" : "view";
+    const channel = channelKey(raw.s, raw.r);
+    const link = kind === "click" ? raw.l : null;
+    const id = `${raw.d}|${kind}|${link}|${channel}`;
+    const row = merged.get(id);
+    if (row) row.count += Number(raw.n) || 0;
+    else
+      merged.set(id, {
+        day: raw.d,
+        kind,
+        link,
+        channel,
+        count: Number(raw.n) || 0,
+      });
+  }
+  return { today, rows: [...merged.values()] };
+}
 
 export type Stats = {
   views7: number;
   views30: number;
   clicks30: number;
   clicksByLink: Record<string, number>;
-  topReferrers: { host: string; count: number }[];
+  /** Views in the last 30 days per channel key, biggest first, top 5. */
+  topChannels: { key: string; count: number }[];
 };
 
-// Reads the last 30 days of views and clicks for the signed-in owner
-// (Row Level Security limits rows to their own) and counts them here.
-// Fine for small pages; move the counting into SQL once pages get busy.
-export async function getStats(
-  supabase: SupabaseClient,
-  profileId: string,
-  linkIds: string[],
-): Promise<Stats> {
-  // Reading the clock needs a real request; cookies alone don't count,
-  // because Next.js can prerender with them ahead of time.
-  await connection();
-  const now = Date.now();
-  const since = new Date(now - 30 * DAY).toISOString();
-
-  const [{ data: views }, { data: clicks }] = await Promise.all([
-    supabase
-      .from("views")
-      .select("referrer, created_at")
-      .eq("profile_id", profileId)
-      .gte("created_at", since)
-      .limit(10000),
-    linkIds.length
-      ? supabase
-          .from("clicks")
-          .select("link_id")
-          .in("link_id", linkIds)
-          .gte("created_at", since)
-          .limit(10000)
-      : Promise.resolve({ data: [] as { link_id: string }[] }),
-  ]);
-
-  const weekAgo = now - 7 * DAY;
-  const referrers = new Map<string, number>();
-  let views7 = 0;
-  for (const v of views ?? []) {
-    if (new Date(v.created_at).getTime() >= weekAgo) views7++;
-    const host = v.referrer ?? "Direct or unknown";
-    referrers.set(host, (referrers.get(host) ?? 0) + 1);
-  }
-
-  const clicksByLink: Record<string, number> = {};
-  for (const c of clicks ?? []) {
-    clicksByLink[c.link_id] = (clicksByLink[c.link_id] ?? 0) + 1;
-  }
-
-  return {
-    views7,
-    views30: views?.length ?? 0,
-    clicks30: clicks?.length ?? 0,
-    clicksByLink,
-    topReferrers: [...referrers]
-      .map(([host, count]) => ({ host, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5),
+/** The headline numbers under the chart. */
+export function summarize({ today, rows }: Analytics): Stats {
+  const week = addDays(today, -6);
+  const month = addDays(today, -29);
+  const stats: Stats = {
+    views7: 0,
+    views30: 0,
+    clicks30: 0,
+    clicksByLink: {},
+    topChannels: [],
   };
+  const channels = new Map<string, number>();
+  for (const r of rows) {
+    if (r.day < month || r.day > today) continue;
+    if (r.kind === "view") {
+      stats.views30 += r.count;
+      if (r.day >= week) stats.views7 += r.count;
+      channels.set(r.channel, (channels.get(r.channel) ?? 0) + r.count);
+    } else {
+      stats.clicks30 += r.count;
+      if (r.link) {
+        stats.clicksByLink[r.link] =
+          (stats.clicksByLink[r.link] ?? 0) + r.count;
+      }
+    }
+  }
+  stats.topChannels = [...channels]
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  return stats;
 }

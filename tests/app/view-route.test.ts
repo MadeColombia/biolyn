@@ -48,6 +48,16 @@ describe("POST /api/view", () => {
     expect(admin!.rpc).toHaveBeenCalledWith("log_view", {
       p_profile_id: ID,
       p_referrer: "l.instagram.com",
+      p_source: null,
+    });
+  });
+
+  it("stores the source the page sends, cleaned up", async () => {
+    await post({ profileId: ID, source: "TikTok Bio!" });
+    expect(admin!.rpc).toHaveBeenCalledWith("log_view", {
+      p_profile_id: ID,
+      p_referrer: null,
+      p_source: "tiktok-bio",
     });
   });
 
@@ -61,6 +71,7 @@ describe("POST /api/view", () => {
     expect(admin!.rpc).toHaveBeenCalledWith("log_view", {
       p_profile_id: ID,
       p_referrer: null,
+      p_source: null,
     });
   });
 

@@ -56,6 +56,9 @@ Defined in `src/app/globals.css`. Each one becomes Tailwind utilities (`bg-`, `t
 | `on-brand`    | `#ffffff` | `#15110f` | Text on a `brand` background              |
 | `danger`      | `#b42318` | `#f97066` | Errors, delete buttons                    |
 | `success`     | `#2f7a4b` | `#6cc596` | Saved / done messages                     |
+| `chart-1` to `chart-4` | `#b9532d` `#2a78d6` `#1baf7a` `#6250d6` | `#d2693f` `#3987e5` `#199e70` `#9085e9` | Lines in charts, always in this order |
+
+Chart colors: a line keeps its color while other lines are added or removed (color follows the thing, not its rank). The order passed a color blindness check in both modes; `chart-3` is light on the light surface, so charts always have a legend and a table view. A "previous period" line is dashed `ink-muted`, never a chart color.
 
 `danger` and `success` are new (the homepage had no errors to show). Their values are a first pick; adjust them in `globals.css` if they clash once real screens use them.
 
