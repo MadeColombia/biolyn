@@ -24,6 +24,8 @@ type RawRow = {
 export async function getAnalytics(
   supabase: SupabaseClient,
   profileId: string,
+  /** Codes of every tracking link the owner made, deleted ones too. */
+  knownCodes: string[],
 ): Promise<Analytics> {
   // Reading the clock needs a real request; cookies alone don't count,
   // because Next.js can prerender with them ahead of time.
@@ -37,12 +39,14 @@ export async function getAnalytics(
   });
   if (error || !Array.isArray(data)) return { today, rows: [] };
 
-  // Old rows can land in the same channel (two spellings of one site),
-  // so add them up again.
+  // Tags the owner never created (an edited address, an old UTM tag)
+  // count by the site the visitor came from instead. Several rows can
+  // then land in the same channel, so add them up again.
+  const known = new Set(knownCodes);
   const merged = new Map<string, DailyRow>();
   for (const raw of data as RawRow[]) {
     const kind = raw.k === "c" ? "click" : "view";
-    const channel = channelKey(raw.s, raw.r);
+    const channel = channelKey(raw.s && known.has(raw.s) ? raw.s : null, raw.r);
     const link = kind === "click" ? raw.l : null;
     const id = `${raw.d}|${kind}|${link}|${channel}`;
     const row = merged.get(id);

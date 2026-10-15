@@ -1,9 +1,10 @@
 // Tracking sources: where a visitor came from.
 //
 // A source link is the normal page address with a tag on the end, like
-// biolyn.link/ethan?s=tiktok. Owners create and name them in the dashboard.
-// Visitors without a tag still get a source from UTM tags (?utm_source=...)
-// or, failing that, from the site that sent them (the referrer).
+// biolyn.link/ethan?s=tiktok. Owners create and name them in the dashboard,
+// and only those tags count: anyone can type ?s=anything, so other tags are
+// ignored (the database checks this too, see log_view). Visitors without a
+// valid tag get a source from the site that sent them (the referrer).
 
 /** Most source links one page can have. */
 export const MAX_SOURCES = 20;
@@ -31,14 +32,13 @@ export function cleanSource(raw: unknown): string | null {
   return code ? code : null;
 }
 
-/** The source tag in a page address: ?s=... first, then ?utm_source=... */
-export function sourceFromSearch(search: string | URLSearchParams): string | null {
+/** The source tag in a page address (?s=...). */
+export function sourceFromSearch(
+  search: string | URLSearchParams,
+): string | null {
   const params =
     typeof search === "string" ? new URLSearchParams(search) : search;
-  return (
-    cleanSource(params.get(SOURCE_PARAM)) ??
-    cleanSource(params.get("utm_source"))
-  );
+  return cleanSource(params.get(SOURCE_PARAM));
 }
 
 /**
@@ -58,7 +58,10 @@ export function referrerHost(raw: unknown, ownHost: string): string | null {
 /** A site name as sent by the browser, checked and shortened. */
 export function cleanHost(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  const host = raw.trim().toLowerCase().replace(/^www\./, "");
+  const host = raw
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "");
   return /^[a-z0-9.-]{1,200}$/.test(host) && host.includes(".") ? host : null;
 }
 
@@ -104,6 +107,22 @@ export function channelKey(source: string | null, referrer: string | null) {
   if (source) return `s:${source}`;
   if (referrer && !referrer.includes("/")) return `r:${siteName(referrer)}`;
   return DIRECT;
+}
+
+export type SourceRow = {
+  code: string;
+  label: string;
+  deleted_at?: string | null;
+};
+
+/**
+ * Names for every tracking link the owner ever made. Deleted ones keep
+ * their name with "(deleted)", so their past visits still make sense.
+ */
+export function sourceNames(rows: SourceRow[]): Record<string, string> {
+  return Object.fromEntries(
+    rows.map((r) => [r.code, r.deleted_at ? `${r.label} (deleted)` : r.label]),
+  );
 }
 
 /** What the dashboard shows for a channel key. */

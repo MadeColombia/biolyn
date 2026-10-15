@@ -230,8 +230,9 @@ export async function loadPreview(
         .upload(path, shot.data, { contentType: shot.type });
       if (!error) {
         return {
-          preview_url: supabase.storage.from(LINK_IMAGES_BUCKET).getPublicUrl(path)
-            .data.publicUrl,
+          preview_url: supabase.storage
+            .from(LINK_IMAGES_BUCKET)
+            .getPublicUrl(path).data.publicUrl,
         };
       }
     }
@@ -259,10 +260,7 @@ export async function discardLinkImage(url: string) {
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 // Deletes a picture we host. Anything else (or nothing) is ignored.
-async function removeLinkImage(
-  supabase: Supabase,
-  url: string | null,
-) {
+async function removeLinkImage(supabase: Supabase, url: string | null) {
   const path = linkImagePath(url);
   if (path) await supabase.storage.from(LINK_IMAGES_BUCKET).remove([path]);
 }
@@ -588,16 +586,31 @@ export async function addSource(
   const { count } = await supabase
     .from("sources")
     .select("id", { count: "exact", head: true })
-    .eq("profile_id", profile.id);
+    .eq("profile_id", profile.id)
+    .is("deleted_at", null);
   if ((count ?? 0) >= MAX_SOURCES) {
     return { error: `You can have up to ${MAX_SOURCES} tracking links.` };
   }
 
-  const { error } = await supabase.from("sources").insert({
-    profile_id: profile.id,
-    label: parsed.values.label,
-    code: parsed.values.code,
-  });
+  // Making a link with a deleted one's name brings it back, with its
+  // history, instead of failing on the unique code.
+  const { data: old } = await supabase
+    .from("sources")
+    .select("id, deleted_at")
+    .eq("profile_id", profile.id)
+    .eq("code", parsed.values.code)
+    .maybeSingle();
+  const { error } = old?.deleted_at
+    ? await supabase
+        .from("sources")
+        .update({ label: parsed.values.label, deleted_at: null })
+        .eq("id", old.id)
+        .eq("profile_id", profile.id)
+    : await supabase.from("sources").insert({
+        profile_id: profile.id,
+        label: parsed.values.label,
+        code: parsed.values.code,
+      });
   if (error) {
     // 23505: the unique (profile_id, code) rule.
     return {
@@ -611,11 +624,13 @@ export async function addSource(
   return { saved: true };
 }
 
+// Hides the link instead of erasing it, so Analytics keeps its name for
+// past visits. New visits through it stop counting as this source.
 export async function deleteSource(sourceId: string) {
   const { supabase, profile } = await requireOwnProfile();
   await supabase
     .from("sources")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", sourceId)
     .eq("profile_id", profile.id);
   revalidatePath("/dashboard");

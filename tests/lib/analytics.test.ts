@@ -18,11 +18,13 @@ describe("getAnalytics", () => {
         { d: "2026-10-13", k: "v", l: null, s: null, r: "instagram.com", n: 4 },
         { d: "2026-10-12", k: "c", l: "l1", s: null, r: "https://biolyn.link/ethan", n: 3 },
         { d: "2026-10-12", k: "c", l: "l1", s: null, r: null, n: "2" },
+        // A tag nobody created counts by its site.
+        { d: "2026-10-13", k: "v", l: null, s: "made-up", r: "t.co", n: 1 },
       ],
       error: null,
     });
 
-    const data = await getAnalytics(db as never, "p1");
+    const data = await getAnalytics(db as never, "p1", ["tiktok"]);
     vi.useRealTimers();
 
     expect(db.rpc).toHaveBeenCalledWith("analytics_daily", {
@@ -36,13 +38,14 @@ describe("getAnalytics", () => {
       { day: "2026-10-13", kind: "view", link: null, channel: "r:Instagram", count: 5 },
       // Old clicks stored our own page address: unknown, merged.
       { day: "2026-10-12", kind: "click", link: "l1", channel: "direct", count: 5 },
+      { day: "2026-10-13", kind: "view", link: null, channel: "r:X (Twitter)", count: 1 },
     ]);
   });
 
   it("returns no rows when the database fails", async () => {
     const db = fakeClient();
     db.rpc.mockResolvedValueOnce({ data: null, error: { message: "nope" } });
-    const data = await getAnalytics(db as never, "p1");
+    const data = await getAnalytics(db as never, "p1", []);
     expect(data.rows).toEqual([]);
   });
 
@@ -52,7 +55,7 @@ describe("getAnalytics", () => {
       data: [{ d: "2026-10-13", k: "v", l: "x", s: null, r: null, n: "?" }],
       error: null,
     });
-    const data = await getAnalytics(db as never, "p1");
+    const data = await getAnalytics(db as never, "p1", []);
     expect(data.rows[0]).toMatchObject({ link: null, count: 0 });
   });
 });

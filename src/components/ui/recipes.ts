@@ -90,9 +90,18 @@ export function heading(size: HeadingSize = "section") {
   return cx("font-display tracking-tight", HEADING_SIZES[size]);
 }
 
-export function input({ invalid = false }: { invalid?: boolean } = {}) {
+/**
+ * Text inputs and dropdowns. `select: true` hides the browser's own arrow
+ * (it sits flush against the edge) and leaves room on the right for the
+ * one `Select` draws.
+ */
+export function input({
+  invalid = false,
+  select = false,
+}: { invalid?: boolean; select?: boolean } = {}) {
   return cx(
-    "min-h-12 w-full rounded-xl border bg-surface px-4 text-base text-ink placeholder:text-ink-muted transition focus:outline-none focus:ring-2",
+    "min-h-12 w-full rounded-xl border bg-surface text-base font-normal text-ink placeholder:text-ink-muted transition focus:outline-none focus:ring-2",
+    select ? "cursor-pointer appearance-none pr-11 pl-4" : "px-4",
     invalid
       ? "border-danger focus:ring-danger/30"
       : "border-edge focus:border-brand focus:ring-brand/30",

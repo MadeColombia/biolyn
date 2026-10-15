@@ -72,6 +72,13 @@ describe("heading", () => {
 });
 
 describe("input", () => {
+  it("makes room for a drawn arrow on dropdowns", () => {
+    expect(input({ select: true })).toContain("appearance-none");
+    expect(input({ select: true })).toContain("pr-11");
+    expect(input({ select: true })).not.toContain("px-4");
+    expect(input()).toContain("px-4");
+  });
+
   it("uses the brand focus ring when valid", () => {
     expect(input()).toContain("focus:border-brand");
     expect(input()).not.toContain("border-danger");

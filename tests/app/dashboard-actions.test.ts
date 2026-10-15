@@ -206,7 +206,7 @@ describe("updateProfile", () => {
     expect(lastWrite("profiles", "update")).toEqual([
       {
         display_name: "",
-        bio: "&lt;img src=x onerror=\"alert(1)\"&gt;",
+        bio: '&lt;img src=x onerror="alert(1)"&gt;',
       },
     ]);
   });
@@ -214,7 +214,10 @@ describe("updateProfile", () => {
   it("refuses bios over 160 visible characters", async () => {
     db = fakeClient();
     expect(
-      await actions.updateProfile({}, form({ bio: `<b>${"b".repeat(161)}</b>` })),
+      await actions.updateProfile(
+        {},
+        form({ bio: `<b>${"b".repeat(161)}</b>` }),
+      ),
     ).toEqual({ error: "Keep your bio under 160 characters." });
     expect(db.from).not.toHaveBeenCalled();
   });
@@ -766,7 +769,15 @@ describe("setTheme", () => {
 
   it("keeps the chosen font", async () => {
     db = fakeClient({
-      profiles: [{ data: { ...PROFILE, theme: { preset: "classic", font: "typewriter" } } }, { error: null }],
+      profiles: [
+        {
+          data: {
+            ...PROFILE,
+            theme: { preset: "classic", font: "typewriter" },
+          },
+        },
+        { error: null },
+      ],
     });
     db.auth.getUser.mockResolvedValue({ data: { user: USER } } as never);
     await actions.setTheme("midnight");
@@ -814,7 +825,10 @@ describe("setFont", () => {
 
   it("saves the font and keeps the theme", async () => {
     db = fakeClient({
-      profiles: [{ data: { ...PROFILE, theme: { preset: "sunset" } } }, { error: null }],
+      profiles: [
+        { data: { ...PROFILE, theme: { preset: "sunset" } } },
+        { error: null },
+      ],
     });
     db.auth.getUser.mockResolvedValue({ data: { user: USER } } as never);
     await actions.setFont("handwritten");
@@ -1224,11 +1238,18 @@ describe("addSource", () => {
   });
 
   it("saves the name and code for the owner's page", async () => {
-    signedIn({ sources: [{ count: 2 }, { error: null }] });
-    expect(
-      await actions.addSource({}, form({ label: "TikTok bio" })),
-    ).toEqual({ saved: true });
-    const insert = db.queries.sources[1].calls.find((c) => c.method === "insert");
+    signedIn({ sources: [{ count: 2 }, { data: null }, { error: null }] });
+    expect(await actions.addSource({}, form({ label: "TikTok bio" }))).toEqual({
+      saved: true,
+    });
+    // Only active links count toward the limit.
+    expect(db.queries.sources[0].calls).toContainEqual({
+      method: "is",
+      args: ["deleted_at", null],
+    });
+    const insert = db.queries.sources[2].calls.find(
+      (c) => c.method === "insert",
+    );
     expect(insert?.args[0]).toEqual({
       profile_id: "p1",
       label: "TikTok bio",
@@ -1245,25 +1266,56 @@ describe("addSource", () => {
   });
 
   it("explains a code that is already taken", async () => {
-    signedIn({ sources: [{ count: 1 }, { error: { code: "23505" } }] });
+    signedIn({
+      sources: [
+        { count: 1 },
+        { data: { id: "s1", deleted_at: null } },
+        { error: { code: "23505" } },
+      ],
+    });
     expect(await actions.addSource({}, form({ label: "TikTok" }))).toEqual({
       error: "You already have a link with that name.",
     });
   });
 
   it("reports other database errors", async () => {
-    signedIn({ sources: [{ count: null }, { error: { code: "XX000" } }] });
+    signedIn({
+      sources: [{ count: null }, { data: null }, { error: { code: "XX000" } }],
+    });
     expect(await actions.addSource({}, form({ label: "TikTok" }))).toEqual({
       error: "Could not save the tracking link.",
     });
   });
+
+  it("brings back a deleted link with the same name, history and all", async () => {
+    signedIn({
+      sources: [
+        { count: 0 },
+        { data: { id: "s9", deleted_at: "2026-10-01T00:00:00Z" } },
+        { error: null },
+      ],
+    });
+    expect(await actions.addSource({}, form({ label: "Flyer" }))).toEqual({
+      saved: true,
+    });
+    const calls = db.queries.sources[2].calls;
+    expect(calls).toContainEqual({
+      method: "update",
+      args: [{ label: "Flyer", deleted_at: null }],
+    });
+    expect(calls).toContainEqual({ method: "eq", args: ["id", "s9"] });
+    expect(calls.some((c) => c.method === "insert")).toBe(false);
+  });
 });
 
 describe("deleteSource", () => {
-  it("only deletes the owner's own source", async () => {
+  it("hides the owner's own source instead of erasing it", async () => {
     signedIn({ sources: [{ error: null }] });
     await actions.deleteSource("s1");
     const calls = db.queries.sources[0].calls;
+    expect(calls.some((c) => c.method === "delete")).toBe(false);
+    const update = calls.find((c) => c.method === "update");
+    expect(update?.args[0]).toEqual({ deleted_at: expect.any(String) });
     expect(calls).toContainEqual({ method: "eq", args: ["id", "s1"] });
     expect(calls).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
   });
