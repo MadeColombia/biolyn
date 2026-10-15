@@ -60,3 +60,37 @@ export function clampOffset(
   // Turn back by +angle. Adding 0 turns -0 into 0.
   return { x: cu * cos - cv * sin + 0, y: cu * sin + cv * cos + 0 };
 }
+
+// One tap on a zoom button changes the size by this factor.
+export const ZOOM_STEP = 1.1;
+// Straighten goes up to this many degrees either way, one degree per tap.
+export const MAX_TILT = 45;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+/** Zoom after one tap of "zoom in" (+1) or "zoom out" (-1). */
+export function stepZoom(zoom: number, direction: 1 | -1): number {
+  return clampZoom(zoom * ZOOM_STEP ** direction);
+}
+
+/** Keeps zoom between 1 (picture just fills the frame) and MAX_ZOOM. */
+export function clampZoom(zoom: number): number {
+  // Snap to 1 so zooming back out lands exactly on "fills the frame".
+  return zoom < 1.001 ? 1 : clamp(zoom, 1, MAX_ZOOM);
+}
+
+/** Straighten angle after one tap, kept within MAX_TILT either way. */
+export function stepTilt(tilt: number, direction: 1 | -1): number {
+  return clamp(Math.round(tilt) + direction, -MAX_TILT, MAX_TILT);
+}
+
+/** Zoom while pinching: the start zoom times how far the fingers spread. */
+export function pinchZoom(
+  startZoom: number,
+  startDistance: number,
+  distance: number,
+): number {
+  if (startDistance <= 0) return startZoom;
+  return clampZoom(startZoom * (distance / startDistance));
+}
