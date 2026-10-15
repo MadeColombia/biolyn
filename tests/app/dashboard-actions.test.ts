@@ -92,6 +92,7 @@ describe("signed-out users", () => {
     ["reorderLinks", () => actions.reorderLinks([])],
     ["setTheme", () => actions.setTheme("midnight")],
     ["setFont", () => actions.setFont("elegant")],
+    ["setCorners", () => actions.setCorners("pill")],
     ["setAvatar", () => actions.setAvatar(null)],
     ["setPhotoStyle", () => actions.setPhotoStyle("cover")],
     [
@@ -772,6 +773,32 @@ describe("setTheme", () => {
     expect(lastWrite("profiles", "update")).toEqual([
       { theme: { preset: "midnight", font: "typewriter" } },
     ]);
+  });
+});
+
+describe("setCorners", () => {
+  it.each(["sharp", "toString", ""])(
+    "ignores unknown corners %s",
+    async (corners) => {
+      db = fakeClient();
+      await actions.setCorners(corners);
+      expect(db.from).not.toHaveBeenCalled();
+    },
+  );
+
+  it("saves the corners and keeps the font and theme", async () => {
+    db = fakeClient({
+      profiles: [
+        { data: { ...PROFILE, theme: { preset: "sunset", font: "elegant" } } },
+        { error: null },
+      ],
+    });
+    db.auth.getUser.mockResolvedValue({ data: { user: USER } } as never);
+    await actions.setCorners("pill");
+    expect(lastWrite("profiles", "update")).toEqual([
+      { theme: { preset: "sunset", font: "elegant", corners: "pill" } },
+    ]);
+    expect(lastWrite("profiles", "eq")).toEqual(["id", "p1"]);
   });
 });
 

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { GalleryLayout } from "@/lib/gallery";
+import { CORNER_CLASSES, type CornerStyle } from "@/lib/corners";
 import type { PublicPhoto } from "@/lib/profiles";
 
 // The owner's photos as a swipeable carousel or a grid. Colors come from
@@ -11,16 +12,18 @@ export function Gallery({
   title,
   layout,
   photos,
+  corners,
 }: {
   title: string;
   layout: GalleryLayout;
   photos: PublicPhoto[];
+  corners: CornerStyle;
 }) {
   if (photos.length === 0) return null;
   return layout === "grid" ? (
-    <PhotoGrid title={title} photos={photos} />
+    <PhotoGrid title={title} photos={photos} corners={corners} />
   ) : (
-    <Carousel title={title} photos={photos} />
+    <Carousel title={title} photos={photos} corners={corners} />
   );
 }
 
@@ -28,7 +31,15 @@ const circle =
   "absolute flex size-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 const arrow = `${circle} top-1/2 -translate-y-1/2`;
 
-function Carousel({ title, photos }: { title: string; photos: PublicPhoto[] }) {
+function Carousel({
+  title,
+  photos,
+  corners,
+}: {
+  title: string;
+  photos: PublicPhoto[];
+  corners: CornerStyle;
+}) {
   const track = useRef<HTMLUListElement>(null);
   const [index, setIndex] = useState(0);
   const many = photos.length > 1;
@@ -53,7 +64,7 @@ function Carousel({ title, photos }: { title: string; photos: PublicPhoto[] }) {
             const el = e.currentTarget;
             setIndex(Math.round(el.scrollLeft / el.clientWidth));
           }}
-          className="flex snap-x snap-mandatory overflow-x-auto rounded-2xl [scrollbar-width:none] motion-safe:scroll-smooth [&::-webkit-scrollbar]:hidden"
+          className={`flex snap-x snap-mandatory overflow-x-auto ${CORNER_CLASSES[corners].block} [scrollbar-width:none] motion-safe:scroll-smooth [&::-webkit-scrollbar]:hidden`}
         >
           {photos.map((photo, i) => (
             <li
@@ -118,7 +129,15 @@ function Carousel({ title, photos }: { title: string; photos: PublicPhoto[] }) {
   );
 }
 
-function PhotoGrid({ title, photos }: { title: string; photos: PublicPhoto[] }) {
+function PhotoGrid({
+  title,
+  photos,
+  corners,
+}: {
+  title: string;
+  photos: PublicPhoto[];
+  corners: CornerStyle;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState<PublicPhoto | null>(null);
   const cols =
@@ -144,7 +163,7 @@ function PhotoGrid({ title, photos }: { title: string; photos: PublicPhoto[] }) 
               aria-label={
                 photo.alt ? `Open photo: ${photo.alt}` : `Open photo ${i + 1}`
               }
-              className="block w-full overflow-hidden rounded-2xl transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+              className={`block w-full overflow-hidden transition hover:opacity-90 ${CORNER_CLASSES[corners].block} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

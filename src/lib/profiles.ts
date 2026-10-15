@@ -9,6 +9,7 @@ import {
   type ThemeId,
 } from "@/lib/themes";
 import { fontFrom, type FontId } from "@/lib/fonts";
+import { cornerStyleFrom, type CornerStyle } from "@/lib/corners";
 import { embedFor, type Embed } from "@/lib/embeds";
 import { isLive, secondsUntilNextChange } from "@/lib/schedule";
 import { isLinkSize, type LinkSize } from "@/lib/link-form";
@@ -47,6 +48,7 @@ export type PublicProfile = {
   theme: ThemeId;
   photo_style: PhotoStyle;
   font: FontId;
+  corners: CornerStyle;
   socials: Socials;
   items: PublicItem[];
 };
@@ -152,6 +154,7 @@ export async function getPublicProfile(
     theme: themeFrom(profile.theme),
     photo_style: photoStyleFrom(profile.theme),
     font: fontFrom(profile.theme),
+    corners: cornerStyleFrom(profile.theme),
     socials: socialsFrom(profile.socials),
     items,
   };
