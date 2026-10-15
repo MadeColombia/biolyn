@@ -9,8 +9,9 @@ import { RichBio } from "@/components/rich-bio";
 import { cleanBio, parseBio, plainBio } from "@/lib/rich-bio";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
-import { COVER_FADE, THEMES } from "@/lib/themes";
+import { THEMES } from "@/lib/themes";
 import { isIconPreview } from "@/lib/link-form";
+import { CoverPhoto } from "./cover-photo";
 import { Gallery } from "./gallery";
 import { ViewTracker } from "./view-tracker";
 
@@ -87,22 +88,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
         <div
           className={`mx-auto flex w-full flex-1 flex-col md:max-w-lg md:overflow-hidden md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
         >
-          {cover && (
-            // Big photo across the top. It turns see-through toward the
-            // bottom, so it melts into the theme's background, gradients
-            // included.
-            <div
-              className="w-full [mask-image:var(--fade)]"
-              style={{ "--fade": COVER_FADE } as React.CSSProperties}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={profile.avatar_url!}
-                alt={name}
-                className="aspect-4/5 w-full object-cover"
-              />
-            </div>
-          )}
+          {cover && <CoverPhoto src={profile.avatar_url!} alt={name} />}
           <div
             className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 ${
               // The name and bio sit over the faded bottom of the photo.
