@@ -163,12 +163,12 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   ) : link.size === "big" ? (
                     <a
                       href={`/api/click/${link.id}`}
-                      className={`block w-full overflow-hidden rounded-2xl text-center font-semibold transition ${theme.card}`}
+                      className={`block w-full overflow-hidden rounded-3xl p-2 text-center font-semibold transition ${theme.card}`}
                     >
                       {link.image_url && isIconPreview(link.image_url) ? (
                         // The site's icon, centered on a tinted panel.
                         <span
-                          className={`flex aspect-video w-full items-center justify-center ${theme.avatar}`}
+                          className={`flex aspect-video w-full items-center justify-center rounded-2xl ${theme.avatar}`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -187,12 +187,12 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                             alt=""
                             loading="lazy"
                             referrerPolicy="no-referrer"
-                            className="aspect-video w-full object-cover"
+                            className="aspect-video w-full rounded-2xl object-cover"
                           />
                         )
                       )}
                       <span
-                        className={`block px-6 text-lg ${link.image_url ? "py-5" : "py-10"}`}
+                        className={`block px-4 text-lg ${link.image_url ? "py-4" : "py-8"}`}
                       >
                         {link.title}
                       </span>
