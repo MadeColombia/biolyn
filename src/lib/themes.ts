@@ -9,6 +9,8 @@ export const THEMES = {
       "border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100",
     card: "border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100",
     avatar: "bg-neutral-200 text-neutral-600",
+    // Behind embedded players, so their own rounded corners blend in.
+    embed: "bg-white",
     // Tint around the cover-photo card on wide screens.
     backdrop: "md:bg-black/10",
   },
@@ -19,6 +21,7 @@ export const THEMES = {
     button: "bg-slate-800 text-white hover:bg-slate-700",
     card: "bg-slate-800 text-white hover:bg-slate-700",
     avatar: "bg-slate-800 text-slate-300",
+    embed: "bg-slate-800",
     backdrop: "md:bg-white/10",
   },
   sunset: {
@@ -28,6 +31,7 @@ export const THEMES = {
     button: "bg-white/90 text-neutral-900 hover:bg-white",
     card: "bg-white/90 text-neutral-900 hover:bg-white",
     avatar: "bg-white/30 text-white",
+    embed: "bg-white/90",
     backdrop: "md:bg-black/25",
   },
 } as const;

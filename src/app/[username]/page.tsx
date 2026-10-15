@@ -148,20 +148,27 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                       corners={profile.corners}
                     />
                   ) : link.embed ? (
-                    <iframe
-                      src={link.embed.src}
-                      title={link.title}
-                      loading="lazy"
-                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                      allowFullScreen
-                      className={`w-full border-0 ${CORNER_CLASSES[profile.corners].block} ${
+                    // The player draws its own rounded corners. Clipping
+                    // it to the block shape keeps every block square-cut
+                    // when the owner picks Square.
+                    <div
+                      className={`w-full overflow-hidden ${CORNER_CLASSES[profile.corners].block} ${theme.embed} ${
                         link.embed.kind === "youtube"
                           ? "aspect-video"
                           : PLAYER_HEIGHT[link.embed.kind][
                               link.embed.tall ? "tall" : "short"
                             ]
                       }`}
-                    />
+                    >
+                      <iframe
+                        src={link.embed.src}
+                        title={link.title}
+                        loading="lazy"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        className="size-full border-0"
+                      />
+                    </div>
                   ) : link.size === "big" ? (
                     <a
                       href={`/api/click/${link.id}`}
