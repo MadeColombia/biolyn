@@ -87,7 +87,8 @@ export default function Home() {
             <div>
               <Heading className="mb-2">QR code included</Heading>
               <p className="leading-relaxed">
-                Download a PNG for flyers, menus and your shop counter.
+                Download a card with your QR code for stories, flyers and
+                your shop counter.
               </p>
             </div>
           </Card>

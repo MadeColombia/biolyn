@@ -1,8 +1,9 @@
-import QRCode from "qrcode";
-import { Card, Heading, button } from "@/components/ui";
+import { Card, Heading } from "@/components/ui";
+import { cardChoices } from "@/lib/qr-card";
 import { MAX_SOURCES, sourceUrl } from "@/lib/sources";
 import { CopyLinkButton } from "./forms";
 import { AddSourceForm, DeleteSource } from "./source-forms";
+import { ShareCardDialog } from "./share-card";
 
 const visits = (n: number) => (n === 1 ? "1 visit" : `${n} visits`);
 
@@ -12,28 +13,25 @@ export type Source = { id: string; code: string; label: string };
  * Tracking links: the page address with ?s=<code> on the end. Share a
  * different one in each place, and analytics shows which one people used.
  */
-export async function SourcesSection({
+export function SourcesSection({
   sources,
   siteUrl,
   username,
   views30,
+  cardVersion,
 }: {
   sources: Source[];
   siteUrl: string;
   username: string;
   /** Views in the last 30 days per source code. */
   views30: Record<string, number>;
+  /** Changes when the share card looks different, see cardVersion(). */
+  cardVersion: string;
 }) {
-  const rows = await Promise.all(
-    sources.map(async (s) => {
-      const url = sourceUrl(siteUrl, username, s.code);
-      return {
-        ...s,
-        url,
-        qr: await QRCode.toDataURL(url, { margin: 2, width: 1024 }),
-      };
-    }),
-  );
+  const rows = sources.map((s) => ({
+    ...s,
+    url: sourceUrl(siteUrl, username, s.code),
+  }));
 
   return (
     <Card padding="md" className="flex flex-col gap-6">
@@ -61,13 +59,14 @@ export async function SourcesSection({
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 <CopyLinkButton url={s.url} />
-                <a
-                  href={s.qr}
-                  download={`biolyn-qr-${s.code}.png`}
-                  className={button({ variant: "secondary", size: "sm" })}
-                >
-                  QR code
-                </a>
+                <ShareCardDialog
+                  label={s.label}
+                  choices={cardChoices(username, {
+                    code: s.code,
+                    v: cardVersion,
+                  })}
+                  fileName={`${username}-${s.code}-biolyn`}
+                />
                 <DeleteSource id={s.id} label={s.label} />
               </div>
             </li>
