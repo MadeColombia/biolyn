@@ -25,8 +25,7 @@ export const THEMES = {
     label: "Sunset",
     page: "bg-linear-to-b from-orange-400 via-pink-500 to-purple-600 text-white",
     muted: "text-white/80",
-    button: "rounded-full bg-white/90 text-neutral-900 hover:bg-white",
-    // Big buttons are cards, so they keep square-ish corners here.
+    button: "bg-white/90 text-neutral-900 hover:bg-white",
     card: "bg-white/90 text-neutral-900 hover:bg-white",
     avatar: "bg-white/30 text-white",
     backdrop: "md:bg-black/25",

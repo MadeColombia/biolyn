@@ -9,6 +9,7 @@ import { supabaseEnv } from "@/lib/supabase/env";
 import { normalizeSocial, SOCIAL_PLATFORMS, type Socials } from "@/lib/socials";
 import { isPhotoStyle, isThemeId, themeSettings } from "@/lib/themes";
 import { isFontId } from "@/lib/fonts";
+import { isCornerStyle } from "@/lib/corners";
 import { sanitizeBio } from "@/lib/rich-bio";
 import { checkLinkUrl } from "@/lib/link-safety";
 import { allow } from "@/lib/rate-limit";
@@ -359,6 +360,12 @@ export async function setFont(fontId: string) {
 export async function setPhotoStyle(style: string) {
   if (!isPhotoStyle(style)) return;
   await saveLook({ photo: style });
+}
+
+// How rounded the blocks on the public page are.
+export async function setCorners(corners: string) {
+  if (!isCornerStyle(corners)) return;
+  await saveLook({ corners });
 }
 
 export async function updateSocials(

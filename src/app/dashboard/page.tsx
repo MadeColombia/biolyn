@@ -21,8 +21,9 @@ import {
   type ThemeId,
 } from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
-import { setFont, setTheme, signOut } from "./actions";
+import { setCorners, setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
+import { CORNERS, CORNER_CLASSES, cornerStyleFrom, type CornerStyle } from "@/lib/corners";
 import { FONT_CLASS } from "@/components/profile-fonts";
 import {
   AvatarUpload,
@@ -157,6 +158,7 @@ async function Dashboard() {
 
   const currentTheme = themeFrom(profile.theme);
   const currentFont = fontFrom(profile.theme);
+  const currentCorners = cornerStyleFrom(profile.theme);
   const stats = await getStats(
     supabase,
     profile.id,
@@ -313,6 +315,39 @@ async function Dashboard() {
                   <span className={cx("text-sm", FONT_CLASS[id])}>
                     {FONTS[id].label}
                   </span>
+                </button>
+                <div className="flex h-8 items-center justify-center">
+                  {selected && <Badge>Current</Badge>}
+                </div>
+              </form>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card padding="md" className="flex flex-col gap-6">
+        <SectionTitle title="Corners">
+          The shape of every block on your public page: buttons, big links,
+          players and photos.
+        </SectionTitle>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(Object.keys(CORNERS) as CornerStyle[]).map((id) => {
+            const selected = id === currentCorners;
+            return (
+              <form key={id} action={setCorners.bind(null, id)}>
+                <button
+                  aria-pressed={selected}
+                  className={cx(
+                    "flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-edge bg-canvas px-2 text-ink transition hover:border-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                    selected &&
+                      "ring-2 ring-brand ring-offset-2 ring-offset-surface",
+                  )}
+                >
+                  <span
+                    className={cx("h-9 w-20 bg-brand", CORNER_CLASSES[id].block)}
+                    aria-hidden
+                  />
+                  <span className="text-sm">{CORNERS[id].label}</span>
                 </button>
                 <div className="flex h-8 items-center justify-center">
                   {selected && <Badge>Current</Badge>}
