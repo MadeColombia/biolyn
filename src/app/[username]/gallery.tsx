@@ -53,7 +53,7 @@ function Carousel({ title, photos }: { title: string; photos: PublicPhoto[] }) {
             const el = e.currentTarget;
             setIndex(Math.round(el.scrollLeft / el.clientWidth));
           }}
-          className="flex snap-x snap-mandatory overflow-x-auto rounded-xl [scrollbar-width:none] motion-safe:scroll-smooth [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory overflow-x-auto rounded-2xl [scrollbar-width:none] motion-safe:scroll-smooth [&::-webkit-scrollbar]:hidden"
         >
           {photos.map((photo, i) => (
             <li

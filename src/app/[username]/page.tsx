@@ -166,7 +166,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                       loading="lazy"
                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       allowFullScreen
-                      className={`w-full rounded-xl border-0 ${
+                      className={`w-full rounded-2xl border-0 ${
                         link.embed.kind === "youtube"
                           ? "aspect-video"
                           : PLAYER_HEIGHT[link.embed.kind][
@@ -177,12 +177,12 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   ) : link.size === "big" ? (
                     <a
                       href={`/api/click/${link.id}`}
-                      className={`block w-full overflow-hidden rounded-3xl p-2 text-center font-semibold transition ${theme.card}`}
+                      className={`block w-full overflow-hidden rounded-2xl text-center font-semibold transition ${theme.card}`}
                     >
                       {link.image_url && isIconPreview(link.image_url) ? (
                         // The site's icon, centered on a tinted panel.
                         <span
-                          className={`flex aspect-video w-full items-center justify-center rounded-2xl ${theme.avatar}`}
+                          className={`flex aspect-video w-full items-center justify-center ${theme.avatar}`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -201,12 +201,12 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                             alt=""
                             loading="lazy"
                             referrerPolicy="no-referrer"
-                            className="aspect-video w-full rounded-2xl object-cover"
+                            className="aspect-video w-full object-cover"
                           />
                         )
                       )}
                       <span
-                        className={`block px-4 text-lg ${link.image_url ? "py-4" : "py-8"}`}
+                        className={`block px-6 text-lg ${link.image_url ? "py-5" : "py-10"}`}
                       >
                         {link.title}
                       </span>
@@ -214,7 +214,7 @@ async function Profile({ params }: Pick<PageProps<"/[username]">, "params">) {
                   ) : (
                     <a
                       href={`/api/click/${link.id}`}
-                      className={`block w-full rounded-xl px-4 py-4 text-center font-medium transition ${theme.button}`}
+                      className={`block w-full rounded-2xl px-4 py-4 text-center font-medium transition ${theme.button}`}
                     >
                       {link.title}
                     </a>
