@@ -129,10 +129,11 @@ export function initial(name: string): string {
  */
 export function qrSvg(
   text: string,
-  { dots, corners: accent, tile }: Pick<
-    CardPalette,
-    "dots" | "corners" | "tile"
-  >,
+  {
+    dots,
+    corners: accent,
+    tile,
+  }: Pick<CardPalette, "dots" | "corners" | "tile">,
 ): string {
   const { modules } = QRCode.create(text, { errorCorrectionLevel: "H" });
   const n = modules.size;

@@ -170,9 +170,7 @@ export async function GET(
           alignItems: "center",
         }}
       >
-        <div style={{ fontSize: 34, color: p.muted }}>
-          Scan to open my page
-        </div>
+        <div style={{ fontSize: 34, color: p.muted }}>Scan to open my page</div>
         <div
           style={{
             marginTop: 12,
