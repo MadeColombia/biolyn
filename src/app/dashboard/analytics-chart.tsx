@@ -88,13 +88,29 @@ function Select({
   return (
     <label className="flex min-w-0 flex-col gap-2 text-sm font-bold text-ink">
       {label}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={input()}
-      >
-        {children}
-      </select>
+      <span className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={input({ select: true })}
+        >
+          {children}
+        </select>
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-ink-muted"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </span>
     </label>
   );
 }
