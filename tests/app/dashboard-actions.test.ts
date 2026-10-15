@@ -1213,3 +1213,58 @@ describe("setGalleryLayout", () => {
     expect(db.auth.getUser).not.toHaveBeenCalled();
   });
 });
+
+describe("addSource", () => {
+  it("checks the form before touching the database", async () => {
+    db = fakeClient();
+    expect(await actions.addSource({}, form({ label: "" }))).toEqual({
+      error: "Give the link a name, like TikTok.",
+    });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("saves the name and code for the owner's page", async () => {
+    signedIn({ sources: [{ count: 2 }, { error: null }] });
+    expect(
+      await actions.addSource({}, form({ label: "TikTok bio" })),
+    ).toEqual({ saved: true });
+    const insert = db.queries.sources[1].calls.find((c) => c.method === "insert");
+    expect(insert?.args[0]).toEqual({
+      profile_id: "p1",
+      label: "TikTok bio",
+      code: "tiktok-bio",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("stops at the limit", async () => {
+    signedIn({ sources: [{ count: 20 }] });
+    expect(await actions.addSource({}, form({ label: "One more" }))).toEqual({
+      error: "You can have up to 20 tracking links.",
+    });
+  });
+
+  it("explains a code that is already taken", async () => {
+    signedIn({ sources: [{ count: 1 }, { error: { code: "23505" } }] });
+    expect(await actions.addSource({}, form({ label: "TikTok" }))).toEqual({
+      error: "You already have a link with that name.",
+    });
+  });
+
+  it("reports other database errors", async () => {
+    signedIn({ sources: [{ count: null }, { error: { code: "XX000" } }] });
+    expect(await actions.addSource({}, form({ label: "TikTok" }))).toEqual({
+      error: "Could not save the tracking link.",
+    });
+  });
+});
+
+describe("deleteSource", () => {
+  it("only deletes the owner's own source", async () => {
+    signedIn({ sources: [{ error: null }] });
+    await actions.deleteSource("s1");
+    const calls = db.queries.sources[0].calls;
+    expect(calls).toContainEqual({ method: "eq", args: ["id", "s1"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+  });
+});

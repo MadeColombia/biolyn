@@ -31,6 +31,7 @@ import {
   MAX_PHOTOS,
   ownPhotoPath,
 } from "@/lib/gallery";
+import { MAX_SOURCES, parseSourceForm } from "@/lib/sources";
 
 const MAX_LINKS = 100;
 
@@ -571,6 +572,53 @@ export async function setGalleryLayout(galleryId: string, layout: string) {
     .eq("profile_id", profile.id)
     .eq("kind", "gallery");
   refresh(profile.username);
+}
+
+// Tracking links: a name ("TikTok") and the code in the address
+// (?s=tiktok), made from the name. They only change the dashboard, not
+// the public page.
+export async function addSource(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = parseSourceForm(formData);
+  if ("error" in parsed) return parsed;
+  const { supabase, profile } = await requireOwnProfile();
+
+  const { count } = await supabase
+    .from("sources")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profile.id);
+  if ((count ?? 0) >= MAX_SOURCES) {
+    return { error: `You can have up to ${MAX_SOURCES} tracking links.` };
+  }
+
+  const { error } = await supabase.from("sources").insert({
+    profile_id: profile.id,
+    label: parsed.values.label,
+    code: parsed.values.code,
+  });
+  if (error) {
+    // 23505: the unique (profile_id, code) rule.
+    return {
+      error:
+        error.code === "23505"
+          ? "You already have a link with that name."
+          : "Could not save the tracking link.",
+    };
+  }
+  revalidatePath("/dashboard");
+  return { saved: true };
+}
+
+export async function deleteSource(sourceId: string) {
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase
+    .from("sources")
+    .delete()
+    .eq("id", sourceId)
+    .eq("profile_id", profile.id);
+  revalidatePath("/dashboard");
 }
 
 export async function signOut() {

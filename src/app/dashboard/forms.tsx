@@ -131,7 +131,13 @@ export function SocialsForm({ socials }: { socials: Socials }) {
 }
 
 /** Copies the public link, then says so for a moment. */
-export function CopyLinkButton({ url }: { url: string }) {
+export function CopyLinkButton({
+  url,
+  label = "Copy link",
+}: {
+  url: string;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -152,7 +158,7 @@ export function CopyLinkButton({ url }: { url: string }) {
       aria-live="polite"
       className="shrink-0"
     >
-      {copied ? "Copied" : "Copy link"}
+      {copied ? "Copied" : label}
     </Button>
   );
 }
