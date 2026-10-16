@@ -13,6 +13,7 @@ import {
   qrSvg,
   svgDataUrl,
 } from "@/lib/qr-card";
+import { pictureDataUrl } from "@/lib/remote-picture";
 import { cleanSource, sourceUrl } from "@/lib/sources";
 
 const fontDir = join(process.cwd(), "src/assets/fonts");
@@ -21,21 +22,6 @@ const fonts = Promise.all([
   readFile(join(fontDir, "IBMPlexSans-Regular.ttf")),
   readFile(join(fontDir, "IBMPlexSans-SemiBold.ttf")),
 ]);
-
-// The profile picture as a data URL, so a slow or missing picture
-// shows the first letter instead of breaking the whole card.
-async function picture(url: string | null): Promise<string | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    const type = res.headers.get("content-type") ?? "";
-    if (!res.ok || !/^image\/(png|jpe?g|webp|gif)/.test(type)) return null;
-    const data = Buffer.from(await res.arrayBuffer()).toString("base64");
-    return `data:${type};base64,${data}`;
-  } catch {
-    return null;
-  }
-}
 
 // The share card picture: QR code, name and page address.
 // ?style=brand|night|page picks the colors, ?s=<code> points the QR code
@@ -59,7 +45,7 @@ export async function GET(
   const name = profile.display_name?.trim() || profile.username;
   const [[display, body, bodyBold], avatar] = await Promise.all([
     fonts,
-    picture(profile.avatar_url),
+    pictureDataUrl(profile.avatar_url),
   ]);
   const qr = svgDataUrl(qrSvg(qrUrl, p));
 

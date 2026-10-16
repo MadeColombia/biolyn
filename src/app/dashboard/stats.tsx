@@ -119,9 +119,12 @@ export function StatsSection({
 export function QrSection({
   username,
   version,
+  wallets,
 }: {
   username: string;
   version: string;
+  /** Which wallet buttons to show. */
+  wallets: { apple: boolean; google: boolean };
 }) {
   return (
     <Card padding="md" className="flex flex-col gap-6">
@@ -133,7 +136,7 @@ export function QrSection({
         </p>
       </div>
       <ShareCardPicker
-        choices={cardChoices(username, { v: version })}
+        choices={cardChoices(username, { v: version, wallets })}
         fileName={`${username}-biolyn`}
       />
     </Card>

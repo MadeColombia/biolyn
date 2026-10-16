@@ -10,7 +10,29 @@ export type CardChoice = {
   src: string;
   /** Same picture, sent as a file to save. */
   download: string;
+  /** Add to Apple Wallet / Google Wallet, when their keys are set up. */
+  apple?: string;
+  google?: string;
 };
+
+function WalletIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      // Hidden on phones, where two buttons share one row.
+      className="hidden size-5 shrink-0 sm:block"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+      <path d="M4 9h16M15 14h2" />
+    </svg>
+  );
+}
 
 /**
  * Preview of the share card with a style picker and a Download button.
@@ -45,15 +67,23 @@ export function ShareCardPicker({
         />
       </div>
 
-      <div className="flex flex-col items-start gap-5">
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-sm font-bold text-ink">Style</legend>
-          <div className="flex flex-wrap gap-2">
+          <legend className="mb-2 w-full text-center text-sm font-bold text-ink">
+            Style
+          </legend>
+          {/* Same width as the buttons below, one equal column each. */}
+          <div
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${choices.length}, minmax(0, 1fr))`,
+            }}
+          >
             {choices.map((c) => (
               <label
                 key={c.id}
                 className={cx(
-                  "inline-flex min-h-11 cursor-pointer items-center rounded-xl border px-4 text-sm font-bold transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand",
+                  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 text-center text-sm font-bold transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand",
                   c.id === id
                     ? "border-brand bg-brand text-on-brand"
                     : "border-edge bg-surface text-ink hover:border-brand",
@@ -73,14 +103,49 @@ export function ShareCardPicker({
           </div>
         </fieldset>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2">
           <a
             href={choice.download}
             download={`${fileName}.png`}
-            className={button({ size: "sm" })}
+            className={button({ fullWidth: true })}
           >
             Download card
           </a>
+          {(choice.apple || choice.google) && (
+            <div className="grid grid-cols-2 gap-2">
+              {choice.apple && (
+                <a
+                  href={choice.apple}
+                  aria-label="Add to Apple Wallet"
+                  className={cx(
+                    button({ variant: "secondary", size: "sm" }),
+                    "whitespace-nowrap",
+                    // Alone, it takes the whole row.
+                    !choice.google && "col-span-2",
+                  )}
+                >
+                  <WalletIcon />
+                  Apple Wallet
+                </a>
+              )}
+              {choice.google && (
+                <a
+                  href={choice.google}
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Add to Google Wallet"
+                  className={cx(
+                    button({ variant: "secondary", size: "sm" }),
+                    "whitespace-nowrap",
+                    !choice.apple && "col-span-2",
+                  )}
+                >
+                  <WalletIcon />
+                  Google Wallet
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

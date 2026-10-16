@@ -156,6 +156,17 @@ describe("cardUrl and cardChoices", () => {
     expect(cardChoices("ana")[1].src).toBe("/api/qr-card/ana?style=night");
   });
 
+  it("adds wallet links only for wallets that are set up", () => {
+    const [light] = cardChoices("ana", {
+      code: "flyer",
+      v: "x1",
+      wallets: { apple: true, google: false },
+    });
+    expect(light.apple).toBe("/api/wallet/apple/ana?style=brand&s=flyer&v=x1");
+    expect(light).not.toHaveProperty("google");
+    expect(cardChoices("ana")[0]).not.toHaveProperty("apple");
+  });
+
   it("changes the version when the card content changes", () => {
     const a = cardVersion(["pic.jpg", "Ana", "sunset"]);
     expect(a).toBe(cardVersion(["pic.jpg", "Ana", "sunset"]));

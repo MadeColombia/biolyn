@@ -19,6 +19,7 @@ import { socialsFrom } from "@/lib/socials";
 import { photoStyleFrom, THEMES, themeFrom, type ThemeId } from "@/lib/themes";
 import { galleryLayoutFrom } from "@/lib/gallery";
 import { cardDesign, cardVersion } from "@/lib/qr-card";
+import { walletsOn } from "@/lib/pass-content";
 import { setCorners, setFont, setTheme, signOut } from "./actions";
 import { FONTS, fontFrom, type FontId } from "@/lib/fonts";
 import {
@@ -189,6 +190,7 @@ async function Dashboard() {
     currentTheme,
     cardDesign(),
   ]);
+  const wallets = walletsOn();
 
   return (
     <>
@@ -286,6 +288,7 @@ async function Dashboard() {
         username={profile.username}
         views30={sourceViews}
         cardVersion={version}
+        wallets={wallets}
       />
 
       {/* A hidden page has no card to show. */}
@@ -293,6 +296,7 @@ async function Dashboard() {
         <QrSection
           username={profile.username}
           version={version}
+          wallets={wallets}
         />
       )}
 

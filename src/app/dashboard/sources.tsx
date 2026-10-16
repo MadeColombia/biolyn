@@ -19,6 +19,7 @@ export function SourcesSection({
   username,
   views30,
   cardVersion,
+  wallets,
 }: {
   sources: Source[];
   siteUrl: string;
@@ -27,6 +28,8 @@ export function SourcesSection({
   views30: Record<string, number>;
   /** Changes when the share card looks different, see cardVersion(). */
   cardVersion: string;
+  /** Which wallet buttons to show. */
+  wallets: { apple: boolean; google: boolean };
 }) {
   const rows = sources.map((s) => ({
     ...s,
@@ -64,6 +67,7 @@ export function SourcesSection({
                   choices={cardChoices(username, {
                     code: s.code,
                     v: cardVersion,
+                    wallets,
                   })}
                   fileName={`${username}-${s.code}-biolyn`}
                 />
