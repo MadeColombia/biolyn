@@ -69,13 +69,21 @@ export function ShareCardPicker({
 
       <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-sm font-bold text-ink">Style</legend>
-          <div className="flex flex-wrap gap-2">
+          <legend className="mb-2 w-full text-center text-sm font-bold text-ink">
+            Style
+          </legend>
+          {/* Same width as the buttons below, one equal column each. */}
+          <div
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${choices.length}, minmax(0, 1fr))`,
+            }}
+          >
             {choices.map((c) => (
               <label
                 key={c.id}
                 className={cx(
-                  "inline-flex min-h-11 cursor-pointer items-center rounded-xl border px-4 text-sm font-bold transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand",
+                  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-2 text-center text-sm font-bold transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand",
                   c.id === id
                     ? "border-brand bg-brand text-on-brand"
                     : "border-edge bg-surface text-ink hover:border-brand",
