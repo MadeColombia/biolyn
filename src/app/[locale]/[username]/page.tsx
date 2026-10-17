@@ -152,7 +152,8 @@ async function Profile({
                 ))}
               </ul>
             )}
-            <ul className="flex w-full flex-col gap-3">
+            {/* Extra space above the blocks sets the profile apart. */}
+            <ul className="mt-6 flex w-full flex-col gap-3 md:mt-10">
               {profile.items.map((link) => (
                 <li key={link.id}>
                   {link.kind === "gallery" ? (
