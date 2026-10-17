@@ -50,6 +50,8 @@ import { AddItemMenu } from "./add-item";
 import { DeleteUndo } from "./delete-undo";
 import { LinkList, type LinkItem, type ListItem } from "./link-list";
 import { TabBar } from "./tab-bar";
+import { PreviewButton, PreviewPanel } from "./preview";
+import { previewVersion } from "@/lib/preview";
 import { QrSection, StatsSection } from "./stats";
 import { SourcesSection } from "./sources";
 
@@ -68,10 +70,11 @@ export default async function DashboardPage(
         </form>
       }
     >
+      {/* Computers get a second column for the page preview. */}
       <main
         className={cx(
-          container("medium"),
-          "flex flex-1 flex-col gap-4 pt-2 pb-12 sm:pt-6",
+          container(),
+          "flex flex-1 flex-col pt-2 pb-12 sm:pt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-10",
         )}
       >
         <Suspense fallback={<DashboardLoading />}>
@@ -82,11 +85,15 @@ export default async function DashboardPage(
   );
 }
 
+// The editor column: as wide as before, or the left column on computers.
+const editorColumn =
+  "mx-auto flex w-full max-w-3xl flex-col gap-4 lg:mx-0 lg:max-w-none";
+
 // Card shaped placeholders, so the page doesn't jump when data arrives.
 async function DashboardLoading() {
   const t = await getTranslations("dashboard");
   return (
-    <div aria-busy="true" className="flex flex-col gap-4">
+    <div aria-busy="true" className={editorColumn}>
       <p className="sr-only">{t("loading")}</p>
       <div className="h-10 w-56 rounded-xl bg-raised motion-safe:animate-pulse" />
       <div className="h-16 rounded-3xl border border-edge bg-surface motion-safe:animate-pulse" />
@@ -142,7 +149,7 @@ async function Dashboard({
 
   if (!profile) {
     return (
-      <section className="flex flex-col gap-6">
+      <section className={cx(editorColumn, "gap-6")}>
         <div className="flex flex-col gap-3">
           <Heading as="h1" size="title">
             {t("pickTitle")}
@@ -168,96 +175,126 @@ async function Dashboard({
     cardDesign(),
   ]);
   const wallets = walletsOn();
+  // A hidden page can't be shown, so it gets no preview.
+  const preview = profile.is_suspended
+    ? null
+    : await previewVersionFor(supabase, profile);
 
   return (
     <>
-      {profile.is_suspended && (
-        <div
-          role="status"
-          className="flex flex-col gap-1 rounded-3xl border border-danger bg-surface p-6 text-danger"
-        >
-          <p className="font-bold">{t("hiddenTitle")}</p>
-          <p className="text-sm leading-relaxed">{t("hiddenText")}</p>
-        </div>
-      )}
-
-      <div
-        className={cx(card({ padding: "none" }), "flex items-center gap-2 p-2")}
-      >
-        <Link
-          href={`/${profile.username}`}
-          target="_blank"
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 font-semibold transition hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:text-lg"
-        >
-          <span className="truncate">
-            <span className="text-ink-muted">biolyn.link/</span>
-            {profile.username}
-          </span>
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-            className="shrink-0 text-ink-muted"
+      <div className={editorColumn}>
+        {profile.is_suspended && (
+          <div
+            role="status"
+            className="flex flex-col gap-1 rounded-3xl border border-danger bg-surface p-6 text-danger"
           >
-            <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-          </svg>
-          <span className="sr-only">{common("opensInNewTab")}</span>
-        </Link>
-        <CopyLinkButton url={`${siteUrl}/${profile.username}`} />
+            <p className="font-bold">{t("hiddenTitle")}</p>
+            <p className="text-sm leading-relaxed">{t("hiddenText")}</p>
+          </div>
+        )}
+
+        <div
+          className={cx(
+            card({ padding: "none" }),
+            "flex items-center gap-2 p-2",
+          )}
+        >
+          <Link
+            href={`/${profile.username}`}
+            target="_blank"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 font-semibold transition hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:text-lg"
+          >
+            <span className="truncate">
+              <span className="text-ink-muted">biolyn.link/</span>
+              {profile.username}
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+              className="shrink-0 text-ink-muted"
+            >
+              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            </svg>
+            <span className="sr-only">{common("opensInNewTab")}</span>
+          </Link>
+          <CopyLinkButton url={`${siteUrl}/${profile.username}`} />
+        </div>
+
+        <TabBar active={tab} />
+
+        {tab === "content" && (
+          <ContentTab profileId={profile.id} userId={user.id} />
+        )}
+        {tab === "look" && <LookTab theme={profile.theme} />}
+        {tab === "profile" && (
+          <>
+            <TabTitle title={t("profileTitle")} text={t("profileText")} />
+            <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
+              <AvatarUpload
+                userId={user.id}
+                avatarUrl={profile.avatar_url}
+                name={profile.display_name ?? profile.username}
+                photoStyle={photoStyleFrom(profile.theme)}
+              />
+              <ProfileForm
+                displayName={profile.display_name ?? ""}
+                bio={profile.bio}
+              />
+            </Card>
+            <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
+              <SectionTitle title={t("socialsTitle")}>
+                {t("socialsText")}
+              </SectionTitle>
+              <SocialsForm socials={socialsFrom(profile.socials)} />
+            </Card>
+            {/* A hidden page has no card to show. */}
+            {!profile.is_suspended && (
+              <QrSection
+                username={profile.username}
+                version={version}
+                wallets={wallets}
+                locale={locale}
+              />
+            )}
+          </>
+        )}
+        {tab === "stats" && (
+          <StatsTab
+            profile={profile}
+            siteUrl={siteUrl}
+            cardVersion={version}
+            wallets={wallets}
+          />
+        )}
       </div>
-
-      <TabBar active={tab} />
-
-      {tab === "content" && (
-        <ContentTab profileId={profile.id} userId={user.id} />
-      )}
-      {tab === "look" && <LookTab theme={profile.theme} />}
-      {tab === "profile" && (
+      {preview && (
         <>
-          <TabTitle title={t("profileTitle")} text={t("profileText")} />
-          <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
-            <AvatarUpload
-              userId={user.id}
-              avatarUrl={profile.avatar_url}
-              name={profile.display_name ?? profile.username}
-              photoStyle={photoStyleFrom(profile.theme)}
-            />
-            <ProfileForm
-              displayName={profile.display_name ?? ""}
-              bio={profile.bio}
-            />
-          </Card>
-          <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
-            <SectionTitle title={t("socialsTitle")}>
-              {t("socialsText")}
-            </SectionTitle>
-            <SocialsForm socials={socialsFrom(profile.socials)} />
-          </Card>
-          {/* A hidden page has no card to show. */}
-          {!profile.is_suspended && (
-            <QrSection
-              username={profile.username}
-              version={version}
-              wallets={wallets}
-              locale={locale}
-            />
+          <PreviewPanel username={profile.username} version={preview} />
+          {tab !== "stats" && (
+            <PreviewButton username={profile.username} version={preview} />
           )}
         </>
       )}
-      {tab === "stats" && (
-        <StatsTab
-          profile={profile}
-          siteUrl={siteUrl}
-          cardVersion={version}
-          wallets={wallets}
-        />
-      )}
     </>
   );
+}
+
+// Everything the public page shows, boiled down to a short code that
+// changes when any of it does. The preview reloads when the code changes.
+async function previewVersionFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  profile: { id: string },
+) {
+  const [{ data: links }, { data: photos }] = await Promise.all([
+    supabase.from("links").select("*").eq("profile_id", profile.id),
+    supabase.from("photos").select("*").eq("profile_id", profile.id),
+  ]);
+  return previewVersion([profile, links, photos]);
 }
 
 /**
