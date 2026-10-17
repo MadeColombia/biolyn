@@ -17,7 +17,14 @@ import { getAnalytics, summarize } from "@/lib/analytics";
 import { ranked } from "@/lib/chart";
 import { sourceNames as namesFor } from "@/lib/sources";
 import { socialsFrom } from "@/lib/socials";
-import { photoStyleFrom, THEMES, themeFrom, type ThemeId } from "@/lib/themes";
+import {
+  motionOf,
+  photoStyleFrom,
+  THEMES,
+  themeFrom,
+  type ThemeId,
+} from "@/lib/themes";
+import { ThemeMotion } from "@/components/theme-motion";
 import { galleryLayoutFrom } from "@/lib/gallery";
 import { cardDesign, cardVersion } from "@/lib/qr-card";
 import { walletsOn } from "@/lib/pass-content";
@@ -312,24 +319,43 @@ async function Dashboard() {
 
       <Card padding="md" className="flex flex-col gap-6">
         <SectionTitle title={t("themeTitle")}>{t("themeText")}</SectionTitle>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {(Object.keys(THEMES) as ThemeId[]).map((id) => {
             const selected = id === currentTheme;
+            const motion = motionOf(id);
             return (
               <form key={id} action={setTheme.bind(null, id)}>
                 <button
                   aria-pressed={selected}
-                  className={cx(
-                    "flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-edge px-2 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-                    THEMES[id].page,
-                    selected &&
-                      "ring-2 ring-brand ring-offset-2 ring-offset-surface",
-                  )}
+                  className="group flex w-full flex-col items-center gap-2 rounded-2xl text-sm font-bold text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
+                  {/* A tiny page in the theme: its background (moving
+                      ones move here too) and two of its buttons. */}
                   <span
-                    className={cx("h-3 w-3/4 rounded", THEMES[id].button)}
-                  />
-                  {looks(`themes.${id}`)}
+                    aria-hidden
+                    className={cx(
+                      "relative isolate flex h-24 w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-edge transition group-hover:border-brand",
+                      THEMES[id].page,
+                      selected &&
+                        "ring-2 ring-brand ring-offset-2 ring-offset-surface",
+                    )}
+                  >
+                    <ThemeMotion motion={motion} preview />
+                    <span
+                      className={cx("h-3 w-3/4 rounded", THEMES[id].button)}
+                    />
+                    <span
+                      className={cx("h-3 w-3/4 rounded", THEMES[id].button)}
+                    />
+                  </span>
+                  <span className="flex flex-col items-center leading-tight">
+                    {looks(`themes.${id}`)}
+                    {motion && (
+                      <span className="text-xs font-normal text-ink-muted">
+                        {t("themeMoves")}
+                      </span>
+                    )}
+                  </span>
                 </button>
                 <div className="flex h-8 items-center justify-center">
                   {selected && <Badge>{common("current")}</Badge>}

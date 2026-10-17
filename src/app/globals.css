@@ -162,3 +162,217 @@ body {
     }
   }
 }
+
+/* Public page themes that move (THEMES[*].motion, drawn by ThemeMotion).
+   Only transform and opacity change, so phones move the shapes without
+   repainting the page. Each shape's first frame is also its still look
+   for reduced motion. */
+.tm-shape {
+  position: absolute;
+  display: block;
+  border-radius: 9999px;
+  will-change: transform;
+}
+
+/* Aurora: big soft glows drift slowly across a night sky. */
+.tm-aurora-1,
+.tm-aurora-2,
+.tm-aurora-3 {
+  aspect-ratio: 1;
+}
+
+.tm-aurora-1 {
+  width: 95%;
+  left: -30%;
+  top: -15%;
+  background: radial-gradient(closest-side, rgb(45 212 191 / 0.45), transparent);
+  animation: tm-drift-1 26s ease-in-out infinite alternate;
+}
+
+.tm-aurora-2 {
+  width: 110%;
+  right: -45%;
+  top: 25%;
+  background: radial-gradient(closest-side, rgb(167 139 250 / 0.45), transparent);
+  animation: tm-drift-2 32s ease-in-out infinite alternate;
+}
+
+.tm-aurora-3 {
+  width: 120%;
+  left: -20%;
+  bottom: -45%;
+  background: radial-gradient(closest-side, rgb(56 189 248 / 0.3), transparent);
+  animation: tm-drift-3 38s ease-in-out infinite alternate;
+}
+
+@keyframes tm-drift-1 {
+  to {
+    transform: translate3d(35%, 20%, 0) scale(1.15);
+  }
+}
+
+@keyframes tm-drift-2 {
+  to {
+    transform: translate3d(-35%, -15%, 0) scale(0.9);
+  }
+}
+
+@keyframes tm-drift-3 {
+  to {
+    transform: translate3d(15%, -25%, 0) scale(1.1);
+  }
+}
+
+/* Bubbles: pastel shapes float up and down at different speeds. */
+.tm-bubble-1,
+.tm-bubble-2,
+.tm-bubble-3,
+.tm-bubble-4,
+.tm-bubble-5 {
+  aspect-ratio: 1;
+  animation: tm-float 18s ease-in-out infinite alternate;
+}
+
+.tm-bubble-1 {
+  width: 55%;
+  left: -15%;
+  top: 6%;
+  background: radial-gradient(closest-side, rgb(249 168 212 / 0.7) 55%, transparent);
+}
+
+.tm-bubble-2 {
+  width: 40%;
+  right: -8%;
+  top: 30%;
+  background: radial-gradient(closest-side, rgb(196 181 253 / 0.7) 55%, transparent);
+  animation-duration: 22s;
+  animation-delay: -6s;
+}
+
+.tm-bubble-3 {
+  width: 32%;
+  left: 12%;
+  bottom: 10%;
+  background: radial-gradient(closest-side, rgb(253 186 116 / 0.6) 55%, transparent);
+  animation-duration: 15s;
+  animation-delay: -3s;
+}
+
+.tm-bubble-4 {
+  width: 22%;
+  right: 18%;
+  top: 2%;
+  background: radial-gradient(closest-side, rgb(253 164 175 / 0.7) 55%, transparent);
+  animation-duration: 13s;
+  animation-delay: -9s;
+}
+
+.tm-bubble-5 {
+  width: 48%;
+  right: -20%;
+  bottom: -12%;
+  background: radial-gradient(closest-side, rgb(216 180 254 / 0.7) 55%, transparent);
+  animation-duration: 25s;
+  animation-delay: -12s;
+}
+
+@keyframes tm-float {
+  to {
+    transform: translate3d(12%, -28%, 0) scale(1.08);
+  }
+}
+
+/* Gold: a warm glow at the top and a soft sheen that sweeps across now
+   and then. */
+.tm-gold-glow {
+  width: 130%;
+  aspect-ratio: 1;
+  left: -15%;
+  top: -55%;
+  background: radial-gradient(closest-side, rgb(251 191 36 / 0.2), transparent);
+}
+
+.tm-shimmer {
+  top: -50%;
+  left: 0;
+  width: 55%;
+  height: 200%;
+  border-radius: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(251 191 36 / 0.1) 35%,
+    rgb(254 243 199 / 0.2) 50%,
+    rgb(251 191 36 / 0.1) 65%,
+    transparent
+  );
+  transform: translate3d(-130%, 0, 0) rotate(18deg);
+  animation: tm-sweep 9s ease-in-out infinite;
+}
+
+@keyframes tm-sweep {
+  0% {
+    transform: translate3d(-130%, 0, 0) rotate(18deg);
+  }
+  45%,
+  100% {
+    transform: translate3d(260%, 0, 0) rotate(18deg);
+  }
+}
+
+/* Retro: a glowing sun on the horizon over a grid floor that rolls
+   toward the visitor. */
+.tm-sun {
+  width: 120%;
+  aspect-ratio: 1;
+  left: -10%;
+  bottom: 5%;
+  background: radial-gradient(
+    closest-side,
+    rgb(251 146 60 / 0.55),
+    rgb(236 72 153 / 0.3) 50%,
+    transparent
+  );
+}
+
+.tm-floor {
+  left: -50%;
+  right: -50%;
+  bottom: 0;
+  height: 45%;
+  border-radius: 0;
+  overflow: hidden;
+  transform: perspective(300px) rotateX(60deg);
+  transform-origin: bottom;
+  mask-image: linear-gradient(to top, black 35%, transparent);
+  --cell: 44px;
+}
+
+.tm-preview .tm-floor {
+  --cell: 14px;
+  transform: perspective(90px) rotateX(60deg);
+}
+
+.tm-grid {
+  position: absolute;
+  inset: calc(var(--cell) * -1) 0 0 0;
+  background-image:
+    linear-gradient(rgb(34 211 238 / 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(34 211 238 / 0.55) 1px, transparent 1px);
+  background-size: var(--cell) var(--cell);
+  will-change: transform;
+  animation: tm-roll 3s linear infinite;
+}
+
+@keyframes tm-roll {
+  to {
+    transform: translate3d(0, var(--cell), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-layer *,
+  .tm-layer {
+    animation: none !important;
+  }
+}

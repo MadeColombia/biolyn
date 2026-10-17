@@ -130,6 +130,7 @@
     "socialsText": "Aparecen como iconos bajo tu nombre. Deja un campo vacío para quitarlo.",
     "themeTitle": "Tema",
     "themeText": "Cómo ven tu página pública los visitantes.",
+    "themeMoves": "Con movimiento",
     "fontTitle": "Letra",
     "fontText": "Se usa en todo tu perfil público: nombre, bio y enlaces.",
     "cornersTitle": "Esquinas",
@@ -139,7 +140,14 @@
     "themes": {
       "classic": "Clásico",
       "midnight": "Medianoche",
-      "sunset": "Atardecer"
+      "sunset": "Atardecer",
+      "aurora": "Aurora",
+      "bubbles": "Burbujas",
+      "gold": "Oro",
+      "retro": "Retro",
+      "forest": "Bosque",
+      "poster": "Póster",
+      "lemon": "Limón"
     },
     "fonts": {
       "clean": "Limpia",
