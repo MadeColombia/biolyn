@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   isPhotoStyle,
+  MOTION_SHAPES,
+  MOTIONS,
+  motionOf,
+  type ThemeId,
   isThemeId,
   photoStyleFrom,
   themeFrom,
@@ -87,4 +92,59 @@ describe("themeSettings", () => {
       expect(themeSettings(value)).toEqual({});
     },
   );
+});
+
+describe("theme list", () => {
+  it("has at least 10 themes, 4 of them moving", () => {
+    const ids = Object.keys(THEMES) as ThemeId[];
+    expect(ids.length).toBeGreaterThanOrEqual(10);
+    expect(ids.filter((id) => motionOf(id)).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("keeps the first three themes for older pages", () => {
+    expect(Object.keys(THEMES).slice(0, 3)).toEqual([
+      "classic",
+      "midnight",
+      "sunset",
+    ]);
+  });
+
+  it.each(["en", "es"])("names every theme in %s", (locale) => {
+    const messages = JSON.parse(
+      readFileSync(`src/messages/${locale}.json`, "utf8"),
+    );
+    expect(Object.keys(messages.looks.themes).sort()).toEqual(
+      Object.keys(THEMES).sort(),
+    );
+  });
+});
+
+describe("moving themes", () => {
+  const css = readFileSync("src/app/globals.css", "utf8");
+
+  it("returns null for still themes", () => {
+    expect(motionOf("classic")).toBeNull();
+    expect(motionOf("aurora")).toBe("aurora");
+    expect(motionOf("gold")).toBe("shimmer");
+  });
+
+  it("uses every kind of movement", () => {
+    const used = new Set(
+      (Object.keys(THEMES) as ThemeId[]).map(motionOf).filter(Boolean),
+    );
+    expect([...used].sort()).toEqual([...MOTIONS].sort());
+  });
+
+  it.each(MOTIONS)("draws %s with shapes styled in globals.css", (motion) => {
+    expect(MOTION_SHAPES[motion].length).toBeGreaterThan(0);
+    for (const shape of MOTION_SHAPES[motion]) {
+      expect(css).toContain(`.${shape}`);
+    }
+  });
+
+  it("stops every movement for reduced motion", () => {
+    const reduced = css.slice(css.lastIndexOf("prefers-reduced-motion"));
+    expect(reduced).toContain(".tm-layer *");
+    expect(reduced).toContain("animation: none");
+  });
 });

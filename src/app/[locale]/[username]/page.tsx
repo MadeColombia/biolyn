@@ -12,7 +12,8 @@ import { RichBio } from "@/components/rich-bio";
 import { cleanBio, parseBio, plainBio } from "@/lib/rich-bio";
 import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
-import { THEMES } from "@/lib/themes";
+import { motionOf, THEMES } from "@/lib/themes";
+import { ThemeMotion } from "@/components/theme-motion";
 import { CORNER_CLASSES } from "@/lib/corners";
 import { isIconPreview } from "@/lib/link-form";
 import { CoverPhoto } from "./cover-photo";
@@ -97,8 +98,11 @@ async function Profile({
         className={`flex flex-1 flex-col md:px-6 md:py-10 ${theme.backdrop}`}
       >
         <div
-          className={`mx-auto flex w-full flex-1 flex-col md:max-w-lg md:overflow-hidden md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
+          // isolate keeps a moving background above the card's own color;
+          // clip (not hidden) lets that background stick while scrolling.
+          className={`relative isolate mx-auto flex w-full flex-1 flex-col overflow-clip md:max-w-lg md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
         >
+          <ThemeMotion motion={motionOf(profile.theme)} />
           {cover && <CoverPhoto src={profile.avatar_url!} alt={name} />}
           <div
             className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 ${
