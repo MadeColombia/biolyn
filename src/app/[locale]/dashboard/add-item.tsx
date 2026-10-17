@@ -66,9 +66,10 @@ export function AddItemMenu({
           // A click on the dark backdrop (the dialog itself) closes it.
           if (e.target === e.currentTarget) close();
         }}
-        className="m-auto max-h-[90dvh] w-[min(92vw,36rem)] overflow-y-auto rounded-3xl border border-edge bg-surface p-0 text-ink backdrop:bg-black/50"
+        className="m-auto max-h-[90dvh] w-[min(92vw,36rem)] overflow-y-auto rounded-3xl border border-edge bg-surface p-0 text-ink backdrop:bg-black/50 max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom)]"
       >
-        <div className="flex flex-col gap-6 p-6">
+        {/* On phones the popup slides up from the bottom, in thumb reach. */}
+        <div className="flex flex-col gap-6 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <Heading as="h2" size="section" id="add-item-title">
               {step === "choose"
@@ -99,7 +100,7 @@ export function AddItemMenu({
 
           {step === "choose" ? (
             <div className="flex flex-col gap-3">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
                 <Choice
                   icon={<LinkIcon />}
                   title={t("link")}
@@ -178,10 +179,10 @@ function Choice({
       onClick={onClick}
       disabled={disabled}
       className={cx(
-        "flex flex-col items-start gap-3 rounded-2xl border border-edge bg-surface p-4 text-left transition hover:border-brand hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50",
+        "flex items-center gap-3 rounded-2xl border border-edge bg-surface p-3 text-left transition hover:border-brand hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50 sm:flex-col sm:items-start sm:p-4",
       )}
     >
-      <span className="flex size-12 items-center justify-center rounded-xl bg-raised text-brand">
+      <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-raised text-brand">
         {icon}
       </span>
       <span className="flex flex-col gap-1">

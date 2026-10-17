@@ -62,7 +62,7 @@ export async function StatsSection({
     { label: t("clicks30"), value: stats.clicks30 },
   ];
   return (
-    <Card padding="md" className="flex flex-col gap-6">
+    <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
       <AnalyticsModes data={data} links={links} sourceNames={sourceNames}>
         <div className="grid grid-cols-3 gap-3">
           {tiles.map((tile) => (
@@ -135,7 +135,7 @@ export async function QrSection({
 }) {
   const t = await getTranslations("stats");
   return (
-    <Card padding="md" className="flex flex-col gap-6">
+    <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
       <div className="flex flex-col gap-1">
         <Heading size="section">{t("shareTitle")}</Heading>
         <p className="leading-relaxed text-ink-soft">{t("shareText")}</p>
