@@ -69,7 +69,7 @@ describe("messages", () => {
     const values = {
       count: 2, max: 5, n: 3, total: 4, name: "Ana", alt: "a", start: "a",
       end: "b", from: "a", to: "b", day: "a", metric: "views", style: "a",
-      service: "youtube", platform: "X", problem: "p", language: "English",
+      service: "youtube", platform: "X", problem: "p", language: "English", app: "WhatsApp",
       email: () => "e", star: () => "*", b: () => "b",
     };
     for (const key of Object.keys(en)) {
