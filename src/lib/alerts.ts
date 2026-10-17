@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { renderEmail, renderText, type EmailContent } from "@/lib/email/layout";
 import { allow } from "@/lib/rate-limit";
 
 // Emails a short alert through Resend when a server error happens.
@@ -25,6 +26,23 @@ export async function sendErrorAlert(details: {
   if (!(await allow(`alert:${fingerprint}`, 1, 1800))) return;
   if (!(await allow("alert:all", 20, 3600))) return;
 
+  const email: EmailContent = {
+    lang: "en",
+    subject: `biolyn error on ${details.routePath}`,
+    preview: details.message,
+    heading: "Something failed",
+    paragraphs: ["A page or action on biolyn.link hit a server error."],
+    details: [
+      ["Request", `${details.method} ${details.path}`],
+      ["Route", `${details.routePath} (${details.routeType})`],
+      ["Error", details.message],
+      ...(details.digest ? [["Digest", details.digest] as [string, string]] : []),
+    ],
+    button: { label: "Open Vercel logs", url: "https://vercel.com/madecolombias-projects/biolyn/logs" },
+    note: "Repeats of this error are muted for 30 minutes.",
+    footer: "You get these alerts because ALERT_EMAIL is set in Vercel.",
+  };
+
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -33,19 +51,11 @@ export async function sendErrorAlert(details: {
     },
     signal: AbortSignal.timeout(5000),
     body: JSON.stringify({
-      from: "Biolyn alerts <alerts@biolyn.link>",
+      from: "biolyn alerts <alerts@biolyn.link>",
       to,
-      subject: `Biolyn error on ${details.routePath}`,
-      text: [
-        `Something failed on biolyn.link.`,
-        ``,
-        `Request: ${details.method} ${details.path}`,
-        `Route: ${details.routePath} (${details.routeType})`,
-        `Error: ${details.message}`,
-        details.digest ? `Digest: ${details.digest}` : "",
-        ``,
-        `Details are in Vercel > biolyn > Logs. Repeats of this error are muted for 30 minutes.`,
-      ].join("\n"),
+      subject: email.subject,
+      html: renderEmail(email),
+      text: renderText(email),
     }),
   }).catch(() => {});
 }

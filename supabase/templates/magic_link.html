@@ -1,0 +1,135 @@
+{{ if eq (printf "%v" .Data.locale) "es" }}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Tu enlace para entrar</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&family=Unbounded:wght@800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;supported-color-schemes:light dark}
+body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%}
+a{text-decoration:none}
+@media (max-width:600px){
+.b-card{padding:28px 24px!important}
+.b-title{font-size:24px!important}
+.b-btns{width:100%!important}
+.b-btn a{display:block!important}
+}
+@media (prefers-color-scheme:dark){
+.b-canvas{background:#15110f!important}
+.b-card{background:#211a17!important;border-color:#3a2e28!important}
+.b-ink{color:#f6eee8!important}
+.b-soft{color:#cdbfb5!important}
+.b-muted{color:#a39185!important}
+.b-link{color:#d2693f!important}
+.b-btn{background:#d2693f!important}
+.b-btn a{color:#15110f!important}
+.b-rule{border-color:#3a2e28!important}
+}
+[data-ogsc] .b-ink{color:#f6eee8!important}
+[data-ogsc] .b-soft{color:#cdbfb5!important}
+[data-ogsc] .b-muted{color:#a39185!important}
+[data-ogsc] .b-link{color:#d2693f!important}
+</style>
+</head>
+<body class="b-canvas" style="margin:0;padding:0;background:#f5efe6">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">Toca el botón para entrar. No necesitas contraseña.</div>
+<table role="presentation" class="b-canvas" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5efe6" style="background:#f5efe6">
+<tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
+<tr><td style="padding:0 8px 24px">
+<a href="https://biolyn.link" target="_blank"><img src="https://biolyn.link/brand/biolyn-mark-512.png" width="48" height="48" alt="biolyn" style="display:block;width:48px;height:48px;border:0;border-radius:12px"></a>
+</td></tr>
+<tr><td class="b-card" bgcolor="#fffbf5" style="background:#fffbf5;border:1px solid #e3d5c5;border-radius:24px;padding:40px 36px">
+<h1 class="b-ink b-title" style="margin:0 0 16px;font-family:'Unbounded','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:28px;line-height:1.2;font-weight:800;color:#2a1e18">Entra en biolyn</h1>
+<p class="b-soft" style="margin:0 0 16px;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#5e4b40">Toca el botón para entrar. Ábrelo en el mismo móvil u ordenador desde el que lo pediste.</p>
+<table role="presentation" class="b-btns" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px"><tr>
+<td class="b-btn" bgcolor="#b9532d" style="background:#b9532d;border-radius:16px;text-align:center">
+<a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:16px 32px;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:16px">Entrar</a>
+</td></tr></table>
+<p class="b-muted" style="margin:16px 0 0;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604f">¿El botón no funciona? Copia este enlace en tu navegador:<br>
+<a class="b-link" href="{{ .ConfirmationURL }}" target="_blank" style="color:#b9532d;word-break:break-all">{{ .ConfirmationURL }}</a></p>
+<div style="height:24px;line-height:24px">&nbsp;</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="b-rule" style="border-top:1px solid #e3d5c5;padding-top:20px;margin-top:24px">
+<p class="b-muted" style="margin:0;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#74604f">Este enlace funciona una sola vez y caduca pronto. Si no lo pediste tú, puedes ignorar este correo. Nadie puede entrar sin él.</p>
+</td></tr></table>
+</td></tr>
+<tr><td style="padding:24px 8px 0">
+<p class="b-muted" style="margin:0 0 4px;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604f">Recibiste este correo porque alguien pidió entrar con esta dirección.</p>
+<p style="margin:0;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5"><a class="b-link" href="https://biolyn.link" target="_blank" style="color:#b9532d;font-weight:700">biolyn.link</a></p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+{{ else }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>Your sign-in link</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&family=Unbounded:wght@800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;supported-color-schemes:light dark}
+body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%}
+a{text-decoration:none}
+@media (max-width:600px){
+.b-card{padding:28px 24px!important}
+.b-title{font-size:24px!important}
+.b-btns{width:100%!important}
+.b-btn a{display:block!important}
+}
+@media (prefers-color-scheme:dark){
+.b-canvas{background:#15110f!important}
+.b-card{background:#211a17!important;border-color:#3a2e28!important}
+.b-ink{color:#f6eee8!important}
+.b-soft{color:#cdbfb5!important}
+.b-muted{color:#a39185!important}
+.b-link{color:#d2693f!important}
+.b-btn{background:#d2693f!important}
+.b-btn a{color:#15110f!important}
+.b-rule{border-color:#3a2e28!important}
+}
+[data-ogsc] .b-ink{color:#f6eee8!important}
+[data-ogsc] .b-soft{color:#cdbfb5!important}
+[data-ogsc] .b-muted{color:#a39185!important}
+[data-ogsc] .b-link{color:#d2693f!important}
+</style>
+</head>
+<body class="b-canvas" style="margin:0;padding:0;background:#f5efe6">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">Tap the button to sign in. No password needed.</div>
+<table role="presentation" class="b-canvas" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5efe6" style="background:#f5efe6">
+<tr><td align="center" style="padding:32px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px">
+<tr><td style="padding:0 8px 24px">
+<a href="https://biolyn.link" target="_blank"><img src="https://biolyn.link/brand/biolyn-mark-512.png" width="48" height="48" alt="biolyn" style="display:block;width:48px;height:48px;border:0;border-radius:12px"></a>
+</td></tr>
+<tr><td class="b-card" bgcolor="#fffbf5" style="background:#fffbf5;border:1px solid #e3d5c5;border-radius:24px;padding:40px 36px">
+<h1 class="b-ink b-title" style="margin:0 0 16px;font-family:'Unbounded','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:28px;line-height:1.2;font-weight:800;color:#2a1e18">Sign in to biolyn</h1>
+<p class="b-soft" style="margin:0 0 16px;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#5e4b40">Tap the button below to sign in. Open it on the same phone or computer where you asked for it.</p>
+<table role="presentation" class="b-btns" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 8px"><tr>
+<td class="b-btn" bgcolor="#b9532d" style="background:#b9532d;border-radius:16px;text-align:center">
+<a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:16px 32px;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:16px">Sign in</a>
+</td></tr></table>
+<p class="b-muted" style="margin:16px 0 0;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604f">Button not working? Copy this link into your browser:<br>
+<a class="b-link" href="{{ .ConfirmationURL }}" target="_blank" style="color:#b9532d;word-break:break-all">{{ .ConfirmationURL }}</a></p>
+<div style="height:24px;line-height:24px">&nbsp;</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="b-rule" style="border-top:1px solid #e3d5c5;padding-top:20px;margin-top:24px">
+<p class="b-muted" style="margin:0;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#74604f">This link works once and only for a short time. If you didn&#39;t ask for it, you can ignore this email. Nobody can sign in without it.</p>
+</td></tr></table>
+</td></tr>
+<tr><td style="padding:24px 8px 0">
+<p class="b-muted" style="margin:0 0 4px;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#74604f">You got this email because someone asked to sign in with this address.</p>
+<p style="margin:0;font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5"><a class="b-link" href="https://biolyn.link" target="_blank" style="color:#b9532d;font-weight:700">biolyn.link</a></p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+{{ end }}

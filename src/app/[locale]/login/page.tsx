@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Badge,
   Button,
@@ -80,6 +80,7 @@ function LastUsedBadge({ onBrand = false }: { onBrand?: boolean }) {
 function LoginForm() {
   const t = useTranslations("login");
   const common = useTranslations("common");
+  const locale = useLocale();
   // Read on the client only; the server render shows no badge.
   const lastMethod = useSyncExternalStore(
     () => () => {},
@@ -103,7 +104,8 @@ function LoginForm() {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+      // The locale picks the language of the email for new accounts.
+      options: { emailRedirectTo: `${siteUrl}/auth/callback`, data: { locale } },
     });
     if (!error) {
       saveLastMethod("email");

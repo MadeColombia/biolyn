@@ -1,0 +1,1 @@
+{{ if eq (printf "%v" .Data.locale) "es" }}Confirma tu correo{{ else }}Confirm your email{{ end }}
