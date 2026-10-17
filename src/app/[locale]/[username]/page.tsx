@@ -96,12 +96,15 @@ async function Profile({
       <div
         className={`flex flex-1 flex-col md:px-6 md:py-10 ${theme.backdrop}`}
       >
+        {/* overflow-clip, not overflow-hidden: hidden would make the card
+            its own scroll area, and the cover photo's scroll animation
+            follows the nearest scroll area. */}
         <div
-          className={`mx-auto flex w-full flex-1 flex-col md:max-w-lg md:overflow-hidden md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
+          className={`mx-auto flex w-full flex-1 flex-col md:max-w-xl md:overflow-clip md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
         >
           {cover && <CoverPhoto src={profile.avatar_url!} alt={name} />}
           <div
-            className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 ${
+            className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 md:max-w-none ${
               // The name and bio sit over the faded bottom of the photo.
               cover ? "relative -mt-28" : "pt-16"
             }`}

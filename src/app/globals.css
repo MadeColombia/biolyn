@@ -124,3 +124,41 @@ body {
     opacity: 0;
   }
 }
+
+/* Cover photo on public profiles (cover-photo.tsx): fades out and
+   drifts down a little as its top edge scrolls past the top of the
+   screen, fully gone after 80% of its height (COVER_FADE_DISTANCE in
+   lib/cover-scroll.ts). 32% = that 80% x the 0.4 drift (COVER_DRIFT).
+   The browser runs this in step with the scroll itself. Browsers
+   without scroll-driven animations use the script in cover-photo.tsx. */
+@keyframes cover-away {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 32%, 0);
+  }
+}
+
+@keyframes cover-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .cover-scroll {
+    view-timeline: --cover block;
+  }
+
+  .cover-scroll > * {
+    animation: cover-away linear both;
+    animation-timeline: --cover;
+    animation-range: exit-crossing 0% exit-crossing 80%;
+  }
+
+  /* Less motion: keep the fade, drop the drift. */
+  @media (prefers-reduced-motion: reduce) {
+    .cover-scroll > * {
+      animation-name: cover-fade;
+    }
+  }
+}
