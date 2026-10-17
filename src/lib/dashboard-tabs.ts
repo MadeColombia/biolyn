@@ -4,7 +4,6 @@ export const DASHBOARD_TABS = [
   "look",
   "profile",
   "stats",
-  "share",
 ] as const;
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];

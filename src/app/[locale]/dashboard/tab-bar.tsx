@@ -82,12 +82,6 @@ function TabIcon({ tab }: { tab: DashboardTab }) {
         </>
       )}
       {tab === "stats" && <path d="M5 20V12M12 20V4M19 20v-9" />}
-      {tab === "share" && (
-        <>
-          <path d="M12 15V3M7 8l5-5 5 5" />
-          <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
-        </>
-      )}
     </svg>
   );
 }

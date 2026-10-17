@@ -148,8 +148,7 @@
     "cornersTitle": "Esquinas",
     "cornersText": "La forma de cada bloque de tu página pública: botones, enlaces grandes, reproductores y fotos.",
     "lookTitle": "Estilo",
-    "statsTitle": "Datos",
-    "shareTitle": "Compartir"
+    "statsTitle": "Datos"
   },
   "undo": {
     "deleted": "Has borrado «{name}»",
@@ -160,8 +159,7 @@
     "content": "Contenido",
     "look": "Estilo",
     "profile": "Perfil",
-    "stats": "Datos",
-    "share": "Compartir"
+    "stats": "Datos"
   },
   "looks": {
     "themes": {

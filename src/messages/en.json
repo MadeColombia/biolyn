@@ -148,8 +148,7 @@
     "cornersTitle": "Corners",
     "cornersText": "The shape of every block on your public page: buttons, big links, players and photos.",
     "lookTitle": "Look",
-    "statsTitle": "Stats",
-    "shareTitle": "Share"
+    "statsTitle": "Stats"
   },
   "undo": {
     "deleted": "Deleted “{name}”",
@@ -160,8 +159,7 @@
     "content": "Content",
     "look": "Look",
     "profile": "Profile",
-    "stats": "Stats",
-    "share": "Share"
+    "stats": "Stats"
   },
   "looks": {
     "themes": {
