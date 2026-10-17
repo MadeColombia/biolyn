@@ -7,7 +7,7 @@ describe("tabFrom", () => {
     expect(tabFrom([tab, "look"])).toBe(tab);
   });
 
-  it.each([undefined, null, "", "Look", "settings", "toString", ["x"], 3])(
+  it.each([undefined, null, "", "Look", "share", "toString", ["x"], 3])(
     "opens Content for %s",
     (value) => {
       expect(tabFrom(value)).toBe("content");

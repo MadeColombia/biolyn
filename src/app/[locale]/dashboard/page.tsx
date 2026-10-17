@@ -159,6 +159,15 @@ async function Dashboard({
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
+  const locale = await getLocale();
+  // The share card's picture changes with the photo, name and theme.
+  const version = cardVersion([
+    profile.avatar_url,
+    profile.display_name,
+    themeFrom(profile.theme),
+    cardDesign(),
+  ]);
+  const wallets = walletsOn();
 
   return (
     <>
@@ -228,10 +237,24 @@ async function Dashboard({
             </SectionTitle>
             <SocialsForm socials={socialsFrom(profile.socials)} />
           </Card>
+          {/* A hidden page has no card to show. */}
+          {!profile.is_suspended && (
+            <QrSection
+              username={profile.username}
+              version={version}
+              wallets={wallets}
+              locale={locale}
+            />
+          )}
         </>
       )}
-      {(tab === "stats" || tab === "share") && (
-        <NumbersTab tab={tab} profile={profile} siteUrl={siteUrl} />
+      {tab === "stats" && (
+        <StatsTab
+          profile={profile}
+          siteUrl={siteUrl}
+          cardVersion={version}
+          wallets={wallets}
+        />
       )}
     </>
   );
@@ -464,22 +487,18 @@ async function LookTab({ theme }: { theme: unknown }) {
   );
 }
 
-// Stats and Share both read the visit numbers.
-async function NumbersTab({
-  tab,
+// Visit numbers, then the tracking links that split them by where the
+// page was shared.
+async function StatsTab({
   profile,
   siteUrl,
+  cardVersion,
+  wallets,
 }: {
-  tab: "stats" | "share";
-  profile: {
-    id: string;
-    username: string;
-    avatar_url: string | null;
-    display_name: string | null;
-    theme: unknown;
-    is_suspended: boolean;
-  };
+  profile: { id: string; username: string };
   siteUrl: string;
+  cardVersion: string;
+  wallets: ReturnType<typeof walletsOn>;
 }) {
   const t = await getTranslations("dashboard");
   const sourcesT = await getTranslations("sources");
@@ -492,69 +511,42 @@ async function NumbersTab({
       .select("id, code, label, deleted_at")
       .eq("profile_id", profile.id)
       .order("created_at"),
-    tab === "stats"
-      ? supabase
-          .from("links")
-          .select("id, title")
-          .eq("profile_id", profile.id)
-          .eq("kind", "link")
-          .order("position")
-      : Promise.resolve({ data: [] }),
+    supabase
+      .from("links")
+      .select("id, title")
+      .eq("profile_id", profile.id)
+      .eq("kind", "link")
+      .order("position"),
   ]);
-  const sources = (allSources ?? []).filter((s) => !s.deleted_at);
   const analytics = await getAnalytics(
     supabase,
     profile.id,
     (allSources ?? []).map((s) => s.code),
   );
-
-  if (tab === "stats") {
-    return (
-      <>
-        <TabTitle title={t("statsTitle")} hidden />
-        <StatsSection
-          stats={summarize(analytics)}
-          data={analytics}
-          links={(rows ?? []).map((r) => ({ id: r.id, title: r.title ?? "" }))}
-          sourceNames={namesFor(allSources ?? [], (name) =>
-            sourcesT("deleted", { name }),
-          )}
-          locale={locale}
-        />
-      </>
-    );
-  }
-
-  const version = cardVersion([
-    profile.avatar_url,
-    profile.display_name,
-    themeFrom(profile.theme),
-    cardDesign(),
-  ]);
-  const wallets = walletsOn();
   const sourceViews = Object.fromEntries(
     ranked(analytics, "views", "channel", 30)
       .filter((r) => r.key.startsWith("s:"))
       .map((r) => [r.key.slice(2), r.count]),
   );
+
   return (
     <>
-      <TabTitle title={t("shareTitle")} hidden />
-      {/* A hidden page has no card to show. */}
-      {!profile.is_suspended && (
-        <QrSection
-          username={profile.username}
-          version={version}
-          wallets={wallets}
-          locale={locale}
-        />
-      )}
+      <TabTitle title={t("statsTitle")} hidden />
+      <StatsSection
+        stats={summarize(analytics)}
+        data={analytics}
+        links={(rows ?? []).map((r) => ({ id: r.id, title: r.title ?? "" }))}
+        sourceNames={namesFor(allSources ?? [], (name) =>
+          sourcesT("deleted", { name }),
+        )}
+        locale={locale}
+      />
       <SourcesSection
-        sources={sources}
+        sources={(allSources ?? []).filter((s) => !s.deleted_at)}
         siteUrl={siteUrl}
         username={profile.username}
         views30={sourceViews}
-        cardVersion={version}
+        cardVersion={cardVersion}
         wallets={wallets}
         locale={locale}
       />
