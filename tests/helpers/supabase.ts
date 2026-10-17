@@ -54,6 +54,7 @@ export function fakeClient(tables: Record<string, unknown[]> = {}) {
       getUser: vi.fn(async () => ({ data: { user: null } })),
       signOut: vi.fn(async () => ({ error: null })),
       exchangeCodeForSession: vi.fn(async () => ({ error: null })),
+      updateUser: vi.fn(async () => ({ data: {}, error: null })),
     },
     storage: {
       from: vi.fn((bucket: string) => ({

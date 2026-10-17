@@ -42,15 +42,20 @@ describe("sendErrorAlert", () => {
     );
     const body = JSON.parse(String(init.body));
     expect(body.to).toBe("me@biolyn.link");
-    expect(body.subject).toBe("Biolyn error on /[username]");
+    expect(body.from).toBe("biolyn alerts <alerts@biolyn.link>");
+    expect(body.subject).toBe("biolyn error on /[username]");
     expect(body.text).toContain("Request: GET /ethan");
     expect(body.text).toContain("Digest: 123");
+    expect(body.html).toContain("<h1");
+    expect(body.html).toContain("GET /ethan");
+    expect(body.html).toContain("/biolyn/logs");
   });
 
   it("leaves out the digest line when there is none", async () => {
     await sendErrorAlert(details);
     const body = JSON.parse(String(fetch.mock.calls[0][1].body));
     expect(body.text).not.toContain("Digest:");
+    expect(body.html).not.toContain("Digest");
   });
 
   it("mutes a repeat of the same error", async () => {
