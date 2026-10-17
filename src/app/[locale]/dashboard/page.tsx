@@ -12,6 +12,7 @@ import {
   container,
   cx,
 } from "@/components/ui";
+import { tabFrom } from "@/lib/dashboard-tabs";
 import { createClient } from "@/lib/supabase/server";
 import { getAnalytics, summarize } from "@/lib/analytics";
 import { ranked } from "@/lib/chart";
@@ -46,14 +47,19 @@ import {
   SocialsForm,
 } from "./forms";
 import { AddItemMenu } from "./add-item";
+import { DeleteUndo } from "./delete-undo";
 import { LinkList, type LinkItem, type ListItem } from "./link-list";
+import { TabBar } from "./tab-bar";
 import { QrSection, StatsSection } from "./stats";
 import { SourcesSection } from "./sources";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(
+  props: PageProps<"/[locale]/dashboard">,
+) {
   const t = await getTranslations("dashboard");
   return (
     <PageShell
+      bottomBar
       header={
         <form action={signOut}>
           <Button variant="ghost" size="sm">
@@ -63,10 +69,13 @@ export default async function DashboardPage() {
       }
     >
       <main
-        className={cx(container("medium"), "flex flex-1 flex-col gap-4 py-12")}
+        className={cx(
+          container("medium"),
+          "flex flex-1 flex-col gap-4 pt-2 pb-12 sm:pt-6",
+        )}
       >
         <Suspense fallback={<DashboardLoading />}>
-          <Dashboard />
+          <Dashboard searchParams={props.searchParams} />
         </Suspense>
       </main>
     </PageShell>
@@ -107,13 +116,16 @@ function SectionTitle({
   );
 }
 
-// Reads the session cookie, so it must render inside <Suspense>.
-async function Dashboard() {
+// Reads the session cookie and the address, so it must render inside
+// <Suspense>.
+async function Dashboard({
+  searchParams,
+}: {
+  searchParams: PageProps<"/[locale]/dashboard">["searchParams"];
+}) {
   const t = await getTranslations("dashboard");
-  const looks = await getTranslations("looks");
   const common = await getTranslations("common");
-  const sourcesT = await getTranslations("sources");
-  const locale = await getLocale();
+  const tab = tabFrom((await searchParams).tab);
   const supabase = await createClient();
   const {
     data: { user },
@@ -146,22 +158,136 @@ async function Dashboard() {
     );
   }
 
-  const { data: rows } = await supabase
-    .from("links")
-    .select(
-      "id, kind, parent_id, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
-    )
-    .eq("profile_id", profile.id)
-    .order("position");
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
 
-  const { data: photos } = await supabase
-    .from("photos")
-    .select("id, link_id, url, alt")
-    .eq("profile_id", profile.id)
-    .order("position");
+  return (
+    <>
+      {profile.is_suspended && (
+        <div
+          role="status"
+          className="flex flex-col gap-1 rounded-3xl border border-danger bg-surface p-6 text-danger"
+        >
+          <p className="font-bold">{t("hiddenTitle")}</p>
+          <p className="text-sm leading-relaxed">{t("hiddenText")}</p>
+        </div>
+      )}
 
-  // Links, galleries and sections share one list, so they can be dragged
-  // in any order. Links can also sit inside a section.
+      <div
+        className={cx(card({ padding: "none" }), "flex items-center gap-2 p-2")}
+      >
+        <Link
+          href={`/${profile.username}`}
+          target="_blank"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 font-semibold transition hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:text-lg"
+        >
+          <span className="truncate">
+            <span className="text-ink-muted">biolyn.link/</span>
+            {profile.username}
+          </span>
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden
+            className="shrink-0 text-ink-muted"
+          >
+            <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+          </svg>
+          <span className="sr-only">{common("opensInNewTab")}</span>
+        </Link>
+        <CopyLinkButton url={`${siteUrl}/${profile.username}`} />
+      </div>
+
+      <TabBar active={tab} />
+
+      {tab === "content" && (
+        <ContentTab profileId={profile.id} userId={user.id} />
+      )}
+      {tab === "look" && <LookTab theme={profile.theme} />}
+      {tab === "profile" && (
+        <>
+          <TabTitle title={t("profileTitle")} text={t("profileText")} />
+          <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
+            <AvatarUpload
+              userId={user.id}
+              avatarUrl={profile.avatar_url}
+              name={profile.display_name ?? profile.username}
+              photoStyle={photoStyleFrom(profile.theme)}
+            />
+            <ProfileForm
+              displayName={profile.display_name ?? ""}
+              bio={profile.bio}
+            />
+          </Card>
+          <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
+            <SectionTitle title={t("socialsTitle")}>
+              {t("socialsText")}
+            </SectionTitle>
+            <SocialsForm socials={socialsFrom(profile.socials)} />
+          </Card>
+        </>
+      )}
+      {(tab === "stats" || tab === "share") && (
+        <NumbersTab tab={tab} profile={profile} siteUrl={siteUrl} />
+      )}
+    </>
+  );
+}
+
+/**
+ * The heading at the top of a tab, with a short line under it. `hidden`
+ * keeps it for screen readers only, on tabs whose cards have their own
+ * titles.
+ */
+function TabTitle({
+  title,
+  text,
+  hidden = false,
+}: {
+  title: string;
+  text?: string;
+  hidden?: boolean;
+}) {
+  if (hidden) return <h1 className="sr-only">{title}</h1>;
+  return (
+    <div className="flex flex-col gap-1 pt-2">
+      <Heading as="h1" size="section" className="sm:text-3xl">
+        {title}
+      </Heading>
+      {text && <p className="text-ink-soft">{text}</p>}
+    </div>
+  );
+}
+
+// Links, galleries and sections share one list, so they can be dragged in
+// any order. Links can also sit inside a section.
+async function ContentTab({
+  profileId,
+  userId,
+}: {
+  profileId: string;
+  userId: string;
+}) {
+  const t = await getTranslations("dashboard");
+  const supabase = await createClient();
+  const [{ data: rows }, { data: photos }] = await Promise.all([
+    supabase
+      .from("links")
+      .select(
+        "id, kind, parent_id, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
+      )
+      .eq("profile_id", profileId)
+      .order("position"),
+    supabase
+      .from("photos")
+      .select("id, link_id, url, alt")
+      .eq("profile_id", profileId)
+      .order("position"),
+  ]);
+
   type Row = NonNullable<typeof rows>[number];
   const toLink = (row: Row): LinkItem => ({
     ...row,
@@ -193,161 +319,34 @@ async function Dashboard() {
             }
           : toLink(row),
   );
-  const links = (rows ?? []).filter((r) => r.kind === "link").map(toLink);
   const sections = items.flatMap((i) =>
     i.kind === "section"
       ? [{ id: i.id, title: i.title, layout: i.layout }]
       : [],
   );
 
-  const currentTheme = themeFrom(profile.theme);
-  const currentFont = fontFrom(profile.theme);
-  const currentCorners = cornerStyleFrom(profile.theme);
-  // Every tracking link ever made: deleted ones still name past visits.
-  const { data: allSources } = await supabase
-    .from("sources")
-    .select("id, code, label, deleted_at")
-    .eq("profile_id", profile.id)
-    .order("created_at");
-  const sources = (allSources ?? []).filter((s) => !s.deleted_at);
-  const analytics = await getAnalytics(
-    supabase,
-    profile.id,
-    (allSources ?? []).map((s) => s.code),
-  );
-  const stats = summarize(analytics);
-  const sourceNames = namesFor(allSources ?? [], (name) =>
-    sourcesT("deleted", { name }),
-  );
-  const sourceViews = Object.fromEntries(
-    ranked(analytics, "views", "channel", 30)
-      .filter((r) => r.key.startsWith("s:"))
-      .map((r) => [r.key.slice(2), r.count]),
-  );
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
-  const version = cardVersion([
-    profile.avatar_url,
-    profile.display_name,
-    currentTheme,
-    cardDesign(),
-  ]);
-  const wallets = walletsOn();
-
   return (
     <>
-      {profile.is_suspended && (
-        <div
-          role="status"
-          className="flex flex-col gap-1 rounded-3xl border border-danger bg-surface p-6 text-danger"
-        >
-          <p className="font-bold">{t("hiddenTitle")}</p>
-          <p className="text-sm leading-relaxed">{t("hiddenText")}</p>
-        </div>
-      )}
+      <TabTitle title={t("contentTitle")} text={t("contentText")} />
+      <DeleteUndo>
+        <AddItemMenu userId={userId} sections={sections} />
+        <LinkList userId={userId} items={items} />
+      </DeleteUndo>
+    </>
+  );
+}
 
-      <header className="flex flex-col gap-4 pb-2">
-        <Heading as="h1" size="title">
-          {t("yourPage")}
-        </Heading>
-        <div
-          className={cx(
-            card({ padding: "none" }),
-            "flex items-center gap-2 p-2",
-          )}
-        >
-          <Link
-            href={`/${profile.username}`}
-            target="_blank"
-            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 text-lg font-semibold transition hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          >
-            <span className="truncate">
-              <span className="text-ink-muted">biolyn.link/</span>
-              {profile.username}
-            </span>
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden
-              className="shrink-0 text-ink-muted"
-            >
-              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-            </svg>
-            <span className="sr-only">{common("opensInNewTab")}</span>
-          </Link>
-          <CopyLinkButton url={`${siteUrl}/${profile.username}`} />
-        </div>
-      </header>
-
-      <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("profileTitle")}>
-          {t("profileText")}
-        </SectionTitle>
-        <AvatarUpload
-          userId={user.id}
-          avatarUrl={profile.avatar_url}
-          name={profile.display_name ?? profile.username}
-          photoStyle={photoStyleFrom(profile.theme)}
-        />
-        <ProfileForm
-          displayName={profile.display_name ?? ""}
-          bio={profile.bio}
-        />
-      </Card>
-
-      <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("contentTitle")}>
-          {t("contentText")}
-        </SectionTitle>
-        <AddItemMenu userId={user.id} sections={sections} />
-        <div className="border-t border-line pt-6">
-          <LinkList
-            key={JSON.stringify(items)}
-            userId={user.id}
-            items={items}
-          />
-        </div>
-      </Card>
-
-      <StatsSection
-        stats={stats}
-        data={analytics}
-        links={links}
-        sourceNames={sourceNames}
-        locale={locale}
-      />
-
-      <SourcesSection
-        sources={sources}
-        siteUrl={siteUrl}
-        username={profile.username}
-        views30={sourceViews}
-        cardVersion={version}
-        wallets={wallets}
-        locale={locale}
-      />
-
-      {/* A hidden page has no card to show. */}
-      {!profile.is_suspended && (
-        <QrSection
-          username={profile.username}
-          version={version}
-          wallets={wallets}
-          locale={locale}
-        />
-      )}
-
-      <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("socialsTitle")}>
-          {t("socialsText")}
-        </SectionTitle>
-        <SocialsForm socials={socialsFrom(profile.socials)} />
-      </Card>
-
-      <Card padding="md" className="flex flex-col gap-6">
+async function LookTab({ theme }: { theme: unknown }) {
+  const t = await getTranslations("dashboard");
+  const looks = await getTranslations("looks");
+  const common = await getTranslations("common");
+  const currentTheme = themeFrom(theme);
+  const currentFont = fontFrom(theme);
+  const currentCorners = cornerStyleFrom(theme);
+  return (
+    <>
+      <TabTitle title={t("lookTitle")} hidden />
+      <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
         <SectionTitle title={t("themeTitle")}>{t("themeText")}</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {(Object.keys(THEMES) as ThemeId[]).map((id) => {
@@ -396,7 +395,7 @@ async function Dashboard() {
         </div>
       </Card>
 
-      <Card padding="md" className="flex flex-col gap-6">
+      <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
         <SectionTitle title={t("fontTitle")}>{t("fontText")}</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {(Object.keys(FONTS) as FontId[]).map((id) => {
@@ -427,7 +426,7 @@ async function Dashboard() {
         </div>
       </Card>
 
-      <Card padding="md" className="flex flex-col gap-6">
+      <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
         <SectionTitle title={t("cornersTitle")}>
           {t("cornersText")}
         </SectionTitle>
@@ -461,6 +460,104 @@ async function Dashboard() {
           })}
         </div>
       </Card>
+    </>
+  );
+}
+
+// Stats and Share both read the visit numbers.
+async function NumbersTab({
+  tab,
+  profile,
+  siteUrl,
+}: {
+  tab: "stats" | "share";
+  profile: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+    display_name: string | null;
+    theme: unknown;
+    is_suspended: boolean;
+  };
+  siteUrl: string;
+}) {
+  const t = await getTranslations("dashboard");
+  const sourcesT = await getTranslations("sources");
+  const locale = await getLocale();
+  const supabase = await createClient();
+  // Every tracking link ever made: deleted ones still name past visits.
+  const [{ data: allSources }, { data: rows }] = await Promise.all([
+    supabase
+      .from("sources")
+      .select("id, code, label, deleted_at")
+      .eq("profile_id", profile.id)
+      .order("created_at"),
+    tab === "stats"
+      ? supabase
+          .from("links")
+          .select("id, title")
+          .eq("profile_id", profile.id)
+          .eq("kind", "link")
+          .order("position")
+      : Promise.resolve({ data: [] }),
+  ]);
+  const sources = (allSources ?? []).filter((s) => !s.deleted_at);
+  const analytics = await getAnalytics(
+    supabase,
+    profile.id,
+    (allSources ?? []).map((s) => s.code),
+  );
+
+  if (tab === "stats") {
+    return (
+      <>
+        <TabTitle title={t("statsTitle")} hidden />
+        <StatsSection
+          stats={summarize(analytics)}
+          data={analytics}
+          links={(rows ?? []).map((r) => ({ id: r.id, title: r.title ?? "" }))}
+          sourceNames={namesFor(allSources ?? [], (name) =>
+            sourcesT("deleted", { name }),
+          )}
+          locale={locale}
+        />
+      </>
+    );
+  }
+
+  const version = cardVersion([
+    profile.avatar_url,
+    profile.display_name,
+    themeFrom(profile.theme),
+    cardDesign(),
+  ]);
+  const wallets = walletsOn();
+  const sourceViews = Object.fromEntries(
+    ranked(analytics, "views", "channel", 30)
+      .filter((r) => r.key.startsWith("s:"))
+      .map((r) => [r.key.slice(2), r.count]),
+  );
+  return (
+    <>
+      <TabTitle title={t("shareTitle")} hidden />
+      {/* A hidden page has no card to show. */}
+      {!profile.is_suspended && (
+        <QrSection
+          username={profile.username}
+          version={version}
+          wallets={wallets}
+          locale={locale}
+        />
+      )}
+      <SourcesSection
+        sources={sources}
+        siteUrl={siteUrl}
+        username={profile.username}
+        views30={sourceViews}
+        cardVersion={version}
+        wallets={wallets}
+        locale={locale}
+      />
     </>
   );
 }

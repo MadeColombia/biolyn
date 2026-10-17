@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   closestCenter,
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
@@ -26,6 +27,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { Badge, Button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
 import type { GalleryLayout } from "@/lib/gallery";
+import {
+  containerOf,
+  moveBy,
+  moveInto,
+  withoutPending,
+  type Tree,
+} from "@/lib/item-tree";
 import { isIconPreview } from "@/lib/link-form";
 import { MAX_SECTION_LINKS, type SectionLayout } from "@/lib/sections";
 import {
@@ -38,8 +46,10 @@ import {
   updateLink,
   updateSection,
 } from "./actions";
+import { useUndo } from "./delete-undo";
 import { LinkForm, type EditableLink, type SectionOption } from "./link-form";
 import { PhotoManager } from "./photos";
+import { RowMenu, type MenuEntry } from "./row-menu";
 import { LayoutPicture, SectionForm } from "./section-form";
 
 export type LinkItem = EditableLink & { kind: "link"; is_visible: boolean };
@@ -62,23 +72,25 @@ export type SectionItem = {
 /** One top-level row of the list: a link, a photo carousel or a section. */
 export type ListItem = LinkItem | GalleryItem | SectionItem;
 
-// The order on screen: top-level ids, and the link ids in each section.
-type Tree = { id: string; children: string[] }[];
-
 const treeOf = (items: ListItem[]): Tree =>
   items.map((i) => ({
     id: i.id,
     children: i.kind === "section" ? i.links.map((l) => l.id) : [],
   }));
 
-// Where an item sits: "top", or the id of its section.
-function containerOf(tree: Tree, id: string): string | null {
-  if (tree.some((e) => e.id === id)) return "top";
-  return tree.find((e) => e.children.includes(id))?.id ?? null;
-}
-
 // The empty space inside a section that takes dropped links.
 const DROP = "drop:";
+
+/** Where a row's ⋯ menu can move it: the order after each move. */
+type Moves = {
+  up: Tree | null;
+  down: Tree | null;
+  /** "Move to": the main list and the sections with room. */
+  to: { label: string; tree: Tree }[];
+};
+
+/** Shows a new order and saves it. */
+type OnMove = (tree: Tree) => void;
 
 // Shown in the creator's own time zone. The server renders UTC first,
 // so the text is allowed to change once the browser takes over.
@@ -100,8 +112,6 @@ function useScheduleText(link: LinkItem) {
   return null;
 }
 
-// The parent gives this a `key` built from the server data, so the list
-// starts fresh whenever the saved items change.
 export function LinkList({
   items,
   userId,
@@ -110,14 +120,36 @@ export function LinkList({
   userId: string;
 }) {
   const t = useTranslations("linkList");
+  const { hidden, remove, flush } = useUndo();
   const [tree, setTree] = useState(() => treeOf(items));
+  const [dragging, setDragging] = useState(false);
+  const [saving, startSaving] = useTransition();
+  // The saved order changes after every save. Take it in, unless a drag
+  // or a save is under way: then the order on screen is the newer one.
+  const savedKey = JSON.stringify(treeOf(items));
+  const [seen, setSeen] = useState(savedKey);
+  if (savedKey !== seen && !dragging && !saving) {
+    setSeen(savedKey);
+    setTree(treeOf(items));
+  }
+
+  // What's on screen: the order, minus deletes waiting for Undo.
+  const shown = withoutPending(tree, hidden);
   // The latest order, read by the drag handlers between renders.
-  const current = useRef(tree);
+  const current = useRef(shown);
   const before = useRef(tree);
-  const [, startTransition] = useTransition();
+  useLayoutEffect(() => {
+    current.current = shown;
+  });
+
   const sensors = useSensors(
-    // A small move threshold keeps taps on the buttons working.
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // A small move threshold keeps clicks on the buttons working.
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // On phones, press and hold the handle for a moment first, so a
+    // swipe that starts on it still scrolls the page.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -139,6 +171,32 @@ export function LinkList({
   function show(next: Tree) {
     current.current = next;
     setTree(next);
+  }
+
+  // Shows the new order now and saves it. A delete still waiting for
+  // Undo goes first, so the saved order matches the rows that are left.
+  function save(next: Tree) {
+    show(next);
+    startSaving(async () => {
+      await flush();
+      await reorderItems(next);
+    });
+  }
+
+  function movesFor(id: string): Moves {
+    const moves: Moves = {
+      up: moveBy(shown, id, -1),
+      down: moveBy(shown, id, 1),
+      to: [],
+    };
+    if (byId.get(id)?.kind !== "link") return moves;
+    const into = (sectionId: string | null, label: string) => {
+      const tree = moveInto(shown, id, sectionId);
+      if (tree) moves.to.push({ label, tree });
+    };
+    into(null, t("mainList"));
+    for (const s of sections) into(s.id, s.title ?? t("untitled"));
+    return moves;
   }
 
   // The section a link would land in when it's over `overId`: the section
@@ -205,6 +263,7 @@ export function LinkList({
   }
 
   function onDragEnd({ active, over }: DragEndEvent) {
+    setDragging(false);
     let next = current.current;
     const id = String(active.id);
     const overId = over ? String(over.id) : null;
@@ -232,14 +291,19 @@ export function LinkList({
               );
       }
     }
-    show(next); // show the new order right away
-    if (JSON.stringify(next) !== JSON.stringify(before.current)) {
-      before.current = next;
-      startTransition(() => reorderItems(next));
+    if (
+      JSON.stringify(next) ===
+      JSON.stringify(withoutPending(before.current, hidden))
+    ) {
+      // Nothing moved: keep the full order, so Undo can still bring back
+      // a row that's waiting to be deleted.
+      show(before.current);
+    } else {
+      save(next);
     }
   }
 
-  if (tree.length === 0) {
+  if (shown.length === 0) {
     return (
       <p className="rounded-2xl bg-raised p-6 text-center text-ink-soft">
         {t("empty")}
@@ -253,23 +317,42 @@ export function LinkList({
       sensors={sensors}
       collisionDetection={collisions}
       onDragStart={() => {
-        before.current = current.current;
+        before.current = tree;
+        setDragging(true);
+        // A short buzz on Android phones says the row is picked up.
+        navigator.vibrate?.(10);
       }}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
-      onDragCancel={() => show(before.current)}
+      onDragCancel={() => {
+        setDragging(false);
+        show(before.current);
+      }}
     >
       <SortableContext
-        items={tree.map((e) => e.id)}
+        items={shown.map((e) => e.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul className="flex flex-col gap-3">
-          {tree.map(({ id, children }) => {
+          {shown.map(({ id, children }) => {
             const item = byId.get(id);
             if (!item) return null;
             if (item.kind === "gallery") {
               return (
-                <SortableGallery key={id} gallery={item} userId={userId} />
+                <SortableGallery
+                  key={id}
+                  gallery={item}
+                  userId={userId}
+                  moves={movesFor(id)}
+                  onMove={save}
+                  onDelete={() =>
+                    remove({
+                      id,
+                      name: t("photoCarousel"),
+                      run: () => deleteLink(id),
+                    })
+                  }
+                />
               );
             }
             if (item.kind === "section") {
@@ -283,6 +366,24 @@ export function LinkList({
                   })}
                   sections={sections}
                   userId={userId}
+                  moves={movesFor(id)}
+                  onMove={save}
+                  movesFor={movesFor}
+                  onDelete={(keepLinks) =>
+                    remove({
+                      id,
+                      keepLinks,
+                      name: item.title ?? t("untitled"),
+                      run: () => deleteSection(id, keepLinks),
+                    })
+                  }
+                  onDeleteLink={(link) =>
+                    remove({
+                      id: link.id,
+                      name: link.title,
+                      run: () => deleteLink(link.id),
+                    })
+                  }
                 />
               );
             }
@@ -293,6 +394,15 @@ export function LinkList({
                 sectionId={null}
                 sections={sections}
                 userId={userId}
+                moves={movesFor(id)}
+                onMove={save}
+                onDelete={() =>
+                  remove({
+                    id,
+                    name: item.title,
+                    run: () => deleteLink(id),
+                  })
+                }
               />
             );
           })}
@@ -302,22 +412,51 @@ export function LinkList({
   );
 }
 
+/** The menu lines every row shares: moving it, then deleting it. */
+function useMoveEntries(
+  moves: Moves,
+  apply: OnMove,
+  onDelete: () => void,
+): MenuEntry[] {
+  const t = useTranslations("linkList");
+  const common = useTranslations("common");
+  const { up, down, to } = moves;
+  return [
+    ...(up ? [{ label: t("moveUp"), onSelect: () => apply(up) }] : []),
+    ...(down ? [{ label: t("moveDown"), onSelect: () => apply(down) }] : []),
+    ...(to.length > 0
+      ? [
+          { group: t("moveTo") },
+          ...to.map((m) => ({ label: m.label, onSelect: () => apply(m.tree) })),
+        ]
+      : []),
+    { label: common("delete"), onSelect: onDelete, danger: true },
+  ];
+}
+
 function SortableLink({
   link,
   sectionId,
   sections,
   userId,
+  moves,
+  onMove,
+  onDelete,
 }: {
   link: LinkItem;
   /** The section it's in now, or null on the main list. */
   sectionId: string | null;
   sections: SectionOption[];
   userId: string;
+  moves: Moves;
+  onMove: OnMove;
+  onDelete: () => void;
 }) {
   const t = useTranslations("linkList");
   const common = useTranslations("common");
   const form = useTranslations("linkForm");
   const [editing, setEditing] = useState(false);
+  const [, startTransition] = useTransition();
   const {
     attributes,
     listeners,
@@ -329,6 +468,30 @@ function SortableLink({
   } = useSortable({ id: link.id });
 
   const schedule = useScheduleText(link);
+  const picture =
+    link.size === "big" ? (link.image_url ?? link.preview_url) : null;
+  const moveEntries = useMoveEntries(moves, onMove, onDelete);
+  const entries: MenuEntry[] = [
+    {
+      label: editing ? common("close") : common("edit"),
+      onSelect: () => setEditing((on) => !on),
+    },
+    ...(embedFor(link.url)
+      ? [
+          {
+            label: link.embed ? t("asButton") : t("asPlayer"),
+            onSelect: () =>
+              startTransition(() => toggleEmbed(link.id, link.embed)),
+          },
+        ]
+      : []),
+    {
+      label: link.is_visible ? common("hide") : common("show"),
+      onSelect: () =>
+        startTransition(() => toggleLink(link.id, link.is_visible)),
+    },
+    ...moveEntries,
+  ];
 
   return (
     <li
@@ -342,76 +505,50 @@ function SortableLink({
         {...attributes}
         {...listeners}
       />
-      {link.size === "big" && (link.image_url || link.preview_url) && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={(link.image_url ?? link.preview_url)!}
-          referrerPolicy="no-referrer"
-          alt=""
-          className={cx(
-            "aspect-video w-16 shrink-0 rounded-lg border border-edge",
-            isIconPreview(link.image_url ?? link.preview_url)
-              ? "bg-raised object-contain p-1"
-              : "object-cover",
-            !link.is_visible && "opacity-50",
-          )}
-        />
-      )}
-      <div
-        className={cx(
-          "min-w-0 flex-1 basis-40",
-          !link.is_visible && "opacity-50",
-        )}
+      <button
+        type="button"
+        aria-expanded={editing}
+        aria-controls={`edit-${link.id}`}
+        onClick={() => setEditing((on) => !on)}
+        className={cx(rowBody, !link.is_visible && "[&>*]:opacity-50")}
       >
-        <div className="flex items-center gap-2">
-          <p className="truncate font-bold">{link.title}</p>
-          {link.size === "big" && !(link.embed && embedFor(link.url)) && (
-            <Badge tone="neutral" className="shrink-0">
-              {t("big")}
-            </Badge>
-          )}
-          {!link.is_visible && (
-            <Badge tone="neutral" className="shrink-0">
-              {t("hidden")}
-            </Badge>
-          )}
-        </div>
-        <p className="truncate text-sm text-ink-muted">{link.url}</p>
-        {schedule && (
-          <p className="text-xs text-ink-muted" suppressHydrationWarning>
-            {schedule}
-          </p>
+        {picture && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={picture}
+            referrerPolicy="no-referrer"
+            alt=""
+            className={cx(
+              "aspect-video w-14 shrink-0 rounded-lg border border-edge sm:w-16",
+              isIconPreview(picture)
+                ? "bg-raised object-contain p-1"
+                : "object-cover",
+            )}
+          />
         )}
-      </div>
-      <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-expanded={editing}
-          aria-controls={`edit-${link.id}`}
-          onClick={() => setEditing((on) => !on)}
-        >
-          {editing ? common("close") : common("edit")}
-        </Button>
-        {embedFor(link.url) && (
-          <form action={toggleEmbed.bind(null, link.id, link.embed)}>
-            <Button variant="ghost" size="sm">
-              {link.embed ? t("asButton") : t("asPlayer")}
-            </Button>
-          </form>
-        )}
-        <form action={toggleLink.bind(null, link.id, link.is_visible)}>
-          <Button variant="ghost" size="sm">
-            {link.is_visible ? common("hide") : common("show")}
-          </Button>
-        </form>
-        <form action={deleteLink.bind(null, link.id)}>
-          <Button variant="danger" size="sm">
-            {common("delete")}
-          </Button>
-        </form>
-      </div>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-bold">{link.title}</span>
+            {link.size === "big" && !(link.embed && embedFor(link.url)) && (
+              <Badge tone="neutral" className="shrink-0">
+                {t("big")}
+              </Badge>
+            )}
+            {!link.is_visible && (
+              <Badge tone="neutral" className="shrink-0">
+                {t("hidden")}
+              </Badge>
+            )}
+          </span>
+          <span className="truncate text-sm text-ink-muted">{link.url}</span>
+          {schedule && (
+            <span className="text-xs text-ink-muted" suppressHydrationWarning>
+              {schedule}
+            </span>
+          )}
+        </span>
+      </button>
+      <RowMenu label={t("more", { name: link.title })} entries={entries} />
       {editing && (
         <div
           id={`edit-${link.id}`}
@@ -436,9 +573,15 @@ function SortableLink({
 
 const row = (dragging: boolean) =>
   cx(
-    "flex flex-wrap items-center gap-2 rounded-2xl border bg-surface p-2",
-    dragging ? "relative z-10 border-brand" : "border-edge",
+    "flex flex-wrap items-center gap-1 rounded-2xl border bg-surface p-1 sm:gap-2 sm:p-2",
+    dragging
+      ? "relative z-10 border-brand shadow-lg ring-2 ring-brand/30"
+      : "border-edge",
   );
+
+// The middle of a row: tap it to open the row's editor.
+const rowBody =
+  "flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-left transition hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
 function DragHandle({
   label,
@@ -455,7 +598,7 @@ function DragHandle({
       type="button"
       {...props}
       aria-label={t("drag", { name: label })}
-      className="flex min-h-11 min-w-11 cursor-grab touch-none items-center justify-center rounded-xl text-ink-muted transition hover:bg-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:cursor-grabbing"
+      className="flex min-h-11 min-w-9 cursor-grab touch-none items-center justify-center rounded-xl text-ink-muted transition select-none hover:bg-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:cursor-grabbing sm:min-w-11"
     >
       <svg viewBox="0 0 12 18" width="12" height="18" aria-hidden>
         {[3, 9].map((x) =>
@@ -475,17 +618,24 @@ function DragHandle({
 }
 
 // A photo carousel in the list. It has no web address, so instead of the
-// link form its Edit opens the photo manager. A new, empty one starts open.
+// link form its row opens the photo manager. A new, empty one starts open.
 function SortableGallery({
   gallery,
   userId,
+  moves,
+  onMove,
+  onDelete,
 }: {
   gallery: GalleryItem;
   userId: string;
+  moves: Moves;
+  onMove: OnMove;
+  onDelete: () => void;
 }) {
   const t = useTranslations("linkList");
   const common = useTranslations("common");
   const [editing, setEditing] = useState(gallery.photos.length === 0);
+  const [, startTransition] = useTransition();
   const {
     attributes,
     listeners,
@@ -497,6 +647,19 @@ function SortableGallery({
   } = useSortable({ id: gallery.id });
   const count = gallery.photos.length;
   const label = gallery.layout === "grid" ? t("photoGrid") : t("photoCarousel");
+  const moveEntries = useMoveEntries(moves, onMove, onDelete);
+  const entries: MenuEntry[] = [
+    {
+      label: editing ? common("close") : t("editPhotos"),
+      onSelect: () => setEditing((on) => !on),
+    },
+    {
+      label: gallery.is_visible ? common("hide") : common("show"),
+      onSelect: () =>
+        startTransition(() => toggleLink(gallery.id, gallery.is_visible)),
+    },
+    ...moveEntries,
+  ];
 
   return (
     <li
@@ -510,79 +673,55 @@ function SortableGallery({
         {...attributes}
         {...listeners}
       />
-      <div
-        className={cx(
-          "flex shrink-0 -space-x-6",
-          !gallery.is_visible && "opacity-50",
-        )}
-        aria-hidden
+      <button
+        type="button"
+        aria-expanded={editing}
+        aria-controls={`edit-${gallery.id}`}
+        onClick={() => setEditing((on) => !on)}
+        className={cx(rowBody, !gallery.is_visible && "[&>*]:opacity-50")}
       >
-        {count === 0 ? (
-          <span className="flex aspect-video w-16 items-center justify-center rounded-lg border border-dashed border-edge bg-raised text-ink-muted">
-            <svg
-              viewBox="0 0 24 24"
-              width="20"
-              height="20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="3" y="5" width="18" height="14" rx="2" />
-              <path d="M3 16l5-5 4 4 3-3 6 6" />
-            </svg>
-          </span>
-        ) : (
-          gallery.photos.slice(0, 3).map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={photo.id}
-              src={photo.url}
-              alt=""
-              className="size-10 rounded-lg border-2 border-surface object-cover"
-            />
-          ))
-        )}
-      </div>
-      <div
-        className={cx(
-          "min-w-0 flex-1 basis-40",
-          !gallery.is_visible && "opacity-50",
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <p className="truncate font-bold">{label}</p>
-          {!gallery.is_visible && (
-            <Badge tone="neutral" className="shrink-0">
-              {t("hidden")}
-            </Badge>
+        <span className="flex shrink-0 -space-x-6" aria-hidden>
+          {count === 0 ? (
+            <span className="flex aspect-video w-14 items-center justify-center rounded-lg border border-dashed border-edge bg-raised text-ink-muted sm:w-16">
+              <svg
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3 16l5-5 4 4 3-3 6 6" />
+              </svg>
+            </span>
+          ) : (
+            gallery.photos.slice(0, 3).map((photo) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={photo.id}
+                src={photo.url}
+                alt=""
+                className="size-10 rounded-lg border-2 border-surface object-cover"
+              />
+            ))
           )}
-        </div>
-        <p className="truncate text-sm text-ink-muted">
-          {count === 0 ? t("noPhotos") : t("photoCount", { count })}
-        </p>
-      </div>
-      <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-expanded={editing}
-          aria-controls={`edit-${gallery.id}`}
-          onClick={() => setEditing((on) => !on)}
-        >
-          {editing ? common("close") : common("edit")}
-        </Button>
-        <form action={toggleLink.bind(null, gallery.id, gallery.is_visible)}>
-          <Button variant="ghost" size="sm">
-            {gallery.is_visible ? common("hide") : common("show")}
-          </Button>
-        </form>
-        <form action={deleteLink.bind(null, gallery.id)}>
-          <Button variant="danger" size="sm">
-            {common("delete")}
-          </Button>
-        </form>
-      </div>
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-bold">{label}</span>
+            {!gallery.is_visible && (
+              <Badge tone="neutral" className="shrink-0">
+                {t("hidden")}
+              </Badge>
+            )}
+          </span>
+          <span className="truncate text-sm text-ink-muted">
+            {count === 0 ? t("noPhotos") : t("photoCount", { count })}
+          </span>
+        </span>
+      </button>
+      <RowMenu label={t("more", { name: label })} entries={entries} />
       {editing && (
         <div
           id={`edit-${gallery.id}`}
@@ -601,24 +740,36 @@ function SortableGallery({
 }
 
 // A section: its title row, then the links inside it, which can be
-// dragged within it, out of it, or into it from the main list.
+// dragged within it, out of it, or into it from the main list. Tapping
+// the title row folds the links away.
 function SortableSection({
   section,
   links,
   sections,
   userId,
+  moves,
+  movesFor,
+  onMove,
+  onDelete,
+  onDeleteLink,
 }: {
   section: SectionItem;
   links: LinkItem[];
   sections: SectionOption[];
   userId: string;
+  moves: Moves;
+  movesFor: (id: string) => Moves;
+  onMove: OnMove;
+  onDelete: (keepLinks: boolean) => void;
+  onDeleteLink: (link: LinkItem) => void;
 }) {
   const t = useTranslations("linkList");
   const common = useTranslations("common");
   const addT = useTranslations("addItem");
   const linkForm = useTranslations("linkForm");
   const [open, setOpen] = useState<"edit" | "add" | "delete" | null>(null);
-  const [deleting, startDelete] = useTransition();
+  const [folded, setFolded] = useState(false);
+  const [, startTransition] = useTransition();
   const {
     attributes,
     listeners,
@@ -629,98 +780,104 @@ function SortableSection({
     isDragging,
   } = useSortable({ id: section.id });
   const name = section.title ?? t("untitled");
-  const toggle = (panel: "edit" | "add" | "delete") =>
+  const full = links.length >= MAX_SECTION_LINKS;
+  const openPanel = (panel: "edit" | "add" | "delete") => {
+    setFolded(false);
     setOpen((now) => (now === panel ? null : panel));
-
-  function remove(keepLinks: boolean) {
-    startDelete(() => deleteSection(section.id, keepLinks));
-  }
+  };
+  const moveEntries = useMoveEntries(moves, onMove, () =>
+    links.length > 0 ? openPanel("delete") : onDelete(false),
+  );
+  const entries: MenuEntry[] = [
+    {
+      label: open === "edit" ? common("close") : common("edit"),
+      onSelect: () => openPanel("edit"),
+    },
+    ...(full
+      ? []
+      : [{ label: t("addHere"), onSelect: () => openPanel("add") }]),
+    {
+      label: section.is_visible ? common("hide") : common("show"),
+      onSelect: () =>
+        startTransition(() => toggleLink(section.id, section.is_visible)),
+    },
+    ...moveEntries,
+  ];
 
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cx(
-        "flex flex-col gap-2 rounded-3xl border bg-raised/50 p-2",
-        isDragging ? "relative z-10 border-brand" : "border-edge",
+        "flex flex-col gap-2 rounded-3xl border bg-raised/50 p-1 sm:p-2",
+        isDragging
+          ? "relative z-10 border-brand shadow-lg ring-2 ring-brand/30"
+          : "border-edge",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <DragHandle
           label={name}
           handleRef={setActivatorNodeRef}
           {...attributes}
           {...listeners}
         />
-        <span
-          className={cx(
-            "hidden w-16 shrink-0 rounded-lg border border-edge bg-surface px-1.5 sm:block",
-            !section.is_visible && "opacity-50",
-          )}
+        <button
+          type="button"
+          aria-expanded={!folded}
+          aria-controls={`links-${section.id}`}
+          onClick={() => setFolded((on) => !on)}
+          className={cx(rowBody, !section.is_visible && "[&>*]:opacity-50")}
         >
-          <LayoutPicture layout={section.layout} small />
-        </span>
-        <div
-          className={cx(
-            "min-w-0 flex-1 basis-40",
-            !section.is_visible && "opacity-50",
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <p
-              className={cx(
-                "truncate font-bold",
-                !section.title && "text-ink-muted italic",
-              )}
-            >
-              {name}
-            </p>
-            <Badge tone="neutral" className="shrink-0">
-              {section.layout === "carousel"
-                ? t("styleCarousel")
-                : t("styleList")}
-            </Badge>
-            {!section.is_visible && (
+          <span className="hidden w-16 shrink-0 rounded-lg border border-edge bg-surface px-1.5 sm:block">
+            <LayoutPicture layout={section.layout} small />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="flex items-center gap-2">
+              <span
+                className={cx(
+                  "truncate font-bold",
+                  !section.title && "text-ink-muted italic",
+                )}
+              >
+                {name}
+              </span>
               <Badge tone="neutral" className="shrink-0">
-                {t("hidden")}
+                {section.layout === "carousel"
+                  ? t("styleCarousel")
+                  : t("styleList")}
               </Badge>
+              {!section.is_visible && (
+                <Badge tone="neutral" className="shrink-0">
+                  {t("hidden")}
+                </Badge>
+              )}
+            </span>
+            <span className="truncate text-sm text-ink-muted">
+              {links.length === 0
+                ? t("emptySection")
+                : t("linkCount", { count: links.length })}
+            </span>
+          </span>
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+            className={cx(
+              "shrink-0 text-ink-muted transition",
+              folded && "-rotate-90",
             )}
-          </div>
-          <p className="truncate text-sm text-ink-muted">
-            {links.length === 0
-              ? t("emptySection")
-              : t("linkCount", { count: links.length })}
-          </p>
-        </div>
-        <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-expanded={open === "edit"}
-            aria-controls={`edit-${section.id}`}
-            onClick={() => toggle("edit")}
           >
-            {open === "edit" ? common("close") : common("edit")}
-          </Button>
-          <form action={toggleLink.bind(null, section.id, section.is_visible)}>
-            <Button variant="ghost" size="sm">
-              {section.is_visible ? common("hide") : common("show")}
-            </Button>
-          </form>
-          <Button
-            type="button"
-            variant="danger"
-            size="sm"
-            disabled={deleting}
-            aria-expanded={links.length > 0 ? open === "delete" : undefined}
-            onClick={() =>
-              links.length > 0 ? toggle("delete") : remove(false)
-            }
-          >
-            {common("delete")}
-          </Button>
-        </div>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <RowMenu label={t("more", { name })} entries={entries} />
       </div>
 
       {open === "edit" && (
@@ -756,8 +913,7 @@ function SortableSection({
               type="button"
               variant="secondary"
               size="sm"
-              disabled={deleting}
-              onClick={() => remove(true)}
+              onClick={() => onDelete(true)}
             >
               {t("keepLinks")}
             </Button>
@@ -765,8 +921,7 @@ function SortableSection({
               type="button"
               variant="danger"
               size="sm"
-              disabled={deleting}
-              onClick={() => remove(false)}
+              onClick={() => onDelete(false)}
             >
               {t("deleteAll")}
             </Button>
@@ -782,58 +937,65 @@ function SortableSection({
         </div>
       )}
 
-      <SortableContext
-        items={links.map((l) => l.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <ul className="flex flex-col gap-2 pl-3 sm:pl-6">
-          {links.map((link) => (
-            <SortableLink
-              key={link.id}
-              link={link}
-              sectionId={section.id}
-              sections={sections}
-              userId={userId}
-            />
-          ))}
-          {links.length === 0 && <DropZone sectionId={section.id} />}
-        </ul>
-      </SortableContext>
-
-      {links.length < MAX_SECTION_LINKS &&
-        (open === "add" ? (
-          <div className="ml-3 rounded-2xl border border-edge bg-surface p-4 sm:ml-6">
-            <LinkForm
-              userId={userId}
-              sections={sections}
-              sectionId={section.id}
-              action={addLink}
-              submitLabel={addT("addLink")}
-              pendingLabel={common("adding")}
-              onSaved={() => setOpen(null)}
-              onCancel={() => setOpen(null)}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => toggle("add")}
-            className="ml-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-edge text-sm font-bold text-brand transition hover:border-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:ml-6"
+      {!folded && (
+        <div id={`links-${section.id}`} className="flex flex-col gap-2">
+          <SortableContext
+            items={links.map((l) => l.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              aria-hidden
-            >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            {t("addHere")}
-          </button>
-        ))}
+            <ul className="flex flex-col gap-2 pl-2 sm:pl-6">
+              {links.map((link) => (
+                <SortableLink
+                  key={link.id}
+                  link={link}
+                  sectionId={section.id}
+                  sections={sections}
+                  userId={userId}
+                  moves={movesFor(link.id)}
+                  onMove={onMove}
+                  onDelete={() => onDeleteLink(link)}
+                />
+              ))}
+              {links.length === 0 && <DropZone sectionId={section.id} />}
+            </ul>
+          </SortableContext>
+
+          {!full &&
+            (open === "add" ? (
+              <div className="ml-2 rounded-2xl border border-edge bg-surface p-4 sm:ml-6">
+                <LinkForm
+                  userId={userId}
+                  sections={sections}
+                  sectionId={section.id}
+                  action={addLink}
+                  submitLabel={addT("addLink")}
+                  pendingLabel={common("adding")}
+                  onSaved={() => setOpen(null)}
+                  onCancel={() => setOpen(null)}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openPanel("add")}
+                className="ml-2 flex min-h-11 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-edge text-sm font-bold text-brand transition hover:border-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:ml-6"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  aria-hidden
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                {t("addHere")}
+              </button>
+            ))}
+        </div>
+      )}
     </li>
   );
 }

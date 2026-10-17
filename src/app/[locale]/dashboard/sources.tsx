@@ -39,7 +39,7 @@ export async function SourcesSection({
   }));
 
   return (
-    <Card padding="md" className="flex flex-col gap-6">
+    <Card padding="none" className="flex flex-col gap-6 p-4 sm:p-6">
       <div className="flex flex-col gap-1">
         <Heading size="section">{t("title")}</Heading>
         <p className="text-sm text-ink-muted">{t("text")}</p>

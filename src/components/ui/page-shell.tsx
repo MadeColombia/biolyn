@@ -14,12 +14,16 @@ export function PageShell({
   children,
   header = <AccountLink />,
   showLogo = true,
+  bottomBar = false,
 }: {
   children: React.ReactNode;
   /** Hide the header logo when the page shows its own (the homepage). */
   showLogo?: boolean;
   /** Right side of the header. Pass null to hide it. */
   header?: React.ReactNode;
+  /** The screen has a bar fixed to the bottom on phones (the dashboard
+   * tabs), so the footer leaves room for it. */
+  bottomBar?: boolean;
 }) {
   const t = useTranslations("shell");
   return (
@@ -38,7 +42,10 @@ export function PageShell({
       <footer
         className={cx(
           container(),
-          "flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4 pb-8 text-sm text-ink-muted",
+          "flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4 text-sm text-ink-muted",
+          bottomBar
+            ? "pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-8"
+            : "pb-8",
         )}
       >
         <span>{t("footer")}</span>

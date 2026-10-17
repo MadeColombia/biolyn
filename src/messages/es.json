@@ -134,11 +134,10 @@
     "pickText": "Será tu enlace, por ejemplo biolyn.link/tunombre.",
     "hiddenTitle": "Tu página pública está oculta",
     "hiddenText": "Fue denunciada por incumplir las normas. Puedes seguir editándola, pero los visitantes no pueden verla.",
-    "yourPage": "Tu página",
     "profileTitle": "Perfil",
     "profileText": "Tu foto, nombre y bio aparecen arriba en tu página.",
     "contentTitle": "Contenido",
-    "contentText": "Añade enlaces, secciones y carruseles de fotos y arrástralos en el orden que quieras. Arrastra enlaces a una sección para agruparlos. Lo que ocultes se queda aquí, pero no sale en tu página.",
+    "contentText": "Todo lo que sale en tu página, en orden. Arrastra ⋮⋮ para moverlo o toca ⋯ para más opciones. En el móvil, mantén pulsado ⋮⋮ primero.",
     "socialsTitle": "Redes sociales",
     "socialsText": "Aparecen como iconos bajo tu nombre. Deja un campo vacío para quitarlo.",
     "themeTitle": "Tema",
@@ -147,7 +146,22 @@
     "fontTitle": "Letra",
     "fontText": "Se usa en todo tu perfil público: nombre, bio y enlaces.",
     "cornersTitle": "Esquinas",
-    "cornersText": "La forma de cada bloque de tu página pública: botones, enlaces grandes, reproductores y fotos."
+    "cornersText": "La forma de cada bloque de tu página pública: botones, enlaces grandes, reproductores y fotos.",
+    "lookTitle": "Estilo",
+    "statsTitle": "Datos",
+    "shareTitle": "Compartir"
+  },
+  "undo": {
+    "deleted": "Has borrado «{name}»",
+    "undo": "Deshacer"
+  },
+  "tabs": {
+    "label": "Panel",
+    "content": "Contenido",
+    "look": "Estilo",
+    "profile": "Perfil",
+    "stats": "Datos",
+    "share": "Compartir"
   },
   "looks": {
     "themes": {
@@ -325,7 +339,13 @@
     "deleteSectionTitle": "¿Borrar esta sección?",
     "deleteSectionText": "{count, plural, one {Su enlace puede quedarse en tu página o borrarse con ella.} other {Sus # enlaces pueden quedarse en tu página o borrarse con ella.}}",
     "keepLinks": "Borrar sección, mantener enlaces",
-    "deleteAll": "Borrar todo"
+    "deleteAll": "Borrar todo",
+    "more": "Más opciones para {name}",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "moveTo": "Mover a",
+    "mainList": "Lista principal",
+    "editPhotos": "Editar fotos"
   },
   "photos": {
     "showAs": "Mostrar como",

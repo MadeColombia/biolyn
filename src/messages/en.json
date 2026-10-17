@@ -134,11 +134,10 @@
     "pickText": "This becomes your link, for example biolyn.link/yourname.",
     "hiddenTitle": "Your public page is hidden",
     "hiddenText": "It was reported for breaking the rules. You can still edit it, but visitors can't see it.",
-    "yourPage": "Your page",
     "profileTitle": "Profile",
     "profileText": "Your picture, name and bio sit at the top of your page.",
     "contentTitle": "Content",
-    "contentText": "Add links, sections and photo carousels, then drag them into any order. Drag links into a section to group them. Hidden items stay here but not on your page.",
+    "contentText": "Everything on your page, in order. Drag ⋮⋮ to move things, or tap ⋯ for more. On a phone, press and hold ⋮⋮ first.",
     "socialsTitle": "Socials",
     "socialsText": "Shown as icons under your name. Leave a field empty to remove it.",
     "themeTitle": "Theme",
@@ -147,7 +146,22 @@
     "fontTitle": "Font",
     "fontText": "Used for everything on your public page: name, bio and links.",
     "cornersTitle": "Corners",
-    "cornersText": "The shape of every block on your public page: buttons, big links, players and photos."
+    "cornersText": "The shape of every block on your public page: buttons, big links, players and photos.",
+    "lookTitle": "Look",
+    "statsTitle": "Stats",
+    "shareTitle": "Share"
+  },
+  "undo": {
+    "deleted": "Deleted “{name}”",
+    "undo": "Undo"
+  },
+  "tabs": {
+    "label": "Dashboard",
+    "content": "Content",
+    "look": "Look",
+    "profile": "Profile",
+    "stats": "Stats",
+    "share": "Share"
   },
   "looks": {
     "themes": {
@@ -325,7 +339,13 @@
     "deleteSectionTitle": "Delete this section?",
     "deleteSectionText": "{count, plural, one {Its link can stay on your page, or go with it.} other {Its # links can stay on your page, or go with it.}}",
     "keepLinks": "Delete section, keep links",
-    "deleteAll": "Delete everything"
+    "deleteAll": "Delete everything",
+    "more": "More for {name}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "moveTo": "Move to",
+    "mainList": "Main list",
+    "editPhotos": "Edit photos"
   },
   "photos": {
     "showAs": "Show as",
