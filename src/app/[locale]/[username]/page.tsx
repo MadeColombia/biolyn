@@ -99,13 +99,14 @@ async function Profile({
       >
         <div
           // isolate keeps a moving background above the card's own color;
-          // clip (not hidden) lets that background stick while scrolling.
-          className={`relative isolate mx-auto flex w-full flex-1 flex-col overflow-clip md:max-w-lg md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
+          // clip (not hidden) lets that background stick while scrolling,
+          // and keeps the cover photo's scroll animation tied to the page.
+          className={`relative isolate mx-auto flex w-full flex-1 flex-col overflow-clip md:max-w-xl md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
         >
           <ThemeMotion motion={motionOf(profile.theme)} />
           {cover && <CoverPhoto src={profile.avatar_url!} alt={name} />}
           <div
-            className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 ${
+            className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 md:max-w-none md:px-10 ${
               // The name and bio sit over the faded bottom of the photo.
               cover ? "relative -mt-28" : "pt-16"
             }`}

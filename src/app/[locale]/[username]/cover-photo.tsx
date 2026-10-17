@@ -7,29 +7,30 @@ import { COVER_FADE } from "@/lib/themes";
 // Big photo across the top. It turns see-through toward the bottom, so
 // it melts into the theme's background, gradients included. As the
 // visitor scrolls, it fades away and drifts up behind the content.
+//
+// Browsers that support scroll-driven animations run the fade in CSS
+// (.cover-scroll in globals.css). The browser then moves the photo in
+// step with the scroll itself, without waiting for this script, which
+// is what keeps it smooth on phones. Older browsers use the script.
 export function CoverPhoto({ src, alt }: { src: string; alt: string }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const outer = useRef<HTMLDivElement>(null);
+  const photo = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const box = outer.current;
+    const el = photo.current;
+    if (!box || !el || CSS.supports("animation-timeline: view()")) return;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let frame = 0;
 
     const update = () => {
       frame = 0;
-      const box = el.getBoundingClientRect();
-      // The shift is undone first so the box reflects the photo's real
-      // place in the page.
-      const shift = Number(el.dataset.shift ?? 0);
-      const { opacity, shift: next } = coverScroll(
-        box.top - shift,
-        box.height,
-        motion.matches,
-      );
+      // The outer box never moves, so it shows the photo's real place
+      // in the page.
+      const { top, height } = box.getBoundingClientRect();
+      const { opacity, shift } = coverScroll(top, height, motion.matches);
       el.style.opacity = String(opacity);
-      el.style.transform = next ? `translate3d(0, ${next}px, 0)` : "";
-      el.dataset.shift = String(next);
+      el.style.transform = shift ? `translate3d(0, ${shift}px, 0)` : "";
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -48,13 +49,18 @@ export function CoverPhoto({ src, alt }: { src: string; alt: string }) {
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className="w-full will-change-[opacity,transform] [mask-image:var(--fade)]"
-      style={{ "--fade": COVER_FADE } as React.CSSProperties}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} className="aspect-4/5 w-full object-cover" />
+    <div ref={outer} className="cover-scroll w-full">
+      <div ref={photo} className="will-change-[opacity,transform]">
+        {/* The fade sits on the picture itself, so the moving layer
+            never has to be redrawn while scrolling. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className="aspect-4/5 w-full object-cover [mask-image:var(--fade)]"
+          style={{ "--fade": COVER_FADE } as React.CSSProperties}
+        />
+      </div>
     </div>
   );
 }

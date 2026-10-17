@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   COVER_DRIFT,
@@ -34,5 +35,25 @@ describe("coverScroll", () => {
 
   it("does nothing before the photo has a size", () => {
     expect(coverScroll(-100, 0)).toEqual({ opacity: 1, shift: 0 });
+  });
+});
+
+// Browsers with scroll-driven animations run the same fade in CSS, so
+// its numbers must match the ones above.
+describe("cover scroll CSS", () => {
+  const css = readFileSync(
+    new URL("../../src/app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  it("is gone after the same share of the photo's height", () => {
+    expect(css).toContain(
+      `animation-range: exit-crossing 0% exit-crossing ${COVER_FADE_DISTANCE * 100}%;`,
+    );
+  });
+
+  it("drifts as far as the script by the time it is gone", () => {
+    const drift = Math.round(COVER_FADE_DISTANCE * COVER_DRIFT * 100);
+    expect(css).toContain(`transform: translate3d(0, ${drift}%, 0);`);
   });
 });
