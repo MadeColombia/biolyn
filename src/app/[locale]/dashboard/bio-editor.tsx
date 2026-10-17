@@ -78,9 +78,29 @@ function readNodes(parent: Node): BioNode[] {
 
 /**
  * Bio field with a small formatting bar. The formatted bio goes to the
- * form in a hidden input named "bio".
+ * form in a hidden input named "bio". Text blocks reuse it with their own
+ * name, limit and wording.
  */
-export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
+export function BioEditor({
+  defaultValue,
+  name = "bio",
+  id = "field-bio",
+  max = BIO_MAX_CHARS,
+  label,
+  placeholder,
+  toolbarLabel,
+  addLabel,
+}: {
+  defaultValue: string | null;
+  name?: string;
+  id?: string;
+  max?: number;
+  label?: string;
+  placeholder?: string;
+  toolbarLabel?: string;
+  /** The button that adds a link, "Add to bio" by default. */
+  addLabel?: string;
+}) {
   const t = useTranslations("bio");
   const common = useTranslations("common");
   const editor = useRef<HTMLDivElement>(null);
@@ -117,7 +137,7 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
     const onBeforeInput = (event: InputEvent) => {
       if (
         event.inputType?.startsWith("insert") &&
-        countRef.current >= BIO_MAX_CHARS &&
+        countRef.current >= max &&
         document.getSelection()?.isCollapsed
       ) {
         event.preventDefault();
@@ -125,7 +145,7 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
     };
     el.addEventListener("beforeinput", onBeforeInput);
     return () => el.removeEventListener("beforeinput", onBeforeInput);
-  }, []);
+  }, [max]);
 
   useEffect(() => {
     const update = () => {
@@ -215,7 +235,7 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
     if (e.key === "Enter") {
       // A line break, not a new paragraph block.
       e.preventDefault();
-      if (count < BIO_MAX_CHARS) document.execCommand("insertLineBreak");
+      if (count < max) document.execCommand("insertLineBreak");
       sync();
     }
   }
@@ -224,16 +244,16 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
     // Pasted text arrives without its outside formatting.
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain").replace(/\s+/g, " ");
-    const room = BIO_MAX_CHARS - count + (document.getSelection()?.toString().length ?? 0);
+    const room = max - count + (document.getSelection()?.toString().length ?? 0);
     document.execCommand("insertText", false, text.slice(0, Math.max(0, room)));
     sync();
   }
 
-  const over = count > BIO_MAX_CHARS;
+  const over = count > max;
   return (
     <div className="flex flex-col gap-2">
-      <span id="field-bio-label" className="text-sm font-bold text-ink">
-        {t("label")}
+      <span id={`${id}-label`} className="text-sm font-bold text-ink">
+        {label ?? t("label")}
       </span>
       <div
         // Same look as the input() recipe, lit up while anything inside
@@ -247,7 +267,7 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
       >
         <div
           role="toolbar"
-          aria-label={t("toolbar")}
+          aria-label={toolbarLabel ?? t("toolbar")}
           className="flex flex-wrap gap-1 border-b border-line p-1"
         >
           {TOOLS.map((tool) => (
@@ -286,15 +306,15 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
         </div>
         <div
           ref={editor}
-          id="field-bio"
+          id={id}
           role="textbox"
           aria-multiline="true"
-          aria-labelledby="field-bio-label"
-          aria-describedby="field-bio-note"
+          aria-labelledby={`${id}-label`}
+          aria-describedby={`${id}-note`}
           aria-invalid={over || undefined}
           contentEditable
           suppressContentEditableWarning
-          data-placeholder={t("placeholder")}
+          data-placeholder={placeholder ?? t("placeholder")}
           onInput={sync}
           onKeyDown={onKeyDown}
           onPaste={onPaste}
@@ -303,7 +323,7 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
       </div>
       {linkOpen && (
         <div className="flex flex-col gap-2 rounded-xl bg-raised p-3">
-          <label htmlFor="field-bio-link" className="text-sm font-bold text-ink">
+          <label htmlFor={`${id}-link`} className="text-sm font-bold text-ink">
             {t("linkAddress")}
             <span aria-hidden className="text-danger">
               {" "}
@@ -312,7 +332,7 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
           </label>
           <div className="flex flex-wrap gap-2">
             <Input
-              id="field-bio-link"
+              id={`${id}-link`}
               autoFocus
               required
               value={linkUrl}
@@ -326,18 +346,18 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
               }}
               placeholder={t("linkPlaceholder")}
               invalid={Boolean(linkError)}
-              aria-describedby={linkError ? "field-bio-link-note" : undefined}
+              aria-describedby={linkError ? `${id}-link-note` : undefined}
               className="min-w-0 flex-1"
             />
             <Button type="button" size="sm" onClick={addLink}>
-              {t("addToBio")}
+              {addLabel ?? t("addToBio")}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setLinkOpen(false)}>
               {common("cancel")}
             </Button>
           </div>
           {linkError ? (
-            <p id="field-bio-link-note" className="text-sm text-danger">
+            <p id={`${id}-link-note`} className="text-sm text-danger">
               {linkError}
             </p>
           ) : (
@@ -347,13 +367,13 @@ export function BioEditor({ defaultValue }: { defaultValue: string | null }) {
           )}
         </div>
       )}
-      <input type="hidden" name="bio" value={value} />
+      <input type="hidden" name={name} value={value} />
       <p
-        id="field-bio-note"
+        id={`${id}-note`}
         aria-live="polite"
         className={cx("text-sm", over ? "text-danger" : "text-ink-muted")}
       >
-        {t("count", { count, max: BIO_MAX_CHARS })}
+        {t("count", { count, max })}
       </p>
     </div>
   );

@@ -272,7 +272,13 @@
     "section": "Section",
     "sectionHint": "A title with links under it, as a list or a row of cards",
     "sectionTitle": "Add a section",
-    "addSection": "Add section"
+    "addSection": "Add section",
+    "text": "Text",
+    "textHint": "A short title and paragraph",
+    "textTitle": "Add text",
+    "addText": "Add text",
+    "divider": "Divider",
+    "dividerHint": "A line or some space between parts"
   },
   "linkForm": {
     "title": "Title",
@@ -316,6 +322,15 @@
     "carouselHint": "Cards in a row that people swipe.",
     "carouselTip": "Tip: give these links a picture. It shows on each card."
   },
+  "textForm": {
+    "title": "Title",
+    "titlePlaceholder": "Live show",
+    "titleHint": "Optional. It shows in bold above the text.",
+    "body": "Text",
+    "bodyPlaceholder": "A few words for your visitors",
+    "toolbar": "Text formatting",
+    "addToText": "Add to text"
+  },
   "linkList": {
     "empty": "Nothing here yet. Tap Add to make your first link, section or photo carousel.",
     "big": "Big",
@@ -347,7 +362,14 @@
     "moveDown": "Move down",
     "moveTo": "Move to",
     "mainList": "Main list",
-    "editPhotos": "Edit photos"
+    "editPhotos": "Edit photos",
+    "textBlock": "Text",
+    "divider": "Divider",
+    "dividerStyle": "Style",
+    "dividerLine": "Line",
+    "dividerLineHint": "A thin line across the page.",
+    "dividerSpace": "Space",
+    "dividerSpaceHint": "Just some room, no line."
   },
   "photos": {
     "showAs": "Show as",
@@ -505,6 +527,10 @@
     "sectionGone": "That section no longer exists. Reload the page.",
     "sectionFull": "A section can hold up to {max} links.",
     "maxSections": "You can have up to {max} sections.",
-    "sectionFailed": "Could not save the section."
+    "sectionFailed": "Could not save the section.",
+    "textEmpty": "Write a title or some text.",
+    "textTooLong": "Keep the text under {max} characters.",
+    "textTooFormatted": "The text has too much formatting. Remove some of it.",
+    "textLink": "Link in your text: {problem}"
   }
 }

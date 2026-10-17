@@ -195,17 +195,19 @@ export function cleanBio(nodes: BioNode[]): BioNode[] {
  */
 export function sanitizeBio(
   raw: string,
+  // Text blocks use the same formatting with their own limits.
+  { maxChars = BIO_MAX_CHARS, maxStored = BIO_MAX_STORED } = {},
 ):
   | { bio: string; links: string[] }
   | { error: "bioTooLong" | "bioTooFormatted" } {
   const nodes = cleanBio(parseBio(raw));
   const visible = plainBio(nodes);
   if (!visible.trim()) return { bio: "", links: [] };
-  if (visible.length > BIO_MAX_CHARS) {
+  if (visible.length > maxChars) {
     return { error: "bioTooLong" };
   }
   const bio = serializeBio(nodes);
-  if (bio.length > BIO_MAX_STORED) {
+  if (bio.length > maxStored) {
     return { error: "bioTooFormatted" };
   }
   return { bio, links: bioLinks(nodes) };

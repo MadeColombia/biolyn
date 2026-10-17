@@ -272,7 +272,13 @@
     "section": "Sección",
     "sectionHint": "Un título con enlaces debajo, en lista o en una fila de tarjetas",
     "sectionTitle": "Añadir una sección",
-    "addSection": "Añadir sección"
+    "addSection": "Añadir sección",
+    "text": "Texto",
+    "textHint": "Un título corto y un párrafo",
+    "textTitle": "Añadir texto",
+    "addText": "Añadir texto",
+    "divider": "Separador",
+    "dividerHint": "Una línea o un espacio entre partes"
   },
   "linkForm": {
     "title": "Título",
@@ -316,6 +322,15 @@
     "carouselHint": "Tarjetas en fila que se deslizan.",
     "carouselTip": "Consejo: ponles una imagen a estos enlaces. Se ve en cada tarjeta."
   },
+  "textForm": {
+    "title": "Título",
+    "titlePlaceholder": "Directo",
+    "titleHint": "Opcional. Se ve en negrita encima del texto.",
+    "body": "Texto",
+    "bodyPlaceholder": "Unas palabras para tus visitas",
+    "toolbar": "Formato del texto",
+    "addToText": "Añadir al texto"
+  },
   "linkList": {
     "empty": "Aquí no hay nada todavía. Toca Añadir para crear tu primer enlace, sección o carrusel de fotos.",
     "big": "Grande",
@@ -347,7 +362,14 @@
     "moveDown": "Bajar",
     "moveTo": "Mover a",
     "mainList": "Lista principal",
-    "editPhotos": "Editar fotos"
+    "editPhotos": "Editar fotos",
+    "textBlock": "Texto",
+    "divider": "Separador",
+    "dividerStyle": "Estilo",
+    "dividerLine": "Línea",
+    "dividerLineHint": "Una línea fina de lado a lado.",
+    "dividerSpace": "Espacio",
+    "dividerSpaceHint": "Solo un hueco, sin línea."
   },
   "photos": {
     "showAs": "Mostrar como",
@@ -505,6 +527,10 @@
     "sectionGone": "Esa sección ya no existe. Recarga la página.",
     "sectionFull": "Una sección puede tener hasta {max} enlaces.",
     "maxSections": "Puedes tener hasta {max} secciones.",
-    "sectionFailed": "No se pudo guardar la sección."
+    "sectionFailed": "No se pudo guardar la sección.",
+    "textEmpty": "Escribe un título o algo de texto.",
+    "textTooLong": "El texto debe tener menos de {max} caracteres.",
+    "textTooFormatted": "El texto tiene demasiado formato. Quita una parte.",
+    "textLink": "Enlace en tu texto: {problem}"
   }
 }

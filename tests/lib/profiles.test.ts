@@ -249,4 +249,43 @@ describe("getPublicProfile", () => {
     expect(s4?.kind === "section" && s4.links[0].embed?.kind).toBe("youtube");
     expect(db.queries.links[0].calls[0].args[0]).toContain("parent_id");
   });
+
+  it("shows text and divider blocks, and skips empty texts", async () => {
+    db = fakeClient({
+      profiles: [{ data: profile }],
+      links: [
+        {
+          data: [
+            link({
+              id: "t1",
+              kind: "text",
+              url: null,
+              title: "Live show",
+              settings: { body: "<b>Episode 50</b> live" },
+            }),
+            link({ id: "t2", kind: "text", url: null, title: null, settings: {} }),
+            link({ id: "t3", kind: "text", url: null, title: null, settings: { body: "Hi" } }),
+            link({ id: "d1", kind: "divider", url: null, title: null, settings: { style: "space" } }),
+            link({ id: "d2", kind: "divider", url: null, title: null, settings: null }),
+          ],
+        },
+      ],
+    });
+    const page = await getPublicProfile("ethan");
+    expect(page?.items).toEqual([
+      {
+        kind: "text",
+        id: "t1",
+        title: "Live show",
+        body: [
+          { type: "mark", mark: "b", children: [{ type: "text", text: "Episode 50" }] },
+          { type: "text", text: " live" },
+        ],
+      },
+      { kind: "text", id: "t3", title: null, body: [{ type: "text", text: "Hi" }] },
+      { kind: "divider", id: "d1", style: "space" },
+      { kind: "divider", id: "d2", style: "line" },
+    ]);
+    expect(db.queries.links[0].calls[0].args[0]).toContain("settings");
+  });
 });
