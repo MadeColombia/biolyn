@@ -17,6 +17,7 @@ import { ThemeMotion } from "@/components/theme-motion";
 import { CoverPhoto } from "./cover-photo";
 import { Gallery } from "./gallery";
 import { LinkBlock, SectionBlock } from "./link-block";
+import { DividerBlock, TextBlock } from "./text-block";
 import { ShareButton } from "./share-button";
 import { ViewTracker } from "./view-tracker";
 
@@ -159,10 +160,16 @@ async function Profile({
                   key={item.id}
                   // A section gets extra space above its title.
                   className={
-                    item.kind === "section" ? "not-first:mt-4" : undefined
+                    item.kind === "section" || item.kind === "text"
+                      ? "not-first:mt-4"
+                      : undefined
                   }
                 >
-                  {item.kind === "gallery" ? (
+                  {item.kind === "text" ? (
+                    <TextBlock text={item} theme={theme} />
+                  ) : item.kind === "divider" ? (
+                    <DividerBlock divider={item} />
+                  ) : item.kind === "gallery" ? (
                     <Gallery
                       title={item.title}
                       layout={item.layout}

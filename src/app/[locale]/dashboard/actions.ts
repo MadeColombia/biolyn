@@ -40,6 +40,12 @@ import {
   sectionIdFrom,
   type ItemTree,
 } from "@/lib/sections";
+import {
+  DIVIDER_STYLES,
+  isDividerStyle,
+  parseTextForm,
+  TEXT_MAX_CHARS,
+} from "@/lib/blocks";
 import { actionTranslator } from "@/i18n/server";
 
 const MAX_LINKS = 100;
@@ -473,6 +479,111 @@ export async function updateSection(
   if (error) return { error: t("errors.sectionFailed") };
   refresh(profile.username);
   return { saved: true };
+}
+
+// Reads the text form and checks the links in its paragraph.
+async function textValues(formData: FormData) {
+  const t = await actionTranslator();
+  const parsed = parseTextForm(formData);
+  if ("error" in parsed) {
+    return { error: t(`errors.${parsed.error}`, { max: TEXT_MAX_CHARS }) };
+  }
+  for (const url of parsed.links) {
+    const unsafe = await checkLinkUrl(url);
+    if (unsafe) {
+      return {
+        error: t("errors.textLink", { problem: t(`errors.${unsafe}`) }),
+      };
+    }
+  }
+  return { values: parsed.values };
+}
+
+// Room for one more block at the end of the page, or the reason why not.
+async function nextPosition(supabase: Supabase, profileId: string) {
+  const t = await actionTranslator();
+  if (!(await allow(`addlink:${profileId}`, 30, 600))) {
+    return { error: t("errors.itemsTooFast") };
+  }
+  const { count } = await supabase
+    .from("links")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", profileId);
+  if ((count ?? 0) >= MAX_LINKS) {
+    return { error: t("errors.maxItems", { max: MAX_LINKS }) };
+  }
+  return { position: count ?? 0 };
+}
+
+// Adds a text block (a title and a short paragraph) at the end.
+export async function addText(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const t = await actionTranslator();
+  const text = await textValues(formData);
+  if ("error" in text) return { error: text.error };
+  const { supabase, profile } = await requireOwnProfile();
+  const room = await nextPosition(supabase, profile.id);
+  if ("error" in room) return { error: room.error };
+  const { error } = await supabase.from("links").insert({
+    profile_id: profile.id,
+    kind: "text",
+    ...text.values,
+    position: room.position,
+  });
+  if (error) return { error: t("errors.saveFailed") };
+  refresh(profile.username);
+  return {};
+}
+
+export async function updateText(
+  textId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const t = await actionTranslator();
+  const text = await textValues(formData);
+  if ("error" in text) return { error: text.error };
+  const { supabase, profile } = await requireOwnProfile();
+  const { error } = await supabase
+    .from("links")
+    .update(text.values)
+    .eq("id", textId)
+    .eq("profile_id", profile.id)
+    .eq("kind", "text");
+  if (error) return { error: t("errors.saveFailed") };
+  refresh(profile.username);
+  return { saved: true };
+}
+
+// Adds a divider (a line) at the end. Its style can be changed after.
+export async function addDivider(): Promise<FormState> {
+  const t = await actionTranslator();
+  const { supabase, profile } = await requireOwnProfile();
+  const room = await nextPosition(supabase, profile.id);
+  if ("error" in room) return { error: room.error };
+  const { error } = await supabase.from("links").insert({
+    profile_id: profile.id,
+    kind: "divider",
+    settings: { style: DIVIDER_STYLES[0] },
+    position: room.position,
+  });
+  if (error) return { error: t("errors.saveFailed") };
+  refresh(profile.username);
+  return {};
+}
+
+export async function setDividerStyle(dividerId: string, style: string) {
+  if (!isDividerStyle(style)) return;
+  const { supabase, profile } = await requireOwnProfile();
+  await supabase
+    .from("links")
+    .update({ settings: { style } })
+    .eq("id", dividerId)
+    .eq("profile_id", profile.id)
+    .eq("kind", "divider");
+  refresh(profile.username);
 }
 
 // Deletes a section. With `keepLinks` its links stay on the page, where

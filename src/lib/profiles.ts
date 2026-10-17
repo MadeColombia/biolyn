@@ -23,6 +23,12 @@ import {
   sectionLayoutFrom,
   type SectionLayout,
 } from "@/lib/sections";
+import {
+  dividerStyleFrom,
+  textBodyFrom,
+  type DividerStyle,
+} from "@/lib/blocks";
+import type { BioNode } from "@/lib/rich-bio";
 
 export type PublicLink = {
   kind: "link";
@@ -50,8 +56,26 @@ export type PublicSection = {
   layout: SectionLayout;
   links: PublicLink[];
 };
-// Links, photo galleries and sections share one list, in the owner's order.
-export type PublicItem = PublicLink | PublicGallery | PublicSection;
+// A bold title and a short formatted paragraph (either can be empty).
+export type PublicText = {
+  kind: "text";
+  id: string;
+  title: string | null;
+  body: BioNode[];
+};
+// A thin line, or just some room, between parts of the page.
+export type PublicDivider = {
+  kind: "divider";
+  id: string;
+  style: DividerStyle;
+};
+// Every block shares one list, in the owner's order.
+export type PublicItem =
+  | PublicLink
+  | PublicGallery
+  | PublicSection
+  | PublicText
+  | PublicDivider;
 export type PublicProfile = {
   id: string;
   username: string;
@@ -98,7 +122,7 @@ export async function getPublicProfile(
     supabase
       .from("links")
       .select(
-        "id, kind, parent_id, title, url, layout, embed, size, image_url, preview_url, starts_at, ends_at",
+        "id, kind, parent_id, title, url, layout, embed, size, image_url, preview_url, starts_at, ends_at, settings",
       )
       .eq("profile_id", profile.id)
       .eq("is_visible", true)
@@ -172,6 +196,17 @@ export async function getPublicProfile(
           layout: sectionLayoutFrom(l.layout),
           links,
         },
+      ];
+    }
+    if (l.kind === "text") {
+      const body = textBodyFrom(l.settings);
+      // An empty text shows nothing.
+      if (!l.title && body.length === 0) return [];
+      return [{ kind: "text", id: l.id, title: l.title, body }];
+    }
+    if (l.kind === "divider") {
+      return [
+        { kind: "divider", id: l.id, style: dividerStyleFrom(l.settings) },
       ];
     }
     return toLink(l);

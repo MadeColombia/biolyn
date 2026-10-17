@@ -36,21 +36,26 @@ import {
 } from "@/lib/item-tree";
 import { isIconPreview } from "@/lib/link-form";
 import { MAX_SECTION_LINKS, type SectionLayout } from "@/lib/sections";
+import { DIVIDER_STYLES, textBodyFrom, type DividerStyle } from "@/lib/blocks";
+import { plainBio } from "@/lib/rich-bio";
 import {
   addLink,
   deleteLink,
   deleteSection,
   reorderItems,
+  setDividerStyle,
   toggleEmbed,
   toggleLink,
   updateLink,
   updateSection,
+  updateText,
 } from "./actions";
 import { useUndo } from "./delete-undo";
 import { LinkForm, type EditableLink, type SectionOption } from "./link-form";
 import { PhotoManager } from "./photos";
 import { RowMenu, type MenuEntry } from "./row-menu";
 import { LayoutPicture, SectionForm } from "./section-form";
+import { TextForm } from "./text-form";
 
 export type LinkItem = EditableLink & { kind: "link"; is_visible: boolean };
 export type GalleryItem = {
@@ -69,8 +74,28 @@ export type SectionItem = {
   layout: SectionLayout;
   links: LinkItem[];
 };
-/** One top-level row of the list: a link, a photo carousel or a section. */
-export type ListItem = LinkItem | GalleryItem | SectionItem;
+export type TextItem = {
+  kind: "text";
+  id: string;
+  title: string | null;
+  is_visible: boolean;
+  /** The paragraph as stored, formatted like the bio. */
+  body: string;
+};
+export type DividerItem = {
+  kind: "divider";
+  id: string;
+  is_visible: boolean;
+  style: DividerStyle;
+};
+/** One top-level row of the list: a link, a photo carousel, a section,
+ * a text or a divider. */
+export type ListItem =
+  | LinkItem
+  | GalleryItem
+  | SectionItem
+  | TextItem
+  | DividerItem;
 
 const treeOf = (items: ListItem[]): Tree =>
   items.map((i) => ({
@@ -355,6 +380,38 @@ export function LinkList({
                 />
               );
             }
+            if (item.kind === "text") {
+              const name = textName(item) || t("textBlock");
+              return (
+                <SortableText
+                  key={id}
+                  text={item}
+                  name={name}
+                  moves={movesFor(id)}
+                  onMove={save}
+                  onDelete={() =>
+                    remove({ id, name, run: () => deleteLink(id) })
+                  }
+                />
+              );
+            }
+            if (item.kind === "divider") {
+              return (
+                <SortableDivider
+                  key={id}
+                  divider={item}
+                  moves={movesFor(id)}
+                  onMove={save}
+                  onDelete={() =>
+                    remove({
+                      id,
+                      name: t("divider"),
+                      run: () => deleteLink(id),
+                    })
+                  }
+                />
+              );
+            }
             if (item.kind === "section") {
               return (
                 <SortableSection
@@ -568,6 +625,277 @@ function SortableLink({
         </div>
       )}
     </li>
+  );
+}
+
+// A text's name in the list: its title, else the start of its paragraph.
+function textName(text: TextItem) {
+  return text.title ?? plainBio(textBodyFrom({ body: text.body }), " ");
+}
+
+/**
+ * The row shared by text and divider blocks: an icon, a name and a short
+ * line, the pencil that opens `editor`, and the ⋯ menu. They stay on the
+ * main list, so they move up and down but never into sections.
+ */
+function BlockRow({
+  id,
+  name,
+  detail,
+  icon,
+  visible,
+  editor,
+  moves,
+  onMove,
+  onDelete,
+}: {
+  id: string;
+  name: string;
+  detail: string;
+  icon: React.ReactNode;
+  visible: boolean;
+  editor: (close: () => void) => React.ReactNode;
+  moves: Moves;
+  onMove: OnMove;
+  onDelete: () => void;
+}) {
+  const t = useTranslations("linkList");
+  const common = useTranslations("common");
+  const [editing, setEditing] = useState(false);
+  const [, startTransition] = useTransition();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+  const moveEntries = useMoveEntries(moves, onMove, onDelete);
+  const entries: MenuEntry[] = [
+    {
+      label: editing ? common("close") : common("edit"),
+      onSelect: () => setEditing((on) => !on),
+    },
+    {
+      label: visible ? common("hide") : common("show"),
+      onSelect: () => startTransition(() => toggleLink(id, visible)),
+    },
+    ...moveEntries,
+  ];
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={row(isDragging, editing)}
+    >
+      <DragHandle
+        label={name}
+        handleRef={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+      />
+      <div className={cx(rowBody, !visible && "[&>*]:opacity-50")}>
+        <span
+          aria-hidden
+          className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-raised text-ink-muted"
+        >
+          {icon}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-bold">{name}</span>
+            {!visible && (
+              <Badge tone="neutral" className="shrink-0">
+                {t("hidden")}
+              </Badge>
+            )}
+          </span>
+          <span className="truncate text-sm text-ink-muted">{detail}</span>
+        </span>
+      </div>
+      <EditButton
+        label={t("edit", { name })}
+        open={editing}
+        controls={`edit-${id}`}
+        onClick={() => setEditing((on) => !on)}
+      />
+      <RowMenu label={t("more", { name })} entries={entries} />
+      {editing && (
+        <div
+          id={`edit-${id}`}
+          className="w-full border-t border-line px-2 pt-4 pb-2"
+        >
+          {editor(() => setEditing(false))}
+        </div>
+      )}
+    </li>
+  );
+}
+
+// A title and a paragraph. The pencil opens the same form as "+ Add".
+function SortableText({
+  text,
+  name,
+  moves,
+  onMove,
+  onDelete,
+}: {
+  text: TextItem;
+  name: string;
+  moves: Moves;
+  onMove: OnMove;
+  onDelete: () => void;
+}) {
+  const t = useTranslations("linkList");
+  const common = useTranslations("common");
+  const form = useTranslations("linkForm");
+  const body = plainBio(textBodyFrom({ body: text.body }), " ");
+  return (
+    <BlockRow
+      id={text.id}
+      name={name}
+      // With a title, the paragraph's start shows under it.
+      detail={text.title ? body : t("textBlock")}
+      icon={<TextIcon />}
+      visible={text.is_visible}
+      moves={moves}
+      onMove={onMove}
+      onDelete={onDelete}
+      editor={(close) => (
+        <TextForm
+          text={text}
+          action={updateText.bind(null, text.id)}
+          submitLabel={form("saveChanges")}
+          pendingLabel={common("saving")}
+          onSaved={close}
+          onCancel={close}
+        />
+      )}
+    />
+  );
+}
+
+// A line or some space. The pencil opens the choice between the two,
+// saved as soon as one is picked.
+function SortableDivider({
+  divider,
+  moves,
+  onMove,
+  onDelete,
+}: {
+  divider: DividerItem;
+  moves: Moves;
+  onMove: OnMove;
+  onDelete: () => void;
+}) {
+  const t = useTranslations("linkList");
+  const styleName = (style: DividerStyle) =>
+    style === "line" ? t("dividerLine") : t("dividerSpace");
+  return (
+    <BlockRow
+      id={divider.id}
+      name={t("divider")}
+      detail={styleName(divider.style)}
+      icon={<DividerIcon />}
+      visible={divider.is_visible}
+      moves={moves}
+      onMove={onMove}
+      onDelete={onDelete}
+      editor={() => (
+        <DividerStylePicker
+          id={divider.id}
+          style={divider.style}
+          names={styleName}
+        />
+      )}
+    />
+  );
+}
+
+function DividerStylePicker({
+  id,
+  style,
+  names,
+}: {
+  id: string;
+  style: DividerStyle;
+  names: (style: DividerStyle) => string;
+}) {
+  const t = useTranslations("linkList");
+  const [picked, setPicked] = useState(style);
+  const [, startTransition] = useTransition();
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="pb-2 text-sm font-bold text-ink">
+        {t("dividerStyle")}
+      </legend>
+      <div className="grid grid-cols-2 gap-3">
+        {DIVIDER_STYLES.map((option) => (
+          <label
+            key={option}
+            className={cx(
+              "flex cursor-pointer flex-col gap-2 rounded-xl border p-3 transition focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand",
+              picked === option
+                ? "border-brand bg-raised"
+                : "border-edge bg-surface hover:bg-raised",
+            )}
+          >
+            <input
+              type="radio"
+              name={`divider-${id}`}
+              value={option}
+              checked={picked === option}
+              onChange={() => {
+                setPicked(option);
+                startTransition(() => setDividerStyle(id, option));
+              }}
+              className="sr-only"
+            />
+            <span
+              aria-hidden
+              className="flex h-12 flex-col justify-between rounded-lg bg-canvas p-1.5"
+            >
+              <span className="h-2.5 rounded bg-line" />
+              {option === "line" && <span className="h-px bg-ink-muted" />}
+              <span className="h-2.5 rounded bg-line" />
+            </span>
+            <span className="text-sm font-bold text-ink">{names(option)}</span>
+            <span className="text-xs text-ink-muted">
+              {option === "line" ? t("dividerLineHint") : t("dividerSpaceHint")}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function TextIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    >
+      <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+    </svg>
+  );
+}
+
+function DividerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+      <rect x="4" y="3" width="16" height="5" rx="1.5" opacity=".4" />
+      <rect x="2" y="11" width="20" height="2" rx="1" />
+      <rect x="4" y="16" width="16" height="5" rx="1.5" opacity=".4" />
+    </svg>
   );
 }
 

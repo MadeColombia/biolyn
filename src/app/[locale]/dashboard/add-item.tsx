@@ -4,16 +4,25 @@ import { useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { MAX_PHOTOS } from "@/lib/gallery";
 import { Button, Heading, cx } from "@/components/ui";
-import { addGallery, addLink, addSection } from "./actions";
+import {
+  addDivider,
+  addGallery,
+  addLink,
+  addSection,
+  addText,
+  type FormState,
+} from "./actions";
 import { LinkForm, type SectionOption } from "./link-form";
 import { SectionForm } from "./section-form";
+import { TextForm } from "./text-form";
 
-type Step = "choose" | "link" | "section";
+type Step = "choose" | "link" | "section" | "text";
 
 /**
- * The "+ Add" button. It opens a popup that asks what to add: a link or
- * a section (their forms open in the same popup) or a photo carousel
- * (added right away, then filled with photos from its row in the list).
+ * The "+ Add" button. It opens a popup that asks what to add: a link, a
+ * section or a text (their forms open in the same popup), or a photo
+ * carousel or a divider (added right away, then changed from their row in
+ * the list).
  */
 export function AddItemMenu({
   userId,
@@ -30,6 +39,8 @@ export function AddItemMenu({
   const [round, setRound] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Which choice is being added, to say "Adding..." on it.
+  const [busy, setBusy] = useState<string | null>(null);
 
   function open() {
     setStep("choose");
@@ -42,10 +53,12 @@ export function AddItemMenu({
     dialog.current?.close();
   }
 
-  function addCarousel() {
+  // Blocks that need no form: added at once, then the popup closes.
+  function addNow(which: string, add: () => Promise<FormState>) {
     setError(null);
+    setBusy(which);
     startTransition(async () => {
-      const result = await addGallery();
+      const result = await add();
       if (result.error) setError(result.error);
       else close();
     });
@@ -76,7 +89,9 @@ export function AddItemMenu({
                 ? t("chooseTitle")
                 : step === "link"
                   ? t("linkTitle")
-                  : t("sectionTitle")}
+                  : step === "text"
+                    ? t("textTitle")
+                    : t("sectionTitle")}
             </Heading>
             <button
               type="button"
@@ -116,12 +131,27 @@ export function AddItemMenu({
                   disabled={pending}
                 />
                 <Choice
+                  icon={<TextIcon />}
+                  title={t("text")}
+                  hint={t("textHint")}
+                  onClick={() => setStep("text")}
+                  disabled={pending}
+                />
+                <Choice
                   icon={<CarouselIcon />}
                   title={t("carousel")}
                   hint={t("carouselHint", { max: MAX_PHOTOS })}
-                  onClick={addCarousel}
+                  onClick={() => addNow("carousel", addGallery)}
                   disabled={pending}
-                  busy={pending}
+                  busy={pending && busy === "carousel"}
+                />
+                <Choice
+                  icon={<DividerIcon />}
+                  title={t("divider")}
+                  hint={t("dividerHint")}
+                  onClick={() => addNow("divider", addDivider)}
+                  disabled={pending}
+                  busy={pending && busy === "divider"}
                 />
               </div>
               {error && (
@@ -130,6 +160,15 @@ export function AddItemMenu({
                 </p>
               )}
             </div>
+          ) : step === "text" ? (
+            <TextForm
+              key={round}
+              action={addText}
+              submitLabel={t("addText")}
+              pendingLabel={common("adding")}
+              onSaved={close}
+              onCancel={() => setStep("choose")}
+            />
           ) : step === "section" ? (
             <SectionForm
               key={round}
@@ -244,6 +283,39 @@ function CarouselIcon() {
       <circle cx="9" cy="20.5" r="1.3" />
       <circle cx="12" cy="20.5" r="1.3" opacity=".4" />
       <circle cx="15" cy="20.5" r="1.3" opacity=".4" />
+    </svg>
+  );
+}
+
+function TextIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M5 6V4h14v2M12 4v16M9 20h6" />
+    </svg>
+  );
+}
+
+function DividerIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <rect x="4" y="3" width="16" height="5" rx="1.5" opacity=".4" />
+      <rect x="2" y="11" width="20" height="2" rx="1" />
+      <rect x="4" y="16" width="16" height="5" rx="1.5" opacity=".4" />
     </svg>
   );
 }

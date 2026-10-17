@@ -850,6 +850,121 @@ describe("updateSection", () => {
   });
 });
 
+describe("addText", () => {
+  it("adds a text block at the end of the page", async () => {
+    signedIn({ links: [{ count: 3 }, {}] });
+    expect(
+      await actions.addText(
+        {},
+        form({ title: " Live ", body: '<b>Hi</b> <a href="x.com">x</a>' }),
+      ),
+    ).toEqual({});
+    expect(lastWrite("links", "insert")).toEqual([
+      {
+        profile_id: "p1",
+        kind: "text",
+        title: "Live",
+        settings: { body: '<b>Hi</b> <a href="https://x.com/">x</a>' },
+        position: 3,
+      },
+    ]);
+    expect(checkLinkUrl).toHaveBeenCalledWith("https://x.com/");
+    expect(allow).toHaveBeenCalledWith("addlink:p1", 30, 600);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("checks the text before touching the database", async () => {
+    db = fakeClient();
+    expect(await actions.addText({}, form({}))).toEqual({
+      error: "Write a title or some text.",
+    });
+    expect(
+      await actions.addText({}, form({ body: "x".repeat(501) })),
+    ).toEqual({ error: "Keep the text under 500 characters." });
+    checkLinkUrl.mockResolvedValueOnce("unsafe");
+    expect(
+      await actions.addText({}, form({ body: '<a href="bad.com">x</a>' })),
+    ).toEqual({ error: `Link in your text: ${UNSAFE}` });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("stops at the item limit, when too fast, and on a failed save", async () => {
+    signedIn({ links: [{ count: 100 }] });
+    expect((await actions.addText({}, form({ title: "x" }))).error).toMatch(
+      /up to 100 items/,
+    );
+    expect(lastWrite("links", "insert")).toBeUndefined();
+    allow.mockResolvedValueOnce(false);
+    signedIn();
+    expect((await actions.addText({}, form({ title: "x" }))).error).toMatch(
+      /very fast/,
+    );
+    signedIn({ links: [{ count: null }, { error: { code: "x" } }] });
+    expect(await actions.addText({}, form({ title: "x" }))).toEqual({
+      error: "Could not save. Try again.",
+    });
+  });
+});
+
+describe("updateText", () => {
+  it("saves the user's own text block", async () => {
+    signedIn({ links: [{ error: null }] });
+    expect(
+      await actions.updateText("t1", {}, form({ title: "", body: "Hello" })),
+    ).toEqual({ saved: true });
+    expect(lastWrite("links", "update")).toEqual([
+      { title: null, settings: { body: "Hello" } },
+    ]);
+    const calls = db.queries.links[0].calls;
+    expect(calls).toContainEqual({ method: "eq", args: ["id", "t1"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["kind", "text"] });
+  });
+
+  it("reports errors", async () => {
+    db = fakeClient();
+    expect(await actions.updateText("t1", {}, form({}))).toEqual({
+      error: "Write a title or some text.",
+    });
+    signedIn({ links: [{ error: { code: "x" } }] });
+    expect(await actions.updateText("t1", {}, form({ title: "x" }))).toEqual({
+      error: "Could not save. Try again.",
+    });
+  });
+});
+
+describe("dividers", () => {
+  it("adds a line at the end of the page", async () => {
+    signedIn({ links: [{ count: 2 }, {}] });
+    expect(await actions.addDivider()).toEqual({});
+    expect(lastWrite("links", "insert")).toEqual([
+      { profile_id: "p1", kind: "divider", settings: { style: "line" }, position: 2 },
+    ]);
+    signedIn({ links: [{ count: 100 }] });
+    expect((await actions.addDivider()).error).toMatch(/up to 100 items/);
+    signedIn({ links: [{ count: 0 }, { error: { code: "x" } }] });
+    expect(await actions.addDivider()).toEqual({
+      error: "Could not save. Try again.",
+    });
+  });
+
+  it("changes the style of the user's own divider", async () => {
+    signedIn({ links: [{ error: null }] });
+    await actions.setDividerStyle("d1", "space");
+    expect(lastWrite("links", "update")).toEqual([{ settings: { style: "space" } }]);
+    const calls = db.queries.links[0].calls;
+    expect(calls).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["kind", "divider"] });
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("ignores unknown styles", async () => {
+    db = fakeClient();
+    await actions.setDividerStyle("d1", "zigzag");
+    expect(db.from).not.toHaveBeenCalled();
+  });
+});
+
 describe("deleteSection", () => {
   const rows = {
     data: [

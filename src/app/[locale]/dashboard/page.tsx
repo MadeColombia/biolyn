@@ -52,6 +52,7 @@ import { LinkList, type LinkItem, type ListItem } from "./link-list";
 import { TabBar } from "./tab-bar";
 import { PreviewButton, PreviewPanel } from "./preview";
 import { previewVersion } from "@/lib/preview";
+import { dividerStyleFrom, textBodyText } from "@/lib/blocks";
 import { QrSection, StatsSection } from "./stats";
 import { SourcesSection } from "./sources";
 
@@ -337,7 +338,7 @@ async function ContentTab({
     supabase
       .from("links")
       .select(
-        "id, kind, parent_id, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
+        "id, kind, parent_id, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at, settings",
       )
       .eq("profile_id", profileId)
       .order("position"),
@@ -356,9 +357,10 @@ async function ContentTab({
     url: row.url ?? "",
   });
   const items: ListItem[] = nestRows(rows ?? []).map(
-    ({ row, children }): ListItem =>
-      row.kind === "gallery"
-        ? {
+    ({ row, children }): ListItem => {
+      switch (row.kind) {
+        case "gallery":
+          return {
             kind: "gallery",
             id: row.id,
             title: row.title ?? "",
@@ -367,17 +369,35 @@ async function ContentTab({
             photos: (photos ?? [])
               .filter((p) => p.link_id === row.id)
               .map(({ id, url, alt }) => ({ id, url, alt })),
-          }
-        : row.kind === "section"
-          ? {
-              kind: "section",
-              id: row.id,
-              title: row.title,
-              is_visible: row.is_visible,
-              layout: sectionLayoutFrom(row.layout),
-              links: children.map(toLink),
-            }
-          : toLink(row),
+          };
+        case "section":
+          return {
+            kind: "section",
+            id: row.id,
+            title: row.title,
+            is_visible: row.is_visible,
+            layout: sectionLayoutFrom(row.layout),
+            links: children.map(toLink),
+          };
+        case "text":
+          return {
+            kind: "text",
+            id: row.id,
+            title: row.title,
+            is_visible: row.is_visible,
+            body: textBodyText(row.settings),
+          };
+        case "divider":
+          return {
+            kind: "divider",
+            id: row.id,
+            is_visible: row.is_visible,
+            style: dividerStyleFrom(row.settings),
+          };
+        default:
+          return toLink(row);
+      }
+    },
   );
   const sections = items.flatMap((i) =>
     i.kind === "section"
