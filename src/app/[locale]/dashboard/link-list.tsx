@@ -497,7 +497,7 @@ function SortableLink({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={row(isDragging)}
+      className={row(isDragging, editing)}
     >
       <DragHandle
         label={link.title}
@@ -505,13 +505,7 @@ function SortableLink({
         {...attributes}
         {...listeners}
       />
-      <button
-        type="button"
-        aria-expanded={editing}
-        aria-controls={`edit-${link.id}`}
-        onClick={() => setEditing((on) => !on)}
-        className={cx(rowBody, !link.is_visible && "[&>*]:opacity-50")}
-      >
+      <div className={cx(rowBody, !link.is_visible && "[&>*]:opacity-50")}>
         {picture && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -547,7 +541,13 @@ function SortableLink({
             </span>
           )}
         </span>
-      </button>
+      </div>
+      <EditButton
+        label={t("edit", { name: link.title })}
+        open={editing}
+        controls={`edit-${link.id}`}
+        onClick={() => setEditing((on) => !on)}
+      />
       <RowMenu label={t("more", { name: link.title })} entries={entries} />
       {editing && (
         <div
@@ -571,17 +571,61 @@ function SortableLink({
   );
 }
 
-const row = (dragging: boolean) =>
+// A row turns grey as a whole under the pointer, except while its editor
+// is open below it.
+const row = (dragging: boolean, open: boolean) =>
   cx(
-    "flex flex-wrap items-center gap-1 rounded-2xl border bg-surface p-1 sm:gap-2 sm:p-2",
+    "flex flex-wrap items-center gap-1 rounded-2xl border bg-surface p-1 transition-colors sm:gap-2 sm:p-2",
+    !open && "hover:bg-raised",
     dragging
       ? "relative z-10 border-brand shadow-lg ring-2 ring-brand/30"
       : "border-edge",
   );
 
-// The middle of a row: tap it to open the row's editor.
-const rowBody =
-  "flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-1 text-left transition hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+// The middle of a row: its picture, name and details.
+const rowBody = "flex min-h-11 min-w-0 flex-1 items-center gap-3 px-1 py-1";
+
+/** The pencil that opens a row's editor, where a section shows its arrow. */
+function EditButton({
+  label,
+  open,
+  controls,
+  onClick,
+}: {
+  label: string;
+  open: boolean;
+  controls: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-expanded={open}
+      aria-controls={controls}
+      onClick={onClick}
+      className={cx(
+        "flex size-11 shrink-0 items-center justify-center rounded-xl transition hover:bg-edge hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+        open ? "bg-edge text-ink" : "text-ink-muted",
+      )}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="20"
+        height="20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+        <path d="M13.5 6.5l4 4" />
+      </svg>
+    </button>
+  );
+}
 
 function DragHandle({
   label,
@@ -665,7 +709,7 @@ function SortableGallery({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={row(isDragging)}
+      className={row(isDragging, editing)}
     >
       <DragHandle
         label={label}
@@ -673,13 +717,7 @@ function SortableGallery({
         {...attributes}
         {...listeners}
       />
-      <button
-        type="button"
-        aria-expanded={editing}
-        aria-controls={`edit-${gallery.id}`}
-        onClick={() => setEditing((on) => !on)}
-        className={cx(rowBody, !gallery.is_visible && "[&>*]:opacity-50")}
-      >
+      <div className={cx(rowBody, !gallery.is_visible && "[&>*]:opacity-50")}>
         <span className="flex shrink-0 -space-x-6" aria-hidden>
           {count === 0 ? (
             <span className="flex aspect-video w-14 items-center justify-center rounded-lg border border-dashed border-edge bg-raised text-ink-muted sm:w-16">
@@ -720,7 +758,13 @@ function SortableGallery({
             {count === 0 ? t("noPhotos") : t("photoCount", { count })}
           </span>
         </span>
-      </button>
+      </div>
+      <EditButton
+        label={t("edit", { name: label })}
+        open={editing}
+        controls={`edit-${gallery.id}`}
+        onClick={() => setEditing((on) => !on)}
+      />
       <RowMenu label={t("more", { name: label })} entries={entries} />
       {editing && (
         <div
@@ -815,7 +859,7 @@ function SortableSection({
           : "border-edge",
       )}
     >
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-1 rounded-2xl transition-colors hover:bg-edge/60 sm:gap-2">
         <DragHandle
           label={name}
           handleRef={setActivatorNodeRef}
@@ -827,7 +871,11 @@ function SortableSection({
           aria-expanded={!folded}
           aria-controls={`links-${section.id}`}
           onClick={() => setFolded((on) => !on)}
-          className={cx(rowBody, !section.is_visible && "[&>*]:opacity-50")}
+          className={cx(
+            rowBody,
+            "rounded-xl text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+            !section.is_visible && "[&>*]:opacity-50",
+          )}
         >
           <span className="hidden w-16 shrink-0 rounded-lg border border-edge bg-surface px-1.5 sm:block">
             <LayoutPicture layout={section.layout} small />
