@@ -131,6 +131,14 @@ describe("GET /api/click/[linkId]", () => {
     expect(admin!.rpc).not.toHaveBeenCalled();
   });
 
+  it("redirects without counting clicks from the dashboard preview", async () => {
+    pub = fakeClient({ links: [{ data: live }] });
+    const res = await click("l1", "?preview=1");
+    expect(res.headers.get("location")).toBe("https://example.com/x");
+    expect(admin!.rpc).not.toHaveBeenCalled();
+    expect(allow).not.toHaveBeenCalled();
+  });
+
   it("falls back to the public client without a service key", async () => {
     admin = null;
     pub = fakeClient({ links: [{ data: live }] });

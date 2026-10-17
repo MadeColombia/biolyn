@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { allow, visitorId } from "@/lib/rate-limit";
 import { isLive } from "@/lib/schedule";
+import { isPreview } from "@/lib/preview";
 import { cleanHost, cleanSource, sourceFromSearch } from "@/lib/sources";
 
 // Every link on a public page points here. We log the click, then
@@ -29,6 +30,9 @@ export async function GET(
   if (!link?.url || !isLive(link, Date.now())) {
     return NextResponse.redirect(new URL("/", request.url));
   }
+
+  // The owner's clicks in the dashboard preview aren't counted.
+  if (isPreview(params)) return NextResponse.redirect(link.url, 302);
 
   // Past 60 clicks a minute from one visitor, still redirect but stop counting.
   if (await allow(`click:${visitorId(request.headers)}`, 60, 60)) {
