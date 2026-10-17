@@ -56,6 +56,11 @@ export type Chart = {
 export type Labels = {
   channel: (key: string) => string;
   links: Record<string, string>;
+  /** Line names, in the owner's language. */
+  views: string;
+  clicks: string;
+  deletedLink: string;
+  previous: (days: number) => string;
 };
 
 /** "2026-10-15" plus n days (n can be negative). */
@@ -142,7 +147,7 @@ export function buildChart(
     }
   }
 
-  const name = metric === "clicks" ? "Clicks" : "Views";
+  const name = metric === "clicks" ? labels.clicks : labels.views;
   let series: Series[];
   if (compare === "sources" || compare === "links") {
     series = picked.map((key, p) => ({
@@ -150,7 +155,7 @@ export function buildChart(
       label:
         compare === "sources"
           ? labels.channel(key)
-          : (labels.links[key] ?? "Deleted link"),
+          : (labels.links[key] ?? labels.deletedLink),
       values: parts[p],
       kind: "part",
     }));
@@ -159,7 +164,7 @@ export function buildChart(
     if (compare === "previous") {
       series.push({
         key: "previous",
-        label: `Previous ${opts.range} days`,
+        label: labels.previous(opts.range),
         values: prev,
         kind: "previous",
       });
@@ -169,8 +174,12 @@ export function buildChart(
 }
 
 /** "+25%", "-10%", "New" or null when there is nothing to compare. */
-export function change(total: number, previous: number): string | null {
-  if (previous === 0) return total > 0 ? "New" : null;
+export function change(
+  total: number,
+  previous: number,
+  newLabel = "New",
+): string | null {
+  if (previous === 0) return total > 0 ? newLabel : null;
   const pct = Math.round(((total - previous) / previous) * 100);
   return `${pct > 0 ? "+" : ""}${pct}%`;
 }
@@ -190,9 +199,9 @@ export function niceScale(max: number): { top: number; ticks: number[] } {
   return { top, ticks: [0, step, step * 2, step * 3, top] };
 }
 
-/** "Oct 15" for axis labels and tooltips. */
-export function shortDate(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", {
+/** "Oct 15" (or "15 oct" in Spanish) for axis labels and tooltips. */
+export function shortDate(day: string, locale = "en-US"): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
@@ -201,9 +210,10 @@ export function shortDate(day: string): string {
 
 /**
  * Short numbers for tight spaces: 999, 1.9k, 12k, 1.2M. Rounds down, so
- * a stat never claims more than happened.
+ * a stat never claims more than happened. Spanish uses a decimal comma:
+ * 1,9k.
  */
-export function compactNumber(n: number): string {
+export function compactNumber(n: number, locale = "en"): string {
   const units: [number, string][] = [
     [1e6, "M"],
     [1e3, "k"],
@@ -215,7 +225,10 @@ export function compactNumber(n: number): string {
         Math.abs(value) < 10
           ? Math.floor(value * 10) / 10
           : Math.floor(value);
-      return `${shown}${suffix}`;
+      const text = locale.startsWith("es")
+        ? String(shown).replace(".", ",")
+        : String(shown);
+      return `${text}${suffix}`;
     }
   }
   return String(n);

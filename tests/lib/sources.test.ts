@@ -98,6 +98,9 @@ describe("siteName and channels", () => {
     expect(channelLabel("s:mail", names)).toBe("mail");
     expect(channelLabel("r:Instagram", names)).toBe("Instagram");
     expect(channelLabel("direct", names)).toBe("Direct or unknown");
+    expect(channelLabel("direct", names, "Directo o desconocido")).toBe(
+      "Directo o desconocido",
+    );
   });
 });
 
@@ -109,17 +112,17 @@ describe("parseSourceForm", () => {
   });
   it("needs a name", () => {
     expect(parseSourceForm(form({}))).toEqual({
-      error: "Give the link a name, like TikTok.",
+      error: "sourceNameMissing",
     });
   });
   it("limits the name", () => {
     expect(parseSourceForm(form({ label: "x".repeat(41) }))).toEqual({
-      error: "Keep the name under 40 characters.",
+      error: "sourceNameTooLong",
     });
   });
   it("needs letters or numbers somewhere", () => {
     expect(parseSourceForm(form({ label: "!!!" }))).toEqual({
-      error: "Use at least one letter or number in the name.",
+      error: "sourceNameEmpty",
     });
   });
 });

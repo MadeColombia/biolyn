@@ -1,6 +1,7 @@
 import "server-only";
 import { appleConfig } from "@/lib/apple-pass";
 import { googleConfig } from "@/lib/google-pass";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/locale";
 import { getPublicProfile } from "@/lib/profiles";
 import { cardDesign, cardStyleFrom, cardVersion } from "@/lib/qr-card";
 import { cleanSource, sourceUrl } from "@/lib/sources";
@@ -21,6 +22,7 @@ export async function passContentFor(
   const profile = await getPublicProfile(username.toLowerCase());
   if (!profile) return null;
   const code = cleanSource(params.get("s"));
+  const lang = params.get("lang");
   const pageUrl = `${siteUrl()}/${profile.username}`;
   const content: PassContent = {
     username: profile.username,
@@ -31,6 +33,7 @@ export async function passContentFor(
     style: cardStyleFrom(params.get("style")),
     theme: profile.theme,
     code,
+    locale: isLocale(lang) ? lang : DEFAULT_LOCALE,
   };
   const version = cardVersion([
     content.name,

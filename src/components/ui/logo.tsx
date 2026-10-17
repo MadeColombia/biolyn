@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { homePath } from "@/i18n/locale";
 import { cx } from "./recipes";
 
 /**
@@ -106,10 +108,12 @@ export function Logo({
   animated?: boolean;
   className?: string;
 }) {
+  const t = useTranslations("shell");
+  const locale = useLocale();
   return (
     <Link
-      href="/"
-      aria-label="biolyn home"
+      href={homePath(locale)}
+      aria-label={t("homeLabel")}
       className={cx(
         "isolate inline-flex items-center gap-2.5 font-display text-xl font-extrabold tracking-tight",
         className,

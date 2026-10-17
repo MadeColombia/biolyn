@@ -2,6 +2,7 @@
 // visitor to a "save" link that carries the whole pass in a signed token.
 import "server-only";
 import { createSign } from "node:crypto";
+import { translator } from "@/i18n/translate";
 import { envBytes, passLook, type PassContent } from "@/lib/wallet";
 
 export type GoogleConfig = {
@@ -55,6 +56,7 @@ export function googlePass(
   siteUrl: string,
 ) {
   const look = passLook(content);
+  const t = translator(content.locale);
   const classId = `${config.issuerId}.biolyn_share_card`;
   return {
     genericClasses: [{ id: classId }],
@@ -80,7 +82,7 @@ export function googlePass(
           alternateText: look.address,
         },
         linksModuleData: {
-          uris: [{ uri: content.pageUrl, description: "Open the page" }],
+          uris: [{ uri: content.pageUrl, description: t("card.passOpen") }],
         },
       },
     ],

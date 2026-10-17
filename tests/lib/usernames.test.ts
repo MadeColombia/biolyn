@@ -22,15 +22,13 @@ describe("validateUsername", () => {
     ["emoji", "ethan🙂"],
     ["empty", ""],
   ])("rejects %s", (_label, name) => {
-    expect(validateUsername(name)).toMatch(/3 to 30 characters/);
+    expect(validateUsername(name)).toBe("usernameFormat");
   });
 
   it("rejects every reserved name, in any case", () => {
     for (const name of RESERVED_USERNAMES) {
       if (!/^[a-z0-9_.]{3,30}$/.test(name)) continue;
-      expect(validateUsername(name.toUpperCase())).toBe(
-        "That username is reserved.",
-      );
+      expect(validateUsername(name.toUpperCase())).toBe("usernameReserved");
     }
   });
 

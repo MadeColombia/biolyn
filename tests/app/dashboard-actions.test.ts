@@ -15,6 +15,12 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+// No language header or cookie: messages come back in English.
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers(),
+  cookies: async () => ({ get: () => undefined }),
+}));
+
 let db: FakeClient;
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => db }));
 
@@ -32,8 +38,10 @@ const fetchScreenshot = vi.fn<
 >(async () => null);
 vi.mock("@/lib/link-preview", () => ({ fetchPreviewImage, fetchScreenshot }));
 
-const actions = await import("@/app/dashboard/actions");
+const actions = await import("@/app/[locale]/dashboard/actions");
 
+const UNSAFE =
+  "Google Safe Browsing flags this link as unsafe, so it can't be added.";
 const USER = { id: "u1" };
 const PROFILE = {
   id: "p1",
@@ -223,14 +231,17 @@ describe("updateProfile", () => {
   });
 
   it("checks every link in the bio", async () => {
-    checkLinkUrl.mockResolvedValueOnce(null).mockResolvedValueOnce("unsafe!");
+    checkLinkUrl.mockResolvedValueOnce(null).mockResolvedValueOnce("unsafe");
     db = fakeClient();
     expect(
       await actions.updateProfile(
         {},
         form({ bio: '<a href="https://a.com">a</a> <a href="b.com">b</a>' }),
       ),
-    ).toEqual({ error: "Link in your bio: unsafe!" });
+    ).toEqual({
+      error:
+        "Link in your bio: Google Safe Browsing flags this link as unsafe, so it can't be added.",
+    });
     expect(checkLinkUrl).toHaveBeenCalledWith("https://b.com/");
     expect(db.from).not.toHaveBeenCalled();
   });
@@ -258,14 +269,14 @@ describe("addLink", () => {
   });
 
   it("refuses links that fail the safety check", async () => {
-    checkLinkUrl.mockResolvedValueOnce("unsafe!");
+    checkLinkUrl.mockResolvedValueOnce("unsafe");
     db = fakeClient();
     expect(
       await actions.addLink(
         {},
         form({ title: "x", url: "javascript:alert(1)" }),
       ),
-    ).toEqual({ error: "unsafe!" });
+    ).toEqual({ error: UNSAFE });
     expect(db.from).not.toHaveBeenCalled();
   });
 
@@ -491,9 +502,9 @@ describe("updateLink", () => {
     expect(await edit({ title: "", url: "https://a.com" })).toEqual({
       error: "Add a title and a URL.",
     });
-    checkLinkUrl.mockResolvedValueOnce("unsafe!");
+    checkLinkUrl.mockResolvedValueOnce("unsafe");
     expect(await edit({ title: "x", url: "https://bad.com" })).toEqual({
-      error: "unsafe!",
+      error: UNSAFE,
     });
     expect(db.from).not.toHaveBeenCalled();
   });
@@ -623,8 +634,8 @@ describe("loadPreview", () => {
     expect(await actions.loadPreview("  ")).toEqual({
       error: "Add the URL first.",
     });
-    checkLinkUrl.mockResolvedValueOnce("unsafe!");
-    expect(await actions.loadPreview("bad.com")).toEqual({ error: "unsafe!" });
+    checkLinkUrl.mockResolvedValueOnce("unsafe");
+    expect(await actions.loadPreview("bad.com")).toEqual({ error: UNSAFE });
     expect(checkLinkUrl).toHaveBeenCalledWith("https://bad.com");
     expect(db.from).not.toHaveBeenCalled();
   });
@@ -899,10 +910,12 @@ describe("updateSocials", () => {
 
   it("refuses an unsafe social URL", async () => {
     db = fakeClient();
-    checkLinkUrl.mockResolvedValueOnce("Use a public website address");
+    checkLinkUrl.mockResolvedValueOnce("privateHost");
     expect(
       await actions.updateSocials({}, form({ x: "http://localhost/x" })),
-    ).toEqual({ error: "Use a public website address" });
+    ).toEqual({
+      error: "Use a public website address, not a local or IP address.",
+    });
   });
 
   it("reports a failed save", async () => {

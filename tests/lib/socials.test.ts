@@ -28,7 +28,7 @@ describe("normalizeSocial", () => {
 
   it("rejects a broken URL", () => {
     expect(normalizeSocial("x", "https://")).toEqual({
-      error: "X: that URL doesn't look right.",
+      error: "socialUrl",
     });
   });
 
@@ -36,7 +36,7 @@ describe("normalizeSocial", () => {
     "rejects unsafe or invalid handle %s",
     (value) => {
       expect(normalizeSocial("github", value)).toEqual({
-        error: "GitHub: use a handle like @name or a full URL.",
+        error: "socialHandle",
       });
     },
   );
@@ -52,7 +52,7 @@ describe("normalizeSocial", () => {
 
   it("rejects a bad email", () => {
     expect(normalizeSocial("email", "not-an-email")).toEqual({
-      error: "Email: that email doesn't look right.",
+      error: "socialEmail",
     });
   });
 });

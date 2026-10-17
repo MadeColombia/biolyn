@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { button } from "@/components/ui/recipes";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -13,6 +14,7 @@ export function AccountLink({
 }: {
   className?: string;
 }) {
+  const t = useTranslations("shell");
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export function AccountLink({
       href={signedIn ? "/dashboard" : "/login"}
       className={className}
     >
-      {signedIn ? "Dashboard" : "Log in"}
+      {signedIn ? t("dashboard") : t("logIn")}
     </Link>
   );
 }

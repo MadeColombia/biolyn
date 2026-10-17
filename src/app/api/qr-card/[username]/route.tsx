@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/locale";
+import { translator } from "@/i18n/translate";
 import { getPublicProfile } from "@/lib/profiles";
 import {
   CARD_SIZE,
@@ -25,7 +27,8 @@ const fonts = Promise.all([
 
 // The share card picture: QR code, name and page address.
 // ?style=brand|night|page picks the colors, ?s=<code> points the QR code
-// at a tracking link, and ?download=1 saves it as a file.
+// at a tracking link, ?lang=es writes it in Spanish and ?download=1
+// saves it as a file.
 export async function GET(
   request: NextRequest,
   ctx: RouteContext<"/api/qr-card/[username]">,
@@ -37,6 +40,8 @@ export async function GET(
   const params = request.nextUrl.searchParams;
   const style = cardStyleFrom(params.get("style"));
   const code = cleanSource(params.get("s"));
+  const lang = params.get("lang");
+  const t = translator(isLocale(lang) ? lang : DEFAULT_LOCALE);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://biolyn.link";
   const pageUrl = `${siteUrl}/${profile.username}`;
   const qrUrl = code ? sourceUrl(siteUrl, profile.username, code) : pageUrl;
@@ -156,7 +161,7 @@ export async function GET(
           alignItems: "center",
         }}
       >
-        <div style={{ fontSize: 34, color: p.muted }}>Scan to open my page</div>
+        <div style={{ fontSize: 34, color: p.muted }}>{t("card.scan")}</div>
         <div
           style={{
             marginTop: 12,

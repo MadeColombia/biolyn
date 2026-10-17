@@ -18,7 +18,7 @@ import {
 
 describe("cardStyleFrom", () => {
   it("keeps known styles", () => {
-    for (const id of Object.keys(CARD_STYLES)) {
+    for (const id of CARD_STYLES) {
       expect(cardStyleFrom(id)).toBe(id);
     }
   });
@@ -149,11 +149,17 @@ describe("cardUrl and cardChoices", () => {
     expect(choices.map((c) => c.id)).toEqual(["brand", "night", "page"]);
     expect(choices[0]).toEqual({
       id: "brand",
-      label: "Light",
       src: "/api/qr-card/ana?style=brand&s=flyer&v=x1",
       download: "/api/qr-card/ana?style=brand&s=flyer&v=x1&download=1",
     });
     expect(cardChoices("ana")[1].src).toBe("/api/qr-card/ana?style=night");
+    // Spanish cards say so in the address; English ones keep their old one.
+    expect(cardChoices("ana", { lang: "es" })[0].src).toBe(
+      "/api/qr-card/ana?style=brand&lang=es",
+    );
+    expect(cardChoices("ana", { lang: "en" })[0].src).toBe(
+      "/api/qr-card/ana?style=brand",
+    );
   });
 
   it("adds wallet links only for wallets that are set up", () => {

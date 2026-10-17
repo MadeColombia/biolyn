@@ -5,6 +5,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import forge from "node-forge";
 import { zipSync } from "fflate";
+import { translator } from "@/i18n/translate";
 import { envBytes, passLook, rgb, type PassContent } from "@/lib/wallet";
 
 export type AppleConfig = {
@@ -79,13 +80,14 @@ export function passJson(
   serialNumber: string,
 ) {
   const look = passLook(content);
+  const t = translator(content.locale);
   return {
     formatVersion: 1,
     passTypeIdentifier: config.passTypeId,
     teamIdentifier: config.teamId,
     serialNumber,
     organizationName: "biolyn",
-    description: `${content.name} on biolyn`,
+    description: t("card.passDescription", { name: content.name }),
     logoText: "biolyn",
     backgroundColor: rgb(look.background),
     foregroundColor: rgb(look.text),
@@ -100,11 +102,11 @@ export function passJson(
     ],
     generic: {
       primaryFields: [{ key: "name", label: "", value: content.name }],
-      secondaryFields: [{ key: "page", label: "Page", value: look.address }],
+      secondaryFields: [{ key: "page", label: t("card.passPage"), value: look.address }],
       backFields: [
         {
           key: "link",
-          label: "Open the page",
+          label: t("card.passOpen"),
           value: content.pageUrl,
           attributedValue: `<a href="${content.pageUrl}">${look.address}</a>`,
         },

@@ -15,12 +15,15 @@ export type Socials = Partial<Record<SocialId, string>>;
 const HANDLE = /^[A-Za-z0-9_.-]{1,50}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Turns what the user typed into a link, or returns an error message.
+// Turns what the user typed into a link, or returns the key of an
+// "errors" message (it takes the platform name as {platform}).
 // Empty input returns { url: null }, which means "remove this platform".
 export function normalizeSocial(
   id: SocialId,
   raw: string,
-): { url: string | null } | { error: string } {
+):
+  | { url: string | null }
+  | { error: "socialEmail" | "socialUrl" | "socialHandle" } {
   const value = raw.trim();
   if (!value) return { url: null };
   const platform = SOCIAL_PLATFORMS.find((p) => p.id === id)!;
@@ -29,7 +32,7 @@ export function normalizeSocial(
     const email = value.replace(/^mailto:/i, "");
     return EMAIL.test(email)
       ? { url: `mailto:${email}` }
-      : { error: `${platform.label}: that email doesn't look right.` };
+      : { error: "socialEmail" };
   }
 
   if (/^https?:\/\//i.test(value)) {
@@ -37,14 +40,14 @@ export function normalizeSocial(
       new URL(value);
       return { url: value };
     } catch {
-      return { error: `${platform.label}: that URL doesn't look right.` };
+      return { error: "socialUrl" };
     }
   }
 
   const handle = value.replace(/^@/, "");
   return HANDLE.test(handle)
     ? { url: platform.base + handle }
-    : { error: `${platform.label}: use a handle like @name or a full URL.` };
+    : { error: "socialHandle" };
 }
 
 // Reads the jsonb column safely, keeping only known platforms with safe URLs.

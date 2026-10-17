@@ -63,15 +63,18 @@ export function isAllowedPreview(url: string, userId: string) {
 
 /**
  * Reads the add and edit link forms. The URL still needs the safety
- * check, and the pictures the ownership checks, after this.
+ * check, and the pictures the ownership checks, after this. Errors are
+ * keys of "errors" messages.
  */
 export function parseLinkForm(
   formData: FormData,
-): { error: string } | { values: LinkValues } {
+):
+  | { error: "linkMissing" | "titleTooLong" | "endBeforeStart" }
+  | { values: LinkValues } {
   const title = String(formData.get("title") ?? "").trim();
   let url = String(formData.get("url") ?? "").trim();
-  if (!title || !url) return { error: "Add a title and a URL." };
-  if (title.length > 80) return { error: "Keep the title under 80 characters." };
+  if (!title || !url) return { error: "linkMissing" };
+  if (title.length > 80) return { error: "titleTooLong" };
   if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
 
   // The form converts the optional schedule to ISO time in the browser,
@@ -79,7 +82,7 @@ export function parseLinkForm(
   const starts_at = isoOrNull(formData.get("starts_at"));
   const ends_at = isoOrNull(formData.get("ends_at"));
   if (starts_at && ends_at && ends_at <= starts_at) {
-    return { error: "The end time must be after the start time." };
+    return { error: "endBeforeStart" };
   }
 
   const rawSize = formData.get("size");

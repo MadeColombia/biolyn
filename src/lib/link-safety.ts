@@ -14,23 +14,25 @@ export function isPublicHost(hostname: string) {
   );
 }
 
-// Basic checks every link must pass. Returns an error message, or null
-// when the link is fine.
-export async function checkLinkUrl(raw: string): Promise<string | null> {
+export type LinkProblem = "badUrl" | "badProtocol" | "privateHost" | "unsafe";
+
+// Basic checks every link must pass. Returns the key of an "errors"
+// message, or null when the link is fine.
+export async function checkLinkUrl(raw: string): Promise<LinkProblem | null> {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    return "That URL doesn't look right.";
+    return "badUrl";
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return "Links must start with http:// or https://.";
+    return "badProtocol";
   }
   if (!isPublicHost(url.hostname)) {
-    return "Use a public website address, not a local or IP address.";
+    return "privateHost";
   }
   if (await isFlaggedByGoogle(url.href)) {
-    return "Google Safe Browsing flags this link as unsafe, so it can't be added.";
+    return "unsafe";
   }
   return null;
 }

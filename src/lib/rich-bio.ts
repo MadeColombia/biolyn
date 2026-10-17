@@ -190,21 +190,23 @@ export function cleanBio(nodes: BioNode[]): BioNode[] {
 }
 
 /**
- * Cleans a bio sent by the dashboard. Returns what to store, or an error
- * message for the user.
+ * Cleans a bio sent by the dashboard. Returns what to store, or the key
+ * of an "errors" message for the user (bioTooLong takes {max}).
  */
 export function sanitizeBio(
   raw: string,
-): { bio: string; links: string[] } | { error: string } {
+):
+  | { bio: string; links: string[] }
+  | { error: "bioTooLong" | "bioTooFormatted" } {
   const nodes = cleanBio(parseBio(raw));
   const visible = plainBio(nodes);
   if (!visible.trim()) return { bio: "", links: [] };
   if (visible.length > BIO_MAX_CHARS) {
-    return { error: `Keep your bio under ${BIO_MAX_CHARS} characters.` };
+    return { error: "bioTooLong" };
   }
   const bio = serializeBio(nodes);
   if (bio.length > BIO_MAX_STORED) {
-    return { error: "Your bio has too much formatting. Remove some of it." };
+    return { error: "bioTooFormatted" };
   }
   return { bio, links: bioLinks(nodes) };
 }
