@@ -27,6 +27,8 @@ const profile = {
 };
 const link = (over: object) => ({
   id: "l",
+  kind: "link",
+  parent_id: null,
   title: "T",
   url: "https://example.com",
   embed: false,
@@ -195,5 +197,56 @@ describe("getPublicProfile", () => {
       method: "order",
       args: ["position"],
     });
+  });
+
+  it("nests links in their sections and hides empty or hidden ones", async () => {
+    db = fakeClient({
+      profiles: [{ data: profile }],
+      links: [
+        {
+          // Ordered by position: each section's own links keep their order.
+          data: [
+            link({ id: "a" }),
+            link({
+              id: "s1",
+              kind: "section",
+              url: null,
+              title: "Episodes",
+              layout: "carousel",
+            }),
+            link({ id: "x", parent_id: "s1", image_url: "https://img/x.jpg" }),
+            link({ id: "s2", kind: "section", url: null, title: null }),
+            link({ id: "y", parent_id: "s1" }),
+            // A section with only an ended link shows nothing.
+            link({ id: "s3", kind: "section", url: null, layout: "grid" }),
+            link({
+              id: "z",
+              parent_id: "s3",
+              ends_at: "2026-10-13T11:00:00Z",
+            }),
+            // Its section is hidden, so the query didn't return it.
+            link({ id: "w", parent_id: "hidden" }),
+            link({ id: "s4", kind: "section", url: null, title: null }),
+            link({ id: "v", parent_id: "s4", embed: true, url: "https://youtu.be/dQw4w9WgXcQ" }),
+          ],
+        },
+      ],
+    });
+    const page = await getPublicProfile("ethan");
+    expect(page?.items.map((i) => i.id)).toEqual(["a", "s1", "s4"]);
+    expect(page?.items[1]).toMatchObject({
+      kind: "section",
+      title: "Episodes",
+      layout: "carousel",
+      links: [
+        { id: "x", image_url: "https://img/x.jpg" },
+        { id: "y", image_url: null },
+      ],
+    });
+    // Unknown layouts fall back to a list; players stay players.
+    expect(page?.items[2]).toMatchObject({ title: null, layout: "list" });
+    const s4 = page?.items[2];
+    expect(s4?.kind === "section" && s4.links[0].embed?.kind).toBe("youtube");
+    expect(db.queries.links[0].calls[0].args[0]).toContain("parent_id");
   });
 });

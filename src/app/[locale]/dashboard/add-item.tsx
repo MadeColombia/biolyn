@@ -4,17 +4,24 @@ import { useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { MAX_PHOTOS } from "@/lib/gallery";
 import { Button, Heading, cx } from "@/components/ui";
-import { addGallery, addLink } from "./actions";
-import { LinkForm } from "./link-form";
+import { addGallery, addLink, addSection } from "./actions";
+import { LinkForm, type SectionOption } from "./link-form";
+import { SectionForm } from "./section-form";
 
-type Step = "choose" | "link";
+type Step = "choose" | "link" | "section";
 
 /**
- * The "+ Add" button. It opens a popup that asks what to add: a link
- * (the link form opens in the same popup) or a photo carousel (added
- * right away, then filled with photos from its row in the list).
+ * The "+ Add" button. It opens a popup that asks what to add: a link or
+ * a section (their forms open in the same popup) or a photo carousel
+ * (added right away, then filled with photos from its row in the list).
  */
-export function AddItemMenu({ userId }: { userId: string }) {
+export function AddItemMenu({
+  userId,
+  sections,
+}: {
+  userId: string;
+  sections: SectionOption[];
+}) {
   const t = useTranslations("addItem");
   const common = useTranslations("common");
   const dialog = useRef<HTMLDialogElement>(null);
@@ -64,7 +71,11 @@ export function AddItemMenu({ userId }: { userId: string }) {
         <div className="flex flex-col gap-6 p-6">
           <div className="flex items-center justify-between gap-3">
             <Heading as="h2" size="section" id="add-item-title">
-              {step === "choose" ? t("chooseTitle") : t("linkTitle")}
+              {step === "choose"
+                ? t("chooseTitle")
+                : step === "link"
+                  ? t("linkTitle")
+                  : t("sectionTitle")}
             </Heading>
             <button
               type="button"
@@ -88,12 +99,19 @@ export function AddItemMenu({ userId }: { userId: string }) {
 
           {step === "choose" ? (
             <div className="flex flex-col gap-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Choice
                   icon={<LinkIcon />}
                   title={t("link")}
                   hint={t("linkHint")}
                   onClick={() => setStep("link")}
+                  disabled={pending}
+                />
+                <Choice
+                  icon={<SectionIcon />}
+                  title={t("section")}
+                  hint={t("sectionHint")}
+                  onClick={() => setStep("section")}
                   disabled={pending}
                 />
                 <Choice
@@ -111,10 +129,20 @@ export function AddItemMenu({ userId }: { userId: string }) {
                 </p>
               )}
             </div>
+          ) : step === "section" ? (
+            <SectionForm
+              key={round}
+              action={addSection}
+              submitLabel={t("addSection")}
+              pendingLabel={common("adding")}
+              onSaved={close}
+              onCancel={() => setStep("choose")}
+            />
           ) : (
             <LinkForm
               key={round}
               userId={userId}
+              sections={sections}
               action={addLink}
               submitLabel={t("addLink")}
               pendingLabel={common("adding")}
@@ -157,7 +185,9 @@ function Choice({
         {icon}
       </span>
       <span className="flex flex-col gap-1">
-        <span className="font-bold text-ink">{busy ? common("adding") : title}</span>
+        <span className="font-bold text-ink">
+          {busy ? common("adding") : title}
+        </span>
         <span className="text-sm text-ink-muted">{hint}</span>
       </span>
     </button>
@@ -213,6 +243,22 @@ function CarouselIcon() {
       <circle cx="9" cy="20.5" r="1.3" />
       <circle cx="12" cy="20.5" r="1.3" opacity=".4" />
       <circle cx="15" cy="20.5" r="1.3" opacity=".4" />
+    </svg>
+  );
+}
+
+function SectionIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="24"
+      height="24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <rect x="2" y="3" width="14" height="3" rx="1.5" />
+      <rect x="2" y="9" width="9" height="11" rx="2" />
+      <rect x="13" y="9" width="9" height="11" rx="2" opacity=".4" />
     </svg>
   );
 }

@@ -122,7 +122,10 @@
       "copied": "Copied",
       "email": "Email",
       "on": "Share on {app}"
-    }
+    },
+    "previousLinks": "Previous links",
+    "nextLinks": "Next links",
+    "links": "Links"
   },
   "dashboard": {
     "signOut": "Sign out",
@@ -135,7 +138,7 @@
     "profileTitle": "Profile",
     "profileText": "Your picture, name and bio sit at the top of your page.",
     "contentTitle": "Content",
-    "contentText": "Add links and photo carousels, then drag them into any order. Hidden items stay here but not on your page.",
+    "contentText": "Add links, sections and photo carousels, then drag them into any order. Drag links into a section to group them. Hidden items stay here but not on your page.",
     "socialsTitle": "Socials",
     "socialsText": "Shown as icons under your name. Leave a field empty to remove it.",
     "themeTitle": "Theme",
@@ -250,7 +253,11 @@
     "linkHint": "A button to any website, video or song",
     "carousel": "Photo carousel",
     "carouselHint": "Up to {max} photos, as a carousel or a grid",
-    "addLink": "Add link"
+    "addLink": "Add link",
+    "section": "Section",
+    "sectionHint": "A title with links under it, as a list or a row of cards",
+    "sectionTitle": "Add a section",
+    "addSection": "Add section"
   },
   "linkForm": {
     "title": "Title",
@@ -279,10 +286,23 @@
     "schedule": "Schedule (optional)",
     "showFrom": "Show from",
     "hideAfter": "Hide after",
-    "saveChanges": "Save changes"
+    "saveChanges": "Save changes",
+    "section": "Section",
+    "noSection": "None, on the main list"
+  },
+  "sectionForm": {
+    "title": "Section title",
+    "titlePlaceholder": "Latest episodes",
+    "titleHint": "Optional. It shows above the links.",
+    "style": "Style",
+    "list": "List",
+    "listHint": "Buttons, one under another.",
+    "carousel": "Carousel",
+    "carouselHint": "Cards in a row that people swipe.",
+    "carouselTip": "Tip: give these links a picture. It shows on each card."
   },
   "linkList": {
-    "empty": "Nothing here yet. Tap Add to make your first link or photo carousel.",
+    "empty": "Nothing here yet. Tap Add to make your first link, section or photo carousel.",
     "big": "Big",
     "hidden": "Hidden",
     "showsBetween": "Shows {start} to {end}",
@@ -294,7 +314,18 @@
     "photoGrid": "Photo grid",
     "photoCarousel": "Photo carousel",
     "noPhotos": "No photos yet, hidden on your page",
-    "photoCount": "{count, plural, one {# photo} other {# photos}}"
+    "photoCount": "{count, plural, one {# photo} other {# photos}}",
+    "untitled": "Section without a title",
+    "linkCount": "{count, plural, one {# link} other {# links}}",
+    "emptySection": "No links yet, hidden on your page",
+    "addHere": "Add link here",
+    "dropHere": "Drag links here",
+    "styleList": "List",
+    "styleCarousel": "Carousel",
+    "deleteSectionTitle": "Delete this section?",
+    "deleteSectionText": "{count, plural, one {Its link can stay on your page, or go with it.} other {Its # links can stay on your page, or go with it.}}",
+    "keepLinks": "Delete section, keep links",
+    "deleteAll": "Delete everything"
   },
   "photos": {
     "showAs": "Show as",
@@ -448,6 +479,10 @@
     "reportsOff": "Reports aren't available right now.",
     "reportFailed": "Could not send the report. Try again.",
     "reportTooMany": "You've sent several reports already. Try again later.",
-    "reportNoPage": "That page doesn't exist."
+    "reportNoPage": "That page doesn't exist.",
+    "sectionGone": "That section no longer exists. Reload the page.",
+    "sectionFull": "A section can hold up to {max} links.",
+    "maxSections": "You can have up to {max} sections.",
+    "sectionFailed": "Could not save the section."
   }
 }

@@ -97,7 +97,10 @@ describe("signed-out users", () => {
     ["deleteLink", () => actions.deleteLink("l1")],
     ["toggleLink", () => actions.toggleLink("l1", true)],
     ["toggleEmbed", () => actions.toggleEmbed("l1", true)],
-    ["reorderLinks", () => actions.reorderLinks([])],
+    ["reorderItems", () => actions.reorderItems([])],
+    ["addSection", () => actions.addSection({}, form({}))],
+    ["updateSection", () => actions.updateSection("s1", {}, form({}))],
+    ["deleteSection", () => actions.deleteSection("s1", true)],
     ["setTheme", () => actions.setTheme("midnight")],
     ["setFont", () => actions.setFont("elegant")],
     ["setCorners", () => actions.setCorners("pill")],
@@ -717,38 +720,316 @@ describe("discardLinkImage", () => {
   });
 });
 
-describe("reorderLinks", () => {
-  const own = { data: [{ id: "a" }, { id: "b" }, { id: "c" }] };
+describe("reorderItems", () => {
+  const own = {
+    data: [
+      { id: "a", kind: "link" },
+      { id: "b", kind: "link" },
+      { id: "s", kind: "section" },
+    ],
+  };
+  const writes = () =>
+    db.queries.links.slice(1).map((q) => [q.calls[0].args[0], q.calls[1].args[1]]);
 
-  it("saves the new positions", async () => {
+  it("saves positions and sections, main list first", async () => {
     signedIn({ links: [own] });
-    await actions.reorderLinks(["c", "a", "b"]);
-    const updates = db.queries.links
-      .slice(1)
-      .map((q) => [q.calls[0].args[0], q.calls[1].args[1]]);
-    expect(updates).toEqual([
-      [{ position: 0 }, "c"],
-      [{ position: 1 }, "a"],
-      [{ position: 2 }, "b"],
+    await actions.reorderItems([{ id: "s", children: ["b"] }, { id: "a" }]);
+    expect(writes()).toEqual([
+      [{ position: 0, parent_id: null }, "s"],
+      [{ position: 1, parent_id: null }, "a"],
+      [{ position: 0, parent_id: "s" }, "b"],
     ]);
+    expect(db.queries.links[1].calls).toContainEqual({
+      method: "eq",
+      args: ["profile_id", "p1"],
+    });
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
   });
 
   it.each([
-    ["someone else's link", ["a", "b", "x"]],
-    ["a missing link", ["a", "b"]],
-    ["a duplicate", ["a", "a", "b"]],
-    ["an extra link", ["a", "b", "c", "x"]],
-  ])("changes nothing when the list has %s", async (_label, ids) => {
+    ["someone else's item", [{ id: "a" }, { id: "b" }, { id: "x" }]],
+    ["a missing item", [{ id: "a" }, { id: "b" }]],
+    ["a link inside a link", [{ id: "a", children: ["b"] }, { id: "s" }]],
+  ])("changes nothing when the tree has %s", async (_label, tree) => {
     signedIn({ links: [own] });
-    await actions.reorderLinks(ids);
+    await actions.reorderItems(tree);
     expect(db.queries.links).toHaveLength(1);
     expect(updateTag).not.toHaveBeenCalled();
   });
 
-  it("changes nothing when links can't be read", async () => {
+  it("changes nothing when items can't be read", async () => {
     signedIn({ links: [{ data: null }] });
-    await actions.reorderLinks([]);
+    await actions.reorderItems([]);
     expect(db.queries.links).toHaveLength(1);
+  });
+});
+
+describe("addSection", () => {
+  it("adds a section at the end of the page", async () => {
+    signedIn({ links: [{ data: [{ kind: "link" }, { kind: "section" }] }, {}] });
+    expect(
+      await actions.addSection(
+        {},
+        form({ title: " Episodes ", layout: "carousel" }),
+      ),
+    ).toEqual({});
+    expect(lastWrite("links", "insert")).toEqual([
+      {
+        profile_id: "p1",
+        kind: "section",
+        title: "Episodes",
+        layout: "carousel",
+        position: 2,
+      },
+    ]);
+    expect(allow).toHaveBeenCalledWith("addlink:p1", 30, 600);
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("checks the title before touching the database", async () => {
+    db = fakeClient();
+    expect(
+      await actions.addSection({}, form({ title: "x".repeat(81) })),
+    ).toEqual({ error: "Keep the title under 80 characters." });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it("stops at 20 sections and at the item limit", async () => {
+    signedIn({ links: [{ data: Array(20).fill({ kind: "section" }) }] });
+    expect(await actions.addSection({}, form({}))).toEqual({
+      error: "You can have up to 20 sections.",
+    });
+    signedIn({ links: [{ data: Array(100).fill({ kind: "link" }) }] });
+    expect((await actions.addSection({}, form({}))).error).toMatch(
+      /up to 100 items/,
+    );
+    expect(lastWrite("links", "insert")).toBeUndefined();
+  });
+
+  it("rate limits", async () => {
+    allow.mockResolvedValue(false);
+    signedIn();
+    expect((await actions.addSection({}, form({}))).error).toMatch(
+      /very fast/,
+    );
+    expect(db.from).not.toHaveBeenCalledWith("links");
+  });
+
+  it("reports a failed save", async () => {
+    signedIn({ links: [{ data: null }, { error: { code: "x" } }] });
+    expect(await actions.addSection({}, form({}))).toEqual({
+      error: "Could not save the section.",
+    });
+  });
+});
+
+describe("updateSection", () => {
+  it("saves the title and style of the user's own section", async () => {
+    signedIn({ links: [{ error: null }] });
+    expect(
+      await actions.updateSection("s1", {}, form({ title: "", layout: "list" })),
+    ).toEqual({ saved: true });
+    expect(lastWrite("links", "update")).toEqual([
+      { title: null, layout: "list" },
+    ]);
+    const calls = db.queries.links[0].calls;
+    expect(calls).toContainEqual({ method: "eq", args: ["id", "s1"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+    expect(calls).toContainEqual({ method: "eq", args: ["kind", "section"] });
+  });
+
+  it("reports errors", async () => {
+    db = fakeClient();
+    expect(
+      await actions.updateSection("s1", {}, form({ title: "x".repeat(81) })),
+    ).toEqual({ error: "Keep the title under 80 characters." });
+    signedIn({ links: [{ error: { code: "x" } }] });
+    expect(await actions.updateSection("s1", {}, form({}))).toEqual({
+      error: "Could not save the section.",
+    });
+  });
+});
+
+describe("deleteSection", () => {
+  const rows = {
+    data: [
+      { id: "a", kind: "link", parent_id: null },
+      { id: "s", kind: "section", parent_id: null },
+      { id: "x", kind: "link", parent_id: "s", image_url: `${IMAGES}u1/x.jpg` },
+      { id: "y", kind: "link", parent_id: "s", preview_url: "https://og/y.jpg" },
+      { id: "b", kind: "link", parent_id: null },
+    ],
+  };
+
+  it("can keep the links, where the section was", async () => {
+    signedIn({ links: [rows, {}] });
+    await actions.deleteSection("s", true);
+    const updates = db.queries.links
+      .slice(1, -1)
+      .map((q) => [q.calls[0].args[0], q.calls[1].args[1]]);
+    expect(updates).toEqual([
+      [{ position: 0 }, "a"],
+      [{ position: 1, parent_id: null }, "x"],
+      [{ position: 2, parent_id: null }, "y"],
+      [{ position: 3 }, "b"],
+    ]);
+    const last = db.queries.links.at(-1)!.calls;
+    expect(last.map((c) => c.method)).toContain("delete");
+    expect(last).toContainEqual({ method: "eq", args: ["id", "s"] });
+    expect(db.storage.remove).not.toHaveBeenCalled();
+    expect(updateTag).toHaveBeenCalledWith("profile:ethan");
+  });
+
+  it("can delete the links with it, and their pictures", async () => {
+    signedIn({ links: [rows, {}] });
+    await actions.deleteSection("s", false);
+    const deletes = db.queries.links.filter((q) =>
+      q.calls.some((c) => c.method === "delete"),
+    );
+    expect(deletes).toHaveLength(2);
+    expect(deletes[0].calls).toContainEqual({
+      method: "eq",
+      args: ["parent_id", "s"],
+    });
+    expect(deletes[0].calls).toContainEqual({
+      method: "eq",
+      args: ["profile_id", "p1"],
+    });
+    // Only our own stored picture is removed, not the outside preview.
+    expect(db.storage.remove).toHaveBeenCalledTimes(1);
+    expect(db.storage.remove).toHaveBeenCalledWith(["u1/x.jpg"]);
+  });
+
+  it("does nothing for an item that isn't the user's section", async () => {
+    signedIn({ links: [rows] });
+    await actions.deleteSection("a", false);
+    expect(lastWrite("links", "delete")).toBeUndefined();
+    signedIn({ links: [rows] });
+    await actions.deleteSection("nope", true);
+    expect(lastWrite("links", "delete")).toBeUndefined();
+    expect(lastWrite("links", "update")).toBeUndefined();
+  });
+
+  it("deletes an empty section", async () => {
+    signedIn({
+      links: [{ data: [{ id: "s", kind: "section", parent_id: null }] }, {}],
+    });
+    await actions.deleteSection("s", false);
+    expect(db.queries.links).toHaveLength(2);
+    expect(lastWrite("links", "delete")).toEqual([]);
+  });
+});
+
+describe("links in sections", () => {
+  it("adds a link inside a section", async () => {
+    signedIn({
+      links: [{ count: 3 }, { data: { id: "s1" } }, { data: [{ id: "x" }] }, {}],
+    });
+    expect(
+      await actions.addLink(
+        {},
+        form({ title: "Ep", url: "https://a.com", section_id: "s1" }),
+      ),
+    ).toEqual({});
+    expect(lastWrite("links", "insert")?.[0]).toMatchObject({
+      parent_id: "s1",
+      position: 3,
+    });
+    const check = db.queries.links[1].calls;
+    expect(check).toContainEqual({ method: "eq", args: ["profile_id", "p1"] });
+    expect(check).toContainEqual({ method: "eq", args: ["kind", "section"] });
+  });
+
+  it("refuses a section that is gone or full", async () => {
+    signedIn({ links: [{ count: 3 }, { data: null }] });
+    expect(
+      await actions.addLink(
+        {},
+        form({ title: "Ep", url: "https://a.com", section_id: "s1" }),
+      ),
+    ).toEqual({ error: "That section no longer exists. Reload the page." });
+    signedIn({
+      links: [
+        { count: 30 },
+        { data: { id: "s1" } },
+        { data: Array.from({ length: 24 }, (_, i) => ({ id: `o${i}` })) },
+      ],
+    });
+    expect(
+      await actions.addLink(
+        {},
+        form({ title: "Ep", url: "https://a.com", section_id: "s1" }),
+      ),
+    ).toEqual({ error: "A section can hold up to 24 links." });
+    expect(lastWrite("links", "insert")).toBeUndefined();
+  });
+
+  it("moves an edited link into a section, at its end", async () => {
+    signedIn({
+      links: [
+        { data: { parent_id: null } },
+        { data: { id: "s1" } },
+        // A full section still has room for the link already inside.
+        { data: Array.from({ length: 23 }, (_, i) => ({ id: `o${i}` })) },
+        { count: 9 },
+        { error: null },
+      ],
+    });
+    expect(
+      await actions.updateLink(
+        "l1",
+        {},
+        form({ title: "x", url: "https://a.com", section_id: "s1" }),
+      ),
+    ).toEqual({ saved: true });
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      parent_id: "s1",
+      position: 9,
+    });
+  });
+
+  it("moves an edited link back to the main list", async () => {
+    signedIn({
+      links: [{ data: { parent_id: "s1" } }, { count: 4 }, { error: null }],
+    });
+    await actions.updateLink(
+      "l1",
+      {},
+      form({ title: "x", url: "https://a.com", section_id: "" }),
+    );
+    expect(lastWrite("links", "update")?.[0]).toMatchObject({
+      parent_id: null,
+      position: 4,
+    });
+  });
+
+  it("keeps the place of a link that stays in its section", async () => {
+    signedIn({ links: [{ data: { parent_id: "s1" } }, { error: null }] });
+    await actions.updateLink(
+      "l1",
+      {},
+      form({ title: "x", url: "https://a.com", section_id: "s1" }),
+    );
+    expect(lastWrite("links", "update")?.[0]).not.toHaveProperty("parent_id");
+    expect(db.queries.links).toHaveLength(2);
+  });
+
+  it("refuses to move a link into a full section", async () => {
+    signedIn({
+      links: [
+        { data: { parent_id: null } },
+        { data: { id: "s1" } },
+        { data: Array.from({ length: 24 }, (_, i) => ({ id: `o${i}` })) },
+      ],
+    });
+    expect(
+      await actions.updateLink(
+        "l1",
+        {},
+        form({ title: "x", url: "https://a.com", section_id: "s1" }),
+      ),
+    ).toEqual({ error: "A section can hold up to 24 links." });
+    expect(lastWrite("links", "update")).toBeUndefined();
   });
 });
 

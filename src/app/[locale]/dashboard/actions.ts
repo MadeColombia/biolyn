@@ -32,6 +32,14 @@ import {
   ownPhotoPath,
 } from "@/lib/gallery";
 import { MAX_SOURCES, parseSourceForm } from "@/lib/sources";
+import {
+  MAX_SECTION_LINKS,
+  MAX_SECTIONS,
+  parseSectionForm,
+  planReorder,
+  sectionIdFrom,
+  type ItemTree,
+} from "@/lib/sections";
 import { actionTranslator } from "@/i18n/server";
 
 const MAX_LINKS = 100;
@@ -151,10 +159,19 @@ export async function addLink(
   if ((count ?? 0) >= MAX_LINKS) {
     return { error: t("errors.maxLinks", { max: MAX_LINKS }) };
   }
+  const sectionId = sectionIdFrom(formData);
+  if (sectionId) {
+    const problem = await sectionProblem(supabase, profile.id, sectionId);
+    if (problem)
+      return { error: t(`errors.${problem}`, { max: MAX_SECTION_LINKS }) };
+  }
 
-  const { error } = await supabase
-    .from("links")
-    .insert({ profile_id: profile.id, position: count ?? 0, ...values });
+  const { error } = await supabase.from("links").insert({
+    profile_id: profile.id,
+    position: count ?? 0,
+    ...values,
+    ...(sectionId && { parent_id: sectionId }),
+  });
   if (error) return { error: t("errors.linkSaveFailed") };
 
   refresh(profile.username);
@@ -168,8 +185,34 @@ function picturesAllowed(values: LinkValues, userId: string) {
   );
 }
 
-// Changes one link in place: title, URL, size, picture, schedule and
-// player setting. Its position, visibility and clicks stay as they are.
+// Why a link can't go into this section, or null when it can. `linkId`
+// is the link being moved, which doesn't count toward the limit.
+async function sectionProblem(
+  supabase: Supabase,
+  profileId: string,
+  sectionId: string,
+  linkId?: string,
+): Promise<"sectionGone" | "sectionFull" | null> {
+  const { data: section } = await supabase
+    .from("links")
+    .select("id")
+    .eq("id", sectionId)
+    .eq("profile_id", profileId)
+    .eq("kind", "section")
+    .maybeSingle();
+  if (!section) return "sectionGone";
+  const { data: inside } = await supabase
+    .from("links")
+    .select("id")
+    .eq("profile_id", profileId)
+    .eq("parent_id", sectionId);
+  const others = (inside ?? []).filter((l) => l.id !== linkId);
+  return others.length >= MAX_SECTION_LINKS ? "sectionFull" : null;
+}
+
+// Changes one link in place: title, URL, size, picture, schedule, player
+// setting and section. Its visibility and clicks stay as they are; a link
+// that changes section goes to the end of the new one.
 export async function updateLink(
   linkId: string,
   _prev: FormState,
@@ -188,16 +231,40 @@ export async function updateLink(
   }
   const { data: current } = await supabase
     .from("links")
-    .select("url, image_url, preview_url")
+    .select("url, image_url, preview_url, parent_id")
     .eq("id", linkId)
     .eq("profile_id", profile.id)
     .eq("kind", "link")
     .maybeSingle();
   if (!current) return { error: t("errors.linkGone") };
 
+  // Forms without the section field leave the link where it is.
+  let move = {};
+  if (formData.has("section_id")) {
+    const sectionId = sectionIdFrom(formData);
+    if (sectionId !== (current.parent_id ?? null)) {
+      if (sectionId) {
+        const problem = await sectionProblem(
+          supabase,
+          profile.id,
+          sectionId,
+          linkId,
+        );
+        if (problem) {
+          return { error: t(`errors.${problem}`, { max: MAX_SECTION_LINKS }) };
+        }
+      }
+      const { count } = await supabase
+        .from("links")
+        .select("id", { count: "exact", head: true })
+        .eq("profile_id", profile.id);
+      move = { parent_id: sectionId, position: count ?? 0 };
+    }
+  }
+
   const { error } = await supabase
     .from("links")
-    .update(values)
+    .update({ ...values, ...move })
     .eq("id", linkId)
     .eq("profile_id", profile.id);
   if (error) return { error: t("errors.linkSaveFailed") };
@@ -321,30 +388,141 @@ export async function toggleLink(linkId: string, isVisible: boolean) {
   refresh(profile.username);
 }
 
-// Saves a new order after a drag. `orderedIds` must contain exactly
-// the user's own link ids, otherwise nothing changes.
-export async function reorderLinks(orderedIds: string[]) {
+// Saves a new order after a drag: the top-level items in order, and the
+// links inside each section. The tree must hold exactly the user's own
+// items (see planReorder), otherwise nothing changes.
+export async function reorderItems(tree: ItemTree) {
   const { supabase, profile } = await requireOwnProfile();
-  const { data: links } = await supabase
+  const { data: rows } = await supabase
     .from("links")
-    .select("id")
+    .select("id, kind")
     .eq("profile_id", profile.id);
-  if (!links) return;
+  if (!rows) return;
+  const plan = planReorder(tree, rows);
+  if (!plan) return;
 
-  const own = new Set(links.map((l) => l.id));
-  if (
-    orderedIds.length !== own.size ||
-    new Set(orderedIds).size !== own.size ||
-    !orderedIds.every((id) => own.has(id))
-  ) {
-    return;
+  const save = (list: typeof plan) =>
+    Promise.all(
+      list.map(({ id, position, parent_id }) =>
+        supabase
+          .from("links")
+          .update({ position, parent_id })
+          .eq("id", id)
+          .eq("profile_id", profile.id),
+      ),
+    );
+  // Links leave their sections first, so a full section has room for
+  // the ones moving in.
+  await save(plan.filter((p) => p.parent_id === null));
+  await save(plan.filter((p) => p.parent_id !== null));
+  refresh(profile.username);
+}
+
+// Adds a section (a title with links under it) at the end of the page.
+export async function addSection(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const t = await actionTranslator();
+  const parsed = parseSectionForm(formData);
+  if ("error" in parsed) return { error: t(`errors.${parsed.error}`) };
+  const { supabase, profile } = await requireOwnProfile();
+  if (!(await allow(`addlink:${profile.id}`, 30, 600))) {
+    return { error: t("errors.itemsTooFast") };
+  }
+  const { data: items } = await supabase
+    .from("links")
+    .select("kind")
+    .eq("profile_id", profile.id);
+  const all = items ?? [];
+  if (all.length >= MAX_LINKS) {
+    return { error: t("errors.maxItems", { max: MAX_LINKS }) };
+  }
+  if (all.filter((l) => l.kind === "section").length >= MAX_SECTIONS) {
+    return { error: t("errors.maxSections", { max: MAX_SECTIONS }) };
   }
 
-  await Promise.all(
-    orderedIds.map((id, position) =>
-      supabase.from("links").update({ position }).eq("id", id),
-    ),
-  );
+  const { error } = await supabase.from("links").insert({
+    profile_id: profile.id,
+    kind: "section",
+    ...parsed.values,
+    position: all.length,
+  });
+  if (error) return { error: t("errors.sectionFailed") };
+
+  refresh(profile.username);
+  return {};
+}
+
+// Changes a section's title and style.
+export async function updateSection(
+  sectionId: string,
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const t = await actionTranslator();
+  const parsed = parseSectionForm(formData);
+  if ("error" in parsed) return { error: t(`errors.${parsed.error}`) };
+  const { supabase, profile } = await requireOwnProfile();
+  const { error } = await supabase
+    .from("links")
+    .update(parsed.values)
+    .eq("id", sectionId)
+    .eq("profile_id", profile.id)
+    .eq("kind", "section");
+  if (error) return { error: t("errors.sectionFailed") };
+  refresh(profile.username);
+  return { saved: true };
+}
+
+// Deletes a section. With `keepLinks` its links stay on the page, where
+// the section was; otherwise they are deleted with it.
+export async function deleteSection(sectionId: string, keepLinks: boolean) {
+  const { supabase, profile } = await requireOwnProfile();
+  const { data: rows } = await supabase
+    .from("links")
+    .select("id, kind, parent_id, image_url, preview_url")
+    .eq("profile_id", profile.id)
+    .order("position");
+  const all = rows ?? [];
+  if (!all.some((r) => r.id === sectionId && r.kind === "section")) return;
+  const inside = all.filter((r) => r.parent_id === sectionId);
+  const insideIds = new Set(inside.map((r) => r.id));
+
+  if (keepLinks) {
+    const order = all
+      .filter((r) => !r.parent_id)
+      .flatMap((r) => (r.id === sectionId ? inside : [r]));
+    await Promise.all(
+      order.map((r, position) =>
+        supabase
+          .from("links")
+          .update(
+            insideIds.has(r.id) ? { position, parent_id: null } : { position },
+          )
+          .eq("id", r.id)
+          .eq("profile_id", profile.id),
+      ),
+    );
+  } else if (inside.length > 0) {
+    await supabase
+      .from("links")
+      .delete()
+      .eq("parent_id", sectionId)
+      .eq("profile_id", profile.id);
+    for (const link of inside) {
+      await removeLinkImage(supabase, link.image_url);
+      await removeLinkImage(supabase, link.preview_url);
+    }
+  }
+
+  // Any link still inside falls back to the top level (on delete set
+  // null), so nothing is lost if a step above failed.
+  await supabase
+    .from("links")
+    .delete()
+    .eq("id", sectionId)
+    .eq("profile_id", profile.id);
   refresh(profile.username);
 }
 

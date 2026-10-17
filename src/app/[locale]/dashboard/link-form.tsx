@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Button, Field, button, cx } from "@/components/ui";
+import { Button, Field, button, cx, input } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
 import { createClient } from "@/lib/supabase/browser";
 import {
@@ -10,7 +10,15 @@ import {
   LINK_IMAGES_BUCKET,
   type LinkSize,
 } from "@/lib/link-form";
+import type { SectionLayout } from "@/lib/sections";
 import { discardLinkImage, loadPreview, type FormState } from "./actions";
+
+/** A section the link can go in, for the form's Section choice. */
+export type SectionOption = {
+  id: string;
+  title: string | null;
+  layout: SectionLayout;
+};
 
 export type EditableLink = {
   id: string;
@@ -74,10 +82,14 @@ async function toWideJpeg(file: File): Promise<Blob> {
 /**
  * The add and edit link form. `link` fills it in for editing; without
  * it the form starts empty. `onSaved` runs after a successful save.
+ * With `sections` the form asks which section the link goes in, starting
+ * at `sectionId` (null is the main list).
  */
 export function LinkForm({
   userId,
   link,
+  sections = [],
+  sectionId: initialSection = null,
   action,
   submitLabel,
   pendingLabel,
@@ -86,6 +98,8 @@ export function LinkForm({
 }: {
   userId: string;
   link?: EditableLink;
+  sections?: SectionOption[];
+  sectionId?: string | null;
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   submitLabel: string;
   pendingLabel: string;
@@ -93,12 +107,19 @@ export function LinkForm({
   onCancel?: () => void;
 }) {
   const t = useTranslations("linkForm");
+  const list = useTranslations("linkList");
+  const sectionT = useTranslations("sectionForm");
   const common = useTranslations("common");
   const idPrefix = link ? `link-${link.id}` : "link-new";
   const [url, setUrl] = useState(link?.url ?? "");
   const embed = embedFor(url.trim());
   const [asPlayer, setAsPlayer] = useState(link ? link.embed : true);
   const [size, setSize] = useState<LinkSize>(link?.size ?? "small");
+  const [sectionId, setSectionId] = useState(initialSection ?? "");
+  // In a carousel every link is a card with a picture, so the size
+  // choice doesn't apply and the picture is always offered.
+  const inCarousel =
+    sections.find((s) => s.id === sectionId)?.layout === "carousel";
   const [imageUrl, setImageUrl] = useState(link?.image_url ?? null);
   // The preview belongs to the URL it was made for.
   const [preview, setPreview] = useState(
@@ -202,7 +223,7 @@ export function LinkForm({
     onCancel?.();
   }
 
-  const showsPlayer = Boolean(embed) && asPlayer;
+  const showsPlayer = Boolean(embed) && asPlayer && !inCarousel;
   // A preview made for another URL no longer matches the link.
   const currentPreview =
     preview && preview.url === url.trim() ? preview.src : null;
@@ -239,6 +260,47 @@ export function LinkForm({
         />
       </div>
 
+      {sections.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor={`${idPrefix}-section`}
+            className="text-sm font-bold text-ink"
+          >
+            {t("section")}
+          </label>
+          <span className="relative">
+            <select
+              id={`${idPrefix}-section`}
+              name="section_id"
+              value={sectionId}
+              onChange={(e) => setSectionId(e.target.value)}
+              className={input({ select: true })}
+            >
+              <option value="">{t("noSection")}</option>
+              {sections.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title ?? list("untitled")}
+                </option>
+              ))}
+            </select>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-ink-muted"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
+        </div>
+      )}
+
       {/* Always mounted so screen readers announce the detected link. */}
       <div role="status" aria-live="polite" className="empty:hidden">
         {embed && (
@@ -260,8 +322,9 @@ export function LinkForm({
         )}
       </div>
 
-      {showsPlayer ? (
-        // A player has its own size, but keep the choice for later.
+      {showsPlayer || inCarousel ? (
+        // A player or a card has its own size, but keep the choice for
+        // later.
         <input type="hidden" name="size" value={size} />
       ) : (
         <fieldset className="flex flex-col gap-2">
@@ -313,7 +376,10 @@ export function LinkForm({
         </fieldset>
       )}
 
-      {!showsPlayer && size === "big" && (
+      {inCarousel && (
+        <p className="text-sm text-ink-muted">{sectionT("carouselTip")}</p>
+      )}
+      {!showsPlayer && (size === "big" || inCarousel) && (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-bold text-ink">{t("picture")}</p>
           {shownPicture && (

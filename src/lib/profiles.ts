@@ -18,6 +18,11 @@ import {
   photoPrefix,
   type GalleryLayout,
 } from "@/lib/gallery";
+import {
+  nestRows,
+  sectionLayoutFrom,
+  type SectionLayout,
+} from "@/lib/sections";
 
 export type PublicLink = {
   kind: "link";
@@ -37,8 +42,16 @@ export type PublicGallery = {
   layout: GalleryLayout;
   photos: PublicPhoto[];
 };
-// Links and photo galleries share one list, in the owner's order.
-export type PublicItem = PublicLink | PublicGallery;
+// A title with links under it, as a list or a row of cards.
+export type PublicSection = {
+  kind: "section";
+  id: string;
+  title: string | null;
+  layout: SectionLayout;
+  links: PublicLink[];
+};
+// Links, photo galleries and sections share one list, in the owner's order.
+export type PublicItem = PublicLink | PublicGallery | PublicSection;
 export type PublicProfile = {
   id: string;
   username: string;
@@ -85,7 +98,7 @@ export async function getPublicProfile(
     supabase
       .from("links")
       .select(
-        "id, kind, title, url, layout, embed, size, image_url, preview_url, starts_at, ends_at",
+        "id, kind, parent_id, title, url, layout, embed, size, image_url, preview_url, starts_at, ends_at",
       )
       .eq("profile_id", profile.id)
       .eq("is_visible", true)
@@ -112,38 +125,57 @@ export async function getPublicProfile(
     p.url.startsWith(photoPrefix()),
   );
 
-  const items: PublicItem[] = all
-    .filter((l) => isLive(l, now))
-    .flatMap((l): PublicItem[] => {
-      if (l.kind === "gallery") {
-        const own = photos
-          .filter((p) => p.link_id === l.id)
-          .map((p) => ({ id: p.id, url: p.url, alt: p.alt ?? "" }));
-        // An empty gallery shows nothing.
-        if (own.length === 0) return [];
-        return [
+  type Row = (typeof all)[number];
+  const toLink = (l: Row): PublicLink[] =>
+    l.kind === "link" && l.url
+      ? [
           {
-            kind: "gallery",
+            kind: "link",
             id: l.id,
-            title: l.title,
-            layout: galleryLayoutFrom(l.layout),
-            photos: own,
+            title: l.title ?? "",
+            url: l.url,
+            embed: l.embed ? embedFor(l.url) : null,
+            size: isLinkSize(l.size) ? l.size : "small",
+            image_url: l.image_url ?? l.preview_url ?? null,
           },
-        ];
-      }
-      if (!l.url) return [];
+        ]
+      : [];
+
+  const items: PublicItem[] = nestRows(
+    all.filter((l) => isLive(l, now)),
+  ).flatMap(({ row: l, children }): PublicItem[] => {
+    if (l.kind === "gallery") {
+      const own = photos
+        .filter((p) => p.link_id === l.id)
+        .map((p) => ({ id: p.id, url: p.url, alt: p.alt ?? "" }));
+      // An empty gallery shows nothing.
+      if (own.length === 0) return [];
       return [
         {
-          kind: "link",
+          kind: "gallery",
           id: l.id,
-          title: l.title,
-          url: l.url,
-          embed: l.embed ? embedFor(l.url) : null,
-          size: isLinkSize(l.size) ? l.size : "small",
-          image_url: l.image_url ?? l.preview_url ?? null,
+          title: l.title ?? "",
+          layout: galleryLayoutFrom(l.layout),
+          photos: own,
         },
       ];
-    });
+    }
+    if (l.kind === "section") {
+      const links = children.flatMap(toLink);
+      // A section with nothing to show is left out, title included.
+      if (links.length === 0) return [];
+      return [
+        {
+          kind: "section",
+          id: l.id,
+          title: l.title,
+          layout: sectionLayoutFrom(l.layout),
+          links,
+        },
+      ];
+    }
+    return toLink(l);
+  });
 
   return {
     id: profile.id,
