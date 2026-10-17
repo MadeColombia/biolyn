@@ -122,7 +122,10 @@
       "copied": "Copiado",
       "email": "Correo",
       "on": "Compartir en {app}"
-    }
+    },
+    "previousLinks": "Enlaces anteriores",
+    "nextLinks": "Enlaces siguientes",
+    "links": "Enlaces"
   },
   "dashboard": {
     "signOut": "Cerrar sesión",
@@ -135,7 +138,7 @@
     "profileTitle": "Perfil",
     "profileText": "Tu foto, nombre y bio aparecen arriba en tu página.",
     "contentTitle": "Contenido",
-    "contentText": "Añade enlaces y carruseles de fotos y arrástralos en el orden que quieras. Lo que ocultes se queda aquí, pero no sale en tu página.",
+    "contentText": "Añade enlaces, secciones y carruseles de fotos y arrástralos en el orden que quieras. Arrastra enlaces a una sección para agruparlos. Lo que ocultes se queda aquí, pero no sale en tu página.",
     "socialsTitle": "Redes sociales",
     "socialsText": "Aparecen como iconos bajo tu nombre. Deja un campo vacío para quitarlo.",
     "themeTitle": "Tema",
@@ -250,7 +253,11 @@
     "linkHint": "Un botón a cualquier web, video o canción",
     "carousel": "Carrusel de fotos",
     "carouselHint": "Hasta {max} fotos, en carrusel o en cuadrícula",
-    "addLink": "Añadir enlace"
+    "addLink": "Añadir enlace",
+    "section": "Sección",
+    "sectionHint": "Un título con enlaces debajo, en lista o en una fila de tarjetas",
+    "sectionTitle": "Añadir una sección",
+    "addSection": "Añadir sección"
   },
   "linkForm": {
     "title": "Título",
@@ -279,10 +286,23 @@
     "schedule": "Programar (opcional)",
     "showFrom": "Mostrar desde",
     "hideAfter": "Ocultar después de",
-    "saveChanges": "Guardar cambios"
+    "saveChanges": "Guardar cambios",
+    "section": "Sección",
+    "noSection": "Ninguna, en la lista principal"
+  },
+  "sectionForm": {
+    "title": "Título de la sección",
+    "titlePlaceholder": "Últimos episodios",
+    "titleHint": "Opcional. Se ve encima de los enlaces.",
+    "style": "Estilo",
+    "list": "Lista",
+    "listHint": "Botones, uno debajo de otro.",
+    "carousel": "Carrusel",
+    "carouselHint": "Tarjetas en fila que se deslizan.",
+    "carouselTip": "Consejo: ponles una imagen a estos enlaces. Se ve en cada tarjeta."
   },
   "linkList": {
-    "empty": "Aquí no hay nada todavía. Toca Añadir para crear tu primer enlace o carrusel de fotos.",
+    "empty": "Aquí no hay nada todavía. Toca Añadir para crear tu primer enlace, sección o carrusel de fotos.",
     "big": "Grande",
     "hidden": "Oculto",
     "showsBetween": "Se muestra del {start} al {end}",
@@ -294,7 +314,18 @@
     "photoGrid": "Cuadrícula de fotos",
     "photoCarousel": "Carrusel de fotos",
     "noPhotos": "Todavía sin fotos, oculto en tu página",
-    "photoCount": "{count, plural, one {# foto} other {# fotos}}"
+    "photoCount": "{count, plural, one {# foto} other {# fotos}}",
+    "untitled": "Sección sin título",
+    "linkCount": "{count, plural, one {# enlace} other {# enlaces}}",
+    "emptySection": "Aún no tiene enlaces, no se ve en tu página",
+    "addHere": "Añadir enlace aquí",
+    "dropHere": "Arrastra enlaces aquí",
+    "styleList": "Lista",
+    "styleCarousel": "Carrusel",
+    "deleteSectionTitle": "¿Borrar esta sección?",
+    "deleteSectionText": "{count, plural, one {Su enlace puede quedarse en tu página o borrarse con ella.} other {Sus # enlaces pueden quedarse en tu página o borrarse con ella.}}",
+    "keepLinks": "Borrar sección, mantener enlaces",
+    "deleteAll": "Borrar todo"
   },
   "photos": {
     "showAs": "Mostrar como",
@@ -448,6 +479,10 @@
     "reportsOff": "Las denuncias no están disponibles ahora mismo.",
     "reportFailed": "No se pudo enviar la denuncia. Inténtalo de nuevo.",
     "reportTooMany": "Ya enviaste varias denuncias. Inténtalo más tarde.",
-    "reportNoPage": "Esa página no existe."
+    "reportNoPage": "Esa página no existe.",
+    "sectionGone": "Esa sección ya no existe. Recarga la página.",
+    "sectionFull": "Una sección puede tener hasta {max} enlaces.",
+    "maxSections": "Puedes tener hasta {max} secciones.",
+    "sectionFailed": "No se pudo guardar la sección."
   }
 }

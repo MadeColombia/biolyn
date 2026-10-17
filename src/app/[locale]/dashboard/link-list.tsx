@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   closestCenter,
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -23,15 +27,20 @@ import { Badge, Button, cx } from "@/components/ui";
 import { embedFor } from "@/lib/embeds";
 import type { GalleryLayout } from "@/lib/gallery";
 import { isIconPreview } from "@/lib/link-form";
+import { MAX_SECTION_LINKS, type SectionLayout } from "@/lib/sections";
 import {
+  addLink,
   deleteLink,
-  reorderLinks,
+  deleteSection,
+  reorderItems,
   toggleEmbed,
   toggleLink,
   updateLink,
+  updateSection,
 } from "./actions";
-import { LinkForm, type EditableLink } from "./link-form";
+import { LinkForm, type EditableLink, type SectionOption } from "./link-form";
 import { PhotoManager } from "./photos";
+import { LayoutPicture, SectionForm } from "./section-form";
 
 export type LinkItem = EditableLink & { kind: "link"; is_visible: boolean };
 export type GalleryItem = {
@@ -42,8 +51,34 @@ export type GalleryItem = {
   layout: GalleryLayout;
   photos: { id: string; url: string; alt: string }[];
 };
-/** One row of the list: a link or a photo carousel. */
-export type ListItem = LinkItem | GalleryItem;
+export type SectionItem = {
+  kind: "section";
+  id: string;
+  title: string | null;
+  is_visible: boolean;
+  layout: SectionLayout;
+  links: LinkItem[];
+};
+/** One top-level row of the list: a link, a photo carousel or a section. */
+export type ListItem = LinkItem | GalleryItem | SectionItem;
+
+// The order on screen: top-level ids, and the link ids in each section.
+type Tree = { id: string; children: string[] }[];
+
+const treeOf = (items: ListItem[]): Tree =>
+  items.map((i) => ({
+    id: i.id,
+    children: i.kind === "section" ? i.links.map((l) => l.id) : [],
+  }));
+
+// Where an item sits: "top", or the id of its section.
+function containerOf(tree: Tree, id: string): string | null {
+  if (tree.some((e) => e.id === id)) return "top";
+  return tree.find((e) => e.children.includes(id))?.id ?? null;
+}
+
+// The empty space inside a section that takes dropped links.
+const DROP = "drop:";
 
 // Shown in the creator's own time zone. The server renders UTC first,
 // so the text is allowed to change once the browser takes over.
@@ -66,16 +101,19 @@ function useScheduleText(link: LinkItem) {
 }
 
 // The parent gives this a `key` built from the server data, so the list
-// starts fresh whenever the saved links change.
+// starts fresh whenever the saved items change.
 export function LinkList({
-  items: initial,
+  items,
   userId,
 }: {
   items: ListItem[];
   userId: string;
 }) {
   const t = useTranslations("linkList");
-  const [links, setLinks] = useState(initial);
+  const [tree, setTree] = useState(() => treeOf(items));
+  // The latest order, read by the drag handlers between renders.
+  const current = useRef(tree);
+  const before = useRef(tree);
   const [, startTransition] = useTransition();
   const sensors = useSensors(
     // A small move threshold keeps taps on the buttons working.
@@ -85,16 +123,123 @@ export function LinkList({
     }),
   );
 
-  function onDragEnd({ active, over }: DragEndEvent) {
-    if (!over || active.id === over.id) return;
-    const from = links.findIndex((l) => l.id === active.id);
-    const to = links.findIndex((l) => l.id === over.id);
-    const next = arrayMove(links, from, to);
-    setLinks(next); // show the new order right away
-    startTransition(() => reorderLinks(next.map((l) => l.id)));
+  const byId = new Map<string, ListItem>();
+  for (const item of items) {
+    byId.set(item.id, item);
+    if (item.kind === "section") {
+      for (const link of item.links) byId.set(link.id, link);
+    }
+  }
+  const sections: SectionOption[] = items.flatMap((i) =>
+    i.kind === "section"
+      ? [{ id: i.id, title: i.title, layout: i.layout }]
+      : [],
+  );
+
+  function show(next: Tree) {
+    current.current = next;
+    setTree(next);
   }
 
-  if (links.length === 0) {
+  // The section a link would land in when it's over `overId`: the section
+  // itself (its title row or its empty space), or null when it's over
+  // another row.
+  function sectionUnder(overId: string): string | null {
+    if (overId.startsWith(DROP)) return overId.slice(DROP.length);
+    return byId.get(overId)?.kind === "section" ? overId : null;
+  }
+
+  // Sections, photo carousels and links at the top level only swap with
+  // top-level rows. Links can also go into sections that have room.
+  const collisions: CollisionDetection = (args) => {
+    const activeId = String(args.active.id);
+    const isLink = byId.get(activeId)?.kind === "link";
+    const top = new Set(current.current.map((e) => e.id));
+    const droppableContainers = args.droppableContainers.filter((c) => {
+      const id = String(c.id);
+      if (!isLink) return top.has(id);
+      const section = sectionUnder(id);
+      if (!section) return true;
+      const inside =
+        current.current.find((e) => e.id === section)?.children ?? [];
+      return inside.includes(activeId) || inside.length < MAX_SECTION_LINKS;
+    });
+    const hits = pointerWithin({ ...args, droppableContainers });
+    return hits.length > 0
+      ? hits
+      : closestCenter({ ...args, droppableContainers });
+  };
+
+  // Moves a link between the main list and a section while it's dragged,
+  // so the rows open up where it will land.
+  function onDragOver({ active, over }: DragOverEvent) {
+    if (!over) return;
+    const id = String(active.id);
+    const overId = String(over.id);
+    if (byId.get(id)?.kind !== "link") return;
+    const tree = current.current;
+    const from = containerOf(tree, id);
+    const to = sectionUnder(overId) ?? containerOf(tree, overId);
+    if (!from || !to || from === to) return;
+
+    let next = tree
+      .filter((e) => e.id !== id)
+      .map((e) =>
+        e.id === from
+          ? { ...e, children: e.children.filter((c) => c !== id) }
+          : e,
+      );
+    if (to === "top") {
+      const at = next.findIndex((e) => e.id === overId);
+      next.splice(at < 0 ? next.length : at, 0, { id, children: [] });
+    } else {
+      next = next.map((e) => {
+        if (e.id !== to) return e;
+        const children = [...e.children];
+        const at = children.indexOf(overId);
+        children.splice(at < 0 ? children.length : at, 0, id);
+        return { ...e, children };
+      });
+    }
+    show(next);
+  }
+
+  function onDragEnd({ active, over }: DragEndEvent) {
+    let next = current.current;
+    const id = String(active.id);
+    const overId = over ? String(over.id) : null;
+    if (overId && overId !== id) {
+      const container = containerOf(next, id);
+      if (container && container === containerOf(next, overId)) {
+        next =
+          container === "top"
+            ? arrayMove(
+                next,
+                next.findIndex((e) => e.id === id),
+                next.findIndex((e) => e.id === overId),
+              )
+            : next.map((e) =>
+                e.id === container
+                  ? {
+                      ...e,
+                      children: arrayMove(
+                        e.children,
+                        e.children.indexOf(id),
+                        e.children.indexOf(overId),
+                      ),
+                    }
+                  : e,
+              );
+      }
+    }
+    show(next); // show the new order right away
+    if (JSON.stringify(next) !== JSON.stringify(before.current)) {
+      before.current = next;
+      startTransition(() => reorderItems(next));
+    }
+  }
+
+  if (tree.length === 0) {
     return (
       <p className="rounded-2xl bg-raised p-6 text-center text-ink-soft">
         {t("empty")}
@@ -106,25 +251,69 @@ export function LinkList({
     <DndContext
       id="links"
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={collisions}
+      onDragStart={() => {
+        before.current = current.current;
+      }}
+      onDragOver={onDragOver}
       onDragEnd={onDragEnd}
+      onDragCancel={() => show(before.current)}
     >
-      <SortableContext items={links} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={tree.map((e) => e.id)}
+        strategy={verticalListSortingStrategy}
+      >
         <ul className="flex flex-col gap-3">
-          {links.map((item) =>
-            item.kind === "gallery" ? (
-              <SortableGallery key={item.id} gallery={item} userId={userId} />
-            ) : (
-              <SortableLink key={item.id} link={item} userId={userId} />
-            ),
-          )}
+          {tree.map(({ id, children }) => {
+            const item = byId.get(id);
+            if (!item) return null;
+            if (item.kind === "gallery") {
+              return (
+                <SortableGallery key={id} gallery={item} userId={userId} />
+              );
+            }
+            if (item.kind === "section") {
+              return (
+                <SortableSection
+                  key={id}
+                  section={item}
+                  links={children.flatMap((c) => {
+                    const link = byId.get(c);
+                    return link?.kind === "link" ? [link] : [];
+                  })}
+                  sections={sections}
+                  userId={userId}
+                />
+              );
+            }
+            return (
+              <SortableLink
+                key={id}
+                link={item}
+                sectionId={null}
+                sections={sections}
+                userId={userId}
+              />
+            );
+          })}
         </ul>
       </SortableContext>
     </DndContext>
   );
 }
 
-function SortableLink({ link, userId }: { link: LinkItem; userId: string }) {
+function SortableLink({
+  link,
+  sectionId,
+  sections,
+  userId,
+}: {
+  link: LinkItem;
+  /** The section it's in now, or null on the main list. */
+  sectionId: string | null;
+  sections: SectionOption[];
+  userId: string;
+}) {
   const t = useTranslations("linkList");
   const common = useTranslations("common");
   const form = useTranslations("linkForm");
@@ -231,6 +420,8 @@ function SortableLink({ link, userId }: { link: LinkItem; userId: string }) {
           <LinkForm
             userId={userId}
             link={link}
+            sections={sections}
+            sectionId={sectionId}
             action={updateLink.bind(null, link.id)}
             submitLabel={form("saveChanges")}
             pendingLabel={common("saving")}
@@ -305,8 +496,7 @@ function SortableGallery({
     isDragging,
   } = useSortable({ id: gallery.id });
   const count = gallery.photos.length;
-  const label =
-    gallery.layout === "grid" ? t("photoGrid") : t("photoCarousel");
+  const label = gallery.layout === "grid" ? t("photoGrid") : t("photoCarousel");
 
   return (
     <li
@@ -406,6 +596,261 @@ function SortableGallery({
           />
         </div>
       )}
+    </li>
+  );
+}
+
+// A section: its title row, then the links inside it, which can be
+// dragged within it, out of it, or into it from the main list.
+function SortableSection({
+  section,
+  links,
+  sections,
+  userId,
+}: {
+  section: SectionItem;
+  links: LinkItem[];
+  sections: SectionOption[];
+  userId: string;
+}) {
+  const t = useTranslations("linkList");
+  const common = useTranslations("common");
+  const addT = useTranslations("addItem");
+  const linkForm = useTranslations("linkForm");
+  const [open, setOpen] = useState<"edit" | "add" | "delete" | null>(null);
+  const [deleting, startDelete] = useTransition();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+  const name = section.title ?? t("untitled");
+  const toggle = (panel: "edit" | "add" | "delete") =>
+    setOpen((now) => (now === panel ? null : panel));
+
+  function remove(keepLinks: boolean) {
+    startDelete(() => deleteSection(section.id, keepLinks));
+  }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cx(
+        "flex flex-col gap-2 rounded-3xl border bg-raised/50 p-2",
+        isDragging ? "relative z-10 border-brand" : "border-edge",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <DragHandle
+          label={name}
+          handleRef={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+        />
+        <span
+          className={cx(
+            "hidden w-16 shrink-0 rounded-lg border border-edge bg-surface px-1.5 sm:block",
+            !section.is_visible && "opacity-50",
+          )}
+        >
+          <LayoutPicture layout={section.layout} small />
+        </span>
+        <div
+          className={cx(
+            "min-w-0 flex-1 basis-40",
+            !section.is_visible && "opacity-50",
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <p
+              className={cx(
+                "truncate font-bold",
+                !section.title && "text-ink-muted italic",
+              )}
+            >
+              {name}
+            </p>
+            <Badge tone="neutral" className="shrink-0">
+              {section.layout === "carousel"
+                ? t("styleCarousel")
+                : t("styleList")}
+            </Badge>
+            {!section.is_visible && (
+              <Badge tone="neutral" className="shrink-0">
+                {t("hidden")}
+              </Badge>
+            )}
+          </div>
+          <p className="truncate text-sm text-ink-muted">
+            {links.length === 0
+              ? t("emptySection")
+              : t("linkCount", { count: links.length })}
+          </p>
+        </div>
+        <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={open === "edit"}
+            aria-controls={`edit-${section.id}`}
+            onClick={() => toggle("edit")}
+          >
+            {open === "edit" ? common("close") : common("edit")}
+          </Button>
+          <form action={toggleLink.bind(null, section.id, section.is_visible)}>
+            <Button variant="ghost" size="sm">
+              {section.is_visible ? common("hide") : common("show")}
+            </Button>
+          </form>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={deleting}
+            aria-expanded={links.length > 0 ? open === "delete" : undefined}
+            onClick={() =>
+              links.length > 0 ? toggle("delete") : remove(false)
+            }
+          >
+            {common("delete")}
+          </Button>
+        </div>
+      </div>
+
+      {open === "edit" && (
+        <div
+          id={`edit-${section.id}`}
+          className="rounded-2xl border border-edge bg-surface p-4"
+        >
+          <SectionForm
+            section={section}
+            action={updateSection.bind(null, section.id)}
+            submitLabel={linkForm("saveChanges")}
+            pendingLabel={common("saving")}
+            onSaved={() => setOpen(null)}
+            onCancel={() => setOpen(null)}
+          />
+        </div>
+      )}
+
+      {open === "delete" && (
+        <div
+          role="group"
+          aria-labelledby={`delete-${section.id}`}
+          className="flex flex-col gap-3 rounded-2xl border border-danger/40 bg-surface p-4"
+        >
+          <p id={`delete-${section.id}`} className="font-bold">
+            {t("deleteSectionTitle")}
+          </p>
+          <p className="text-sm text-ink-soft">
+            {t("deleteSectionText", { count: links.length })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={deleting}
+              onClick={() => remove(true)}
+            >
+              {t("keepLinks")}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              disabled={deleting}
+              onClick={() => remove(false)}
+            >
+              {t("deleteAll")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(null)}
+            >
+              {common("cancel")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <SortableContext
+        items={links.map((l) => l.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <ul className="flex flex-col gap-2 pl-3 sm:pl-6">
+          {links.map((link) => (
+            <SortableLink
+              key={link.id}
+              link={link}
+              sectionId={section.id}
+              sections={sections}
+              userId={userId}
+            />
+          ))}
+          {links.length === 0 && <DropZone sectionId={section.id} />}
+        </ul>
+      </SortableContext>
+
+      {links.length < MAX_SECTION_LINKS &&
+        (open === "add" ? (
+          <div className="ml-3 rounded-2xl border border-edge bg-surface p-4 sm:ml-6">
+            <LinkForm
+              userId={userId}
+              sections={sections}
+              sectionId={section.id}
+              action={addLink}
+              submitLabel={addT("addLink")}
+              pendingLabel={common("adding")}
+              onSaved={() => setOpen(null)}
+              onCancel={() => setOpen(null)}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => toggle("add")}
+            className="ml-3 flex min-h-11 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-edge text-sm font-bold text-brand transition hover:border-brand hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:ml-6"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              aria-hidden
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            {t("addHere")}
+          </button>
+        ))}
+    </li>
+  );
+}
+
+// The space in an empty section where a dragged link can be dropped.
+function DropZone({ sectionId }: { sectionId: string }) {
+  const t = useTranslations("linkList");
+  const { setNodeRef, isOver } = useDroppable({ id: `${DROP}${sectionId}` });
+  return (
+    <li
+      ref={setNodeRef}
+      className={cx(
+        "flex min-h-14 items-center justify-center rounded-2xl border-2 border-dashed p-3 text-sm text-ink-muted",
+        isOver ? "border-brand bg-surface" : "border-edge",
+      )}
+    >
+      {t("dropHere")}
     </li>
   );
 }

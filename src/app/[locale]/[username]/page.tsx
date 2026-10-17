@@ -14,18 +14,11 @@ import { getPublicProfile } from "@/lib/profiles";
 import { SOCIAL_PLATFORMS } from "@/lib/socials";
 import { motionOf, THEMES } from "@/lib/themes";
 import { ThemeMotion } from "@/components/theme-motion";
-import { CORNER_CLASSES } from "@/lib/corners";
-import { isIconPreview } from "@/lib/link-form";
 import { CoverPhoto } from "./cover-photo";
 import { Gallery } from "./gallery";
+import { LinkBlock, SectionBlock } from "./link-block";
 import { ShareButton } from "./share-button";
 import { ViewTracker } from "./view-tracker";
-
-// Heights the Spotify and Apple Music players are designed for.
-const PLAYER_HEIGHT = {
-  spotify: { short: "h-[152px]", tall: "h-[352px]" },
-  apple: { short: "h-[175px]", tall: "h-[450px]" },
-};
 
 export async function generateMetadata(
   props: PageProps<"/[locale]/[username]">,
@@ -161,81 +154,34 @@ async function Profile({
             )}
             {/* Extra space above the blocks sets the profile apart. */}
             <ul className="mt-6 flex w-full flex-col gap-3 md:mt-10">
-              {profile.items.map((link) => (
-                <li key={link.id}>
-                  {link.kind === "gallery" ? (
+              {profile.items.map((item) => (
+                <li
+                  key={item.id}
+                  // A section gets extra space above its title.
+                  className={
+                    item.kind === "section" ? "not-first:mt-4" : undefined
+                  }
+                >
+                  {item.kind === "gallery" ? (
                     <Gallery
-                      title={link.title}
-                      layout={link.layout}
-                      photos={link.photos}
+                      title={item.title}
+                      layout={item.layout}
+                      photos={item.photos}
                       corners={profile.corners}
                     />
-                  ) : link.embed ? (
-                    // The player draws its own rounded corners. Clipping
-                    // it to the block shape keeps every block square-cut
-                    // when the owner picks Square.
-                    <div
-                      className={`w-full overflow-hidden ${CORNER_CLASSES[profile.corners].block} ${theme.embed} ${
-                        link.embed.kind === "youtube"
-                          ? "aspect-video"
-                          : PLAYER_HEIGHT[link.embed.kind][
-                              link.embed.tall ? "tall" : "short"
-                            ]
-                      }`}
-                    >
-                      <iframe
-                        src={link.embed.src}
-                        title={link.title}
-                        loading="lazy"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        allowFullScreen
-                        className="size-full border-0"
-                      />
-                    </div>
-                  ) : link.size === "big" ? (
-                    <a
-                      href={`/api/click/${link.id}`}
-                      className={`block w-full overflow-hidden p-4 text-center font-semibold transition ${CORNER_CLASSES[profile.corners].block} ${theme.card}`}
-                    >
-                      {link.image_url && isIconPreview(link.image_url) ? (
-                        // The site's icon, centered on a tinted panel.
-                        <span
-                          className={`flex aspect-video w-full items-center justify-center ${CORNER_CLASSES[profile.corners].inner} ${theme.avatar}`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={link.image_url}
-                            alt=""
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            className="h-1/2 w-auto max-w-1/2 object-contain"
-                          />
-                        </span>
-                      ) : (
-                        link.image_url && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={link.image_url}
-                            alt=""
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            className={`aspect-video w-full object-cover ${CORNER_CLASSES[profile.corners].inner}`}
-                          />
-                        )
-                      )}
-                      <span
-                        className={`block px-4 text-lg ${link.image_url ? "py-4" : "py-8"}`}
-                      >
-                        {link.title}
-                      </span>
-                    </a>
+                  ) : item.kind === "section" ? (
+                    <SectionBlock
+                      section={item}
+                      theme={theme}
+                      corners={profile.corners}
+                      fallbackLabel={t("profile.links")}
+                    />
                   ) : (
-                    <a
-                      href={`/api/click/${link.id}`}
-                      className={`block w-full px-4 py-4 text-center font-medium transition ${CORNER_CLASSES[profile.corners].block} ${theme.button}`}
-                    >
-                      {link.title}
-                    </a>
+                    <LinkBlock
+                      link={item}
+                      theme={theme}
+                      corners={profile.corners}
+                    />
                   )}
                 </li>
               ))}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { embedFor } from "@/lib/embeds";
+import { embedFor, youtubeThumbnail } from "@/lib/embeds";
 
 const YT = "dQw4w9WgXcQ";
 const SP = "4cOdK2wGLETKBW3PvgPWqT";
@@ -152,4 +152,23 @@ describe("embedFor: anything else", () => {
       expect(embedFor(url)).toBeNull();
     },
   );
+});
+
+describe("youtubeThumbnail", () => {
+  it("gives the video's picture for YouTube links", () => {
+    expect(youtubeThumbnail("https://youtu.be/dQw4w9WgXcQ")).toBe(
+      "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    );
+    expect(
+      youtubeThumbnail("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5"),
+    ).toBe("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+  });
+
+  it.each([
+    "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+    "https://example.com",
+    "not a url",
+  ])("gives nothing for %s", (url) => {
+    expect(youtubeThumbnail(url)).toBeNull();
+  });
 });

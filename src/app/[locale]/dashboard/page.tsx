@@ -26,6 +26,7 @@ import {
 } from "@/lib/themes";
 import { ThemeMotion } from "@/components/theme-motion";
 import { galleryLayoutFrom } from "@/lib/gallery";
+import { nestRows, sectionLayoutFrom } from "@/lib/sections";
 import { cardDesign, cardVersion } from "@/lib/qr-card";
 import { walletsOn } from "@/lib/pass-content";
 import { setCorners, setFont, setTheme, signOut } from "./actions";
@@ -148,7 +149,7 @@ async function Dashboard() {
   const { data: rows } = await supabase
     .from("links")
     .select(
-      "id, kind, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
+      "id, kind, parent_id, title, url, layout, is_visible, embed, size, image_url, preview_url, starts_at, ends_at",
     )
     .eq("profile_id", profile.id)
     .order("position");
@@ -159,22 +160,45 @@ async function Dashboard() {
     .eq("profile_id", profile.id)
     .order("position");
 
-  // Galleries and links share one list, so they can be dragged in any order.
-  const items: ListItem[] = (rows ?? []).map((row) =>
-    row.kind === "gallery"
-      ? {
-          kind: "gallery" as const,
-          id: row.id,
-          title: row.title,
-          is_visible: row.is_visible,
-          layout: galleryLayoutFrom(row.layout),
-          photos: (photos ?? [])
-            .filter((p) => p.link_id === row.id)
-            .map(({ id, url, alt }) => ({ id, url, alt })),
-        }
-      : { ...row, kind: "link" as const, url: row.url ?? "" },
+  // Links, galleries and sections share one list, so they can be dragged
+  // in any order. Links can also sit inside a section.
+  type Row = NonNullable<typeof rows>[number];
+  const toLink = (row: Row): LinkItem => ({
+    ...row,
+    kind: "link",
+    title: row.title ?? "",
+    url: row.url ?? "",
+  });
+  const items: ListItem[] = nestRows(rows ?? []).map(
+    ({ row, children }): ListItem =>
+      row.kind === "gallery"
+        ? {
+            kind: "gallery",
+            id: row.id,
+            title: row.title ?? "",
+            is_visible: row.is_visible,
+            layout: galleryLayoutFrom(row.layout),
+            photos: (photos ?? [])
+              .filter((p) => p.link_id === row.id)
+              .map(({ id, url, alt }) => ({ id, url, alt })),
+          }
+        : row.kind === "section"
+          ? {
+              kind: "section",
+              id: row.id,
+              title: row.title,
+              is_visible: row.is_visible,
+              layout: sectionLayoutFrom(row.layout),
+              links: children.map(toLink),
+            }
+          : toLink(row),
   );
-  const links = items.filter((i): i is LinkItem => i.kind === "link");
+  const links = (rows ?? []).filter((r) => r.kind === "link").map(toLink);
+  const sections = items.flatMap((i) =>
+    i.kind === "section"
+      ? [{ id: i.id, title: i.title, layout: i.layout }]
+      : [],
+  );
 
   const currentTheme = themeFrom(profile.theme);
   const currentFont = fontFrom(profile.theme);
@@ -259,7 +283,9 @@ async function Dashboard() {
       </header>
 
       <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("profileTitle")}>{t("profileText")}</SectionTitle>
+        <SectionTitle title={t("profileTitle")}>
+          {t("profileText")}
+        </SectionTitle>
         <AvatarUpload
           userId={user.id}
           avatarUrl={profile.avatar_url}
@@ -273,8 +299,10 @@ async function Dashboard() {
       </Card>
 
       <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("contentTitle")}>{t("contentText")}</SectionTitle>
-        <AddItemMenu userId={user.id} />
+        <SectionTitle title={t("contentTitle")}>
+          {t("contentText")}
+        </SectionTitle>
+        <AddItemMenu userId={user.id} sections={sections} />
         <div className="border-t border-line pt-6">
           <LinkList
             key={JSON.stringify(items)}
@@ -313,7 +341,9 @@ async function Dashboard() {
       )}
 
       <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("socialsTitle")}>{t("socialsText")}</SectionTitle>
+        <SectionTitle title={t("socialsTitle")}>
+          {t("socialsText")}
+        </SectionTitle>
         <SocialsForm socials={socialsFrom(profile.socials)} />
       </Card>
 
@@ -398,7 +428,9 @@ async function Dashboard() {
       </Card>
 
       <Card padding="md" className="flex flex-col gap-6">
-        <SectionTitle title={t("cornersTitle")}>{t("cornersText")}</SectionTitle>
+        <SectionTitle title={t("cornersTitle")}>
+          {t("cornersText")}
+        </SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(Object.keys(CORNERS) as CornerStyle[]).map((id) => {
             const selected = id === currentCorners;

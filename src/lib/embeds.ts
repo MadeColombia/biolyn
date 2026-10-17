@@ -97,3 +97,12 @@ function appleMusic(url: URL): Embed | null {
     tall: type !== "song" && !song,
   };
 }
+
+// The video's own thumbnail for a YouTube link, so a link card in a
+// carousel has a picture even when the owner didn't add one.
+export function youtubeThumbnail(raw: string): string | null {
+  const embed = embedFor(raw);
+  if (embed?.kind !== "youtube") return null;
+  const id = embed.src.split("/").at(-1);
+  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+}
