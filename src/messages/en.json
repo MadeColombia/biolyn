@@ -112,7 +112,17 @@
     "showPhoto": "Show photo {n}",
     "openPhoto": "Open photo: {alt}",
     "openPhotoNumber": "Open photo {n}",
-    "photo": "Photo"
+    "photo": "Photo",
+    "share": {
+      "button": "Share",
+      "title": "Share this page",
+      "close": "Close",
+      "link": "Page link",
+      "copy": "Copy link",
+      "copied": "Copied",
+      "email": "Email",
+      "on": "Share on {app}"
+    }
   },
   "dashboard": {
     "signOut": "Sign out",

@@ -18,6 +18,7 @@ import { CORNER_CLASSES } from "@/lib/corners";
 import { isIconPreview } from "@/lib/link-form";
 import { CoverPhoto } from "./cover-photo";
 import { Gallery } from "./gallery";
+import { ShareButton } from "./share-button";
 import { ViewTracker } from "./view-tracker";
 
 // Heights the Spotify and Apple Music players are designed for.
@@ -104,6 +105,12 @@ async function Profile({
           className={`relative isolate mx-auto flex w-full flex-1 flex-col overflow-clip md:max-w-xl md:rounded-[2rem] md:shadow-2xl ${theme.page}`}
         >
           <ThemeMotion motion={motionOf(profile.theme)} />
+          <ShareButton
+            username={profile.username}
+            name={name}
+            avatarUrl={profile.avatar_url}
+            onPhoto={cover}
+          />
           {cover && <CoverPhoto src={profile.avatar_url!} alt={name} />}
           <div
             className={`mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 pb-16 md:max-w-none md:px-10 ${
@@ -233,16 +240,33 @@ async function Profile({
                 </li>
               ))}
             </ul>
-            <div
-              className={`mt-auto flex flex-wrap items-center justify-center gap-x-4 pt-8 text-sm ${theme.muted}`}
-            >
-              <Link href={homePath(locale)}>{t("profile.madeWith")}</Link>
-              <span aria-hidden>·</span>
-              <Link href={`/report/${profile.username}`} rel="nofollow">
-                {t("profile.report")}
+            <div className="mt-auto flex flex-col items-center gap-2 pt-8 text-sm">
+              {/* The biolyn ring takes visitors to the homepage. */}
+              <Link
+                href={homePath(locale)}
+                className="inline-flex items-center gap-2 rounded-full border border-current/15 bg-current/5 py-2 pr-3.5 pl-2.5 font-semibold transition hover:bg-current/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+              >
+                <svg viewBox="0 0 64 64" width={18} height={18} aria-hidden>
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="23"
+                    fill="none"
+                    strokeWidth="14"
+                    className="stroke-brand"
+                  />
+                </svg>
+                {t("profile.madeWith")}
               </Link>
-              <span aria-hidden>·</span>
-              <LanguageSwitcher />
+              <div
+                className={`flex flex-wrap items-center justify-center gap-x-4 ${theme.muted}`}
+              >
+                <Link href={`/report/${profile.username}`} rel="nofollow">
+                  {t("profile.report")}
+                </Link>
+                <span aria-hidden>·</span>
+                <LanguageSwitcher />
+              </div>
             </div>
           </div>
         </div>
