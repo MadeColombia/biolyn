@@ -4,10 +4,13 @@ import { fakeClient, type FakeClient } from "../helpers/supabase";
 let admin: FakeClient | null;
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => admin }));
 vi.mock("@/lib/rate-limit", () => ({ visitorId: () => "visitor" }));
-vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers(),
+  cookies: async () => ({ get: () => undefined }),
+}));
 
-const { submitReport } = await import("@/app/report/actions");
-const { REPORT_REASONS } = await import("@/app/report/reasons");
+const { submitReport } = await import("@/app/[locale]/report/actions");
+const { REPORT_REASONS } = await import("@/app/[locale]/report/reasons");
 
 const form = (fields: Record<string, string>) => {
   const fd = new FormData();

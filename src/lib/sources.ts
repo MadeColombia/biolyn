@@ -119,20 +119,27 @@ export type SourceRow = {
  * Names for every tracking link the owner ever made. Deleted ones keep
  * their name with "(deleted)", so their past visits still make sense.
  */
-export function sourceNames(rows: SourceRow[]): Record<string, string> {
+export function sourceNames(
+  rows: SourceRow[],
+  deleted: (name: string) => string = (name) => `${name} (deleted)`,
+): Record<string, string> {
   return Object.fromEntries(
-    rows.map((r) => [r.code, r.deleted_at ? `${r.label} (deleted)` : r.label]),
+    rows.map((r) => [r.code, r.deleted_at ? deleted(r.label) : r.label]),
   );
 }
 
 /** What the dashboard shows for a channel key. */
-export function channelLabel(key: string, names: Record<string, string>) {
+export function channelLabel(
+  key: string,
+  names: Record<string, string>,
+  direct: string = DIRECT_LABEL,
+) {
   if (key.startsWith("s:")) {
     const code = key.slice(2);
     return names[code] ?? code;
   }
   if (key.startsWith("r:")) return key.slice(2);
-  return DIRECT_LABEL;
+  return direct;
 }
 
 export type SourceValues = { label: string; code: string };
@@ -140,14 +147,16 @@ export type SourceValues = { label: string; code: string };
 /** Checks the "new source link" form. */
 export function parseSourceForm(
   formData: FormData,
-): { values: SourceValues } | { error: string } {
+):
+  | { values: SourceValues }
+  | { error: "sourceNameMissing" | "sourceNameTooLong" | "sourceNameEmpty" } {
   const label = String(formData.get("label") ?? "").trim();
-  if (!label) return { error: "Give the link a name, like TikTok." };
-  if (label.length > 40) return { error: "Keep the name under 40 characters." };
+  if (!label) return { error: "sourceNameMissing" };
+  if (label.length > 40) return { error: "sourceNameTooLong" };
   // The code in the address is made from the name; owners never see it.
   const code = cleanSource(label);
   if (!code || !CODE.test(code)) {
-    return { error: "Use at least one letter or number in the name." };
+    return { error: "sourceNameEmpty" };
   }
   return { values: { label, code } };
 }

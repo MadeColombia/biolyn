@@ -29,6 +29,7 @@ const content: PassContent = {
   style: "page",
   theme: "sunset",
   code: "flyer",
+  locale: "en",
 };
 
 describe("wallet helpers", () => {

@@ -19,6 +19,7 @@
     "@supabase/supabase-js": "^2.117.3",
     "fflate": "^0.8.3",
     "next": "16.4.0",
+    "next-intl": "^4.14.9",
     "node-forge": "^1.4.0",
     "qrcode": "^1.5.4",
     "react": "19.3.0",

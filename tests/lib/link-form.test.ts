@@ -70,14 +70,14 @@ describe("isAllowedPreview", () => {
 describe("parseLinkForm", () => {
   it("needs a title and a URL", () => {
     expect(parseLinkForm(form({ title: " ", url: "x" }))).toEqual({
-      error: "Add a title and a URL.",
+      error: "linkMissing",
     });
   });
 
   it("caps the title length", () => {
     expect(
       parseLinkForm(form({ title: "a".repeat(81), url: "https://a.com" })),
-    ).toEqual({ error: "Keep the title under 80 characters." });
+    ).toEqual({ error: "titleTooLong" });
   });
 
   it("refuses an end time before the start time", () => {
@@ -90,7 +90,7 @@ describe("parseLinkForm", () => {
           ends_at: "2026-10-14T10:00:00Z",
         }),
       ),
-    ).toEqual({ error: "The end time must be after the start time." });
+    ).toEqual({ error: "endBeforeStart" });
   });
 
   it("fills in defaults", () => {

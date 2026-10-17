@@ -7,17 +7,13 @@ import { isThemeId, THEMES, type CardColors } from "@/lib/themes";
 export const CARD_SIZE = { width: 1080, height: 1350 } as const;
 
 // "brand" and "night" use the biolyn colors; "page" follows the owner's
-// public page theme.
-export const CARD_STYLES = {
-  brand: { label: "Light" },
-  night: { label: "Dark" },
-  page: { label: "My page" },
-} as const;
+// public page theme. Their names are the "card.styles" messages.
+export const CARD_STYLES = ["brand", "night", "page"] as const;
 
-export type CardStyle = keyof typeof CARD_STYLES;
+export type CardStyle = (typeof CARD_STYLES)[number];
 
 export function cardStyleFrom(value: unknown): CardStyle {
-  return typeof value === "string" && Object.hasOwn(CARD_STYLES, value)
+  return (CARD_STYLES as readonly unknown[]).includes(value)
     ? (value as CardStyle)
     : "brand";
 }
@@ -140,7 +136,8 @@ export function svgDataUrl(svg: string): string {
 /**
  * Where the card picture is served. `v` changes whenever something on
  * the card changes (picture, name, theme), so browsers and the CDN fetch
- * a fresh card instead of showing an old one.
+ * a fresh card instead of showing an old one. `lang` is the language of
+ * the card's words; English when left out.
  */
 export function cardUrl(
   username: string,
@@ -148,11 +145,19 @@ export function cardUrl(
     style,
     code,
     v,
+    lang,
     download,
-  }: { style: CardStyle; code?: string; v?: string; download?: boolean },
+  }: {
+    style: CardStyle;
+    code?: string;
+    v?: string;
+    lang?: string;
+    download?: boolean;
+  },
 ): string {
   const params = new URLSearchParams({ style });
   if (code) params.set("s", code);
+  if (lang && lang !== "en") params.set("lang", lang);
   if (v) params.set("v", v);
   if (download) params.set("download", "1");
   return `/api/qr-card/${encodeURIComponent(username)}?${params}`;
@@ -174,23 +179,24 @@ export function cardChoices(
   {
     code,
     v,
+    lang,
     wallets = {},
   }: {
     code?: string;
     v?: string;
+    lang?: string;
     /** Which wallets have their keys set up. */
     wallets?: { apple?: boolean; google?: boolean };
   } = {},
 ) {
-  return (Object.keys(CARD_STYLES) as CardStyle[]).map((style) => {
-    const query = cardUrl(username, { style, code, v }).split("?")[1];
+  return CARD_STYLES.map((style) => {
+    const query = cardUrl(username, { style, code, v, lang }).split("?")[1];
     const pass = (wallet: string) =>
       `/api/wallet/${wallet}/${encodeURIComponent(username)}?${query}`;
     return {
       id: style,
-      label: CARD_STYLES[style].label,
-      src: cardUrl(username, { style, code, v }),
-      download: cardUrl(username, { style, code, v, download: true }),
+      src: cardUrl(username, { style, code, v, lang }),
+      download: cardUrl(username, { style, code, v, lang, download: true }),
       ...(wallets.apple ? { apple: pass("apple") } : {}),
       ...(wallets.google ? { google: pass("google") } : {}),
     };

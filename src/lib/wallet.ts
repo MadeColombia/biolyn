@@ -2,6 +2,7 @@
 // buttons on the share card. Each wallet stays off (buttons hidden, routes
 // 404) until its keys are set in the environment. See
 // docs/wallet-passes.md for how to get them.
+import type { Locale } from "@/i18n/locale";
 import { cardPalette, displayUrl, type CardStyle } from "@/lib/qr-card";
 
 /** What a wallet pass shows: the same things as the share card. */
@@ -17,6 +18,8 @@ export type PassContent = {
   theme: unknown;
   /** Tracking link code, if the pass is for one. */
   code: string | null;
+  /** Language of the pass's words. */
+  locale: Locale;
 };
 
 /**
@@ -72,7 +75,9 @@ export function passLook(content: PassContent) {
  * of reusing the old one. Only letters, numbers, "_" and "-".
  */
 export function passId(content: PassContent, version: string): string {
-  return [content.username, content.code ?? "page", content.style, version]
+  // English passes keep the ids they had before passes came in Spanish.
+  const lang = content.locale === "en" ? [] : [content.locale];
+  return [content.username, content.code ?? "page", content.style, ...lang, version]
     .join("_")
     .replace(/[^a-zA-Z0-9_-]/g, "-");
 }

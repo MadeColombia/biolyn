@@ -17,19 +17,25 @@ export const RESERVED_USERNAMES = new Set([
   "about",
   "_next",
   "favicon.ico",
+  // Language prefixes (biolyn.link/es is the Spanish homepage).
+  "en",
+  "es",
   "robots.txt",
   "sitemap.xml",
 ]);
 
 const USERNAME_PATTERN = /^[a-z0-9_.]{3,30}$/;
 
-export function validateUsername(raw: string): string | null {
+/** Checks a username. Returns the key of an "errors" message, or null. */
+export function validateUsername(
+  raw: string,
+): "usernameFormat" | "usernameReserved" | null {
   const username = raw.trim().toLowerCase();
   if (!USERNAME_PATTERN.test(username)) {
-    return "Use 3 to 30 characters: letters, numbers, dots or underscores.";
+    return "usernameFormat";
   }
   if (RESERVED_USERNAMES.has(username)) {
-    return "That username is reserved.";
+    return "usernameReserved";
   }
   return null;
 }

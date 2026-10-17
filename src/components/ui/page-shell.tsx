@@ -1,10 +1,13 @@
+import { useTranslations } from "next-intl";
 import { AccountLink } from "@/components/account-link";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "./logo";
 import { container, cx } from "./recipes";
 
 /**
  * Wraps a Biolyn screen: canvas background, body font, header with the logo
- * and Log in / Dashboard, and the footer. Put the screen's <main> inside.
+ * and Log in / Dashboard, and the footer with the language switcher. Put
+ * the screen's <main> inside.
  * Not for public profile pages (/[username]), which use the owner's theme.
  */
 export function PageShell({
@@ -18,6 +21,7 @@ export function PageShell({
   /** Right side of the header. Pass null to hide it. */
   header?: React.ReactNode;
 }) {
+  const t = useTranslations("shell");
   return (
     <div className="flex flex-1 flex-col bg-canvas font-body text-ink">
       <header
@@ -34,10 +38,11 @@ export function PageShell({
       <footer
         className={cx(
           container(),
-          "border-t border-line pt-6 pb-10 text-sm text-ink-muted",
+          "flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4 pb-8 text-sm text-ink-muted",
         )}
       >
-        © biolyn
+        <span>{t("footer")}</span>
+        <LanguageSwitcher className="hover:text-ink" />
       </footer>
     </div>
   );

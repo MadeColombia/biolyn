@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkLinkUrl } from "@/lib/link-safety";
 
-const LOCAL = "Use a public website address, not a local or IP address.";
+const LOCAL = "privateHost";
 
 describe("checkLinkUrl: basic checks", () => {
   it.each([
@@ -13,9 +13,7 @@ describe("checkLinkUrl: basic checks", () => {
   });
 
   it("rejects text that isn't a URL", async () => {
-    expect(await checkLinkUrl("not a url")).toBe(
-      "That URL doesn't look right.",
-    );
+    expect(await checkLinkUrl("not a url")).toBe("badUrl");
   });
 
   it.each([
@@ -25,9 +23,7 @@ describe("checkLinkUrl: basic checks", () => {
     "ftp://example.com",
     "mailto:a@b.co",
   ])("rejects the unsafe scheme in %s", async (url) => {
-    expect(await checkLinkUrl(url)).toBe(
-      "Links must start with http:// or https://.",
-    );
+    expect(await checkLinkUrl(url)).toBe("badProtocol");
   });
 
   it.each([
@@ -67,9 +63,7 @@ describe("checkLinkUrl: Google Safe Browsing", () => {
       Response.json({ matches: [{ threatType: "MALWARE" }] }),
     );
     vi.stubGlobal("fetch", fetch);
-    expect(await checkLinkUrl("https://bad.example")).toMatch(
-      /Google Safe Browsing flags this link/,
-    );
+    expect(await checkLinkUrl("https://bad.example")).toBe("unsafe");
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain("key=k");
     expect(JSON.parse(String(init.body)).threatInfo.threatEntries).toEqual([

@@ -39,6 +39,10 @@ const data: Analytics = {
 const labels = {
   channel: (k: string) => k.toUpperCase(),
   links: { l1: "Shop" } as Record<string, string>,
+  views: "Views",
+  clicks: "Clicks",
+  deletedLink: "Deleted link",
+  previous: (n: number) => `Previous ${n} days`,
 };
 const opts = (o: Partial<ChartOptions> = {}): ChartOptions => ({
   metric: "views",

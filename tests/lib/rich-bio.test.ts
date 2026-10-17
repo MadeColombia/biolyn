@@ -158,13 +158,13 @@ describe("sanitizeBio", () => {
       bio: `<b>${"a".repeat(160)}</b>`,
     });
     expect(sanitizeBio("a".repeat(161))).toEqual({
-      error: "Keep your bio under 160 characters.",
+      error: "bioTooLong",
     });
   });
 
   it("refuses too much formatting", () => {
     expect(sanitizeBio("<b><i><u><s>a</s></i></u></b>".repeat(60))).toEqual({
-      error: "Your bio has too much formatting. Remove some of it.",
+      error: "bioTooFormatted",
     });
   });
 });
