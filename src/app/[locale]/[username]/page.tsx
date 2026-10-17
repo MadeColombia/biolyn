@@ -55,7 +55,7 @@ export default async function ProfilePage(
           className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-6 py-16"
         >
           <p className="sr-only">{t("loading")}</p>
-          <Skeleton className="h-24 w-24 rounded-full" />
+          <Skeleton className="h-32 w-32 rounded-full" />
           <Skeleton className="h-7 w-44 rounded-xl" />
           <Skeleton className="h-4 w-64 rounded-xl" />
           <div className="flex w-full flex-col gap-3 pt-2">
@@ -116,11 +116,11 @@ async function Profile({
               <img
                 src={profile.avatar_url}
                 alt={name}
-                className="h-24 w-24 rounded-full object-cover"
+                className="h-32 w-32 rounded-full object-cover md:h-40 md:w-40"
               />
             ) : (
               <div
-                className={`flex h-24 w-24 items-center justify-center rounded-full text-3xl font-bold ${theme.avatar}`}
+                className={`flex h-32 w-32 items-center justify-center rounded-full text-4xl font-bold md:h-40 md:w-40 md:text-5xl ${theme.avatar}`}
               >
                 {name.charAt(0).toUpperCase()}
               </div>
@@ -152,7 +152,8 @@ async function Profile({
                 ))}
               </ul>
             )}
-            <ul className="flex w-full flex-col gap-3">
+            {/* Extra space above the blocks sets the profile apart. */}
+            <ul className="mt-6 flex w-full flex-col gap-3 md:mt-10">
               {profile.items.map((link) => (
                 <li key={link.id}>
                   {link.kind === "gallery" ? (
