@@ -16,8 +16,6 @@ import {
   cx,
 } from "@/components/ui";
 import { ThemeMotion } from "@/components/theme-motion";
-import { FONT_CLASS } from "@/components/profile-fonts";
-import { FONTS, type FontId } from "@/lib/fonts";
 import { motionOf, THEMES, type ThemeId } from "@/lib/themes";
 
 // Illustrative bar heights for the dashboard preview (not real data).
@@ -98,9 +96,26 @@ export default function Home() {
             </div>
           </Card>
 
-          <Feature title={t("styleTitle")} icon={<FontSamples />}>
-            {t("styleText")}
-          </Feature>
+          <Link
+            href="/login"
+            className={cx(
+              card({ tone: "interactive" }),
+              "group flex flex-col gap-5",
+            )}
+          >
+            <StylePreview />
+            <Heading>{t("styleTitle")}</Heading>
+            <p className="leading-relaxed text-ink-soft">{t("styleText")}</p>
+            <span className="mt-auto font-bold text-brand">
+              {t("styleCta")}{" "}
+              <span
+                aria-hidden="true"
+                className="inline-block transition group-hover:translate-x-1"
+              >
+                →
+              </span>
+            </span>
+          </Link>
 
           <Feature title={t("mediaTitle")} icon={<PlayerIcon />}>
             {t("mediaText")}
@@ -220,18 +235,18 @@ function ThemeTile({ id }: { id: ThemeId }) {
   );
 }
 
-// "Aa" in every page font.
-function FontSamples() {
+// A tiny page taking shape: a cover photo, a round picture and buttons
+// with different corners.
+function StylePreview() {
   return (
-    <div
-      className="flex items-baseline gap-3 text-3xl text-ink"
-      aria-hidden="true"
-    >
-      {(Object.keys(FONTS) as FontId[]).map((id) => (
-        <span key={id} className={FONT_CLASS[id]}>
-          Aa
-        </span>
-      ))}
+    <div aria-hidden="true">
+      <div className="h-16 rounded-2xl bg-linear-to-br from-brand/35 to-brand/5" />
+      <div className="-mt-7 ml-4 h-14 w-14 rounded-full bg-brand ring-4 ring-surface" />
+      <div className="mt-3 flex flex-col gap-2">
+        <span className="h-3 w-full rounded-none bg-raised" />
+        <span className="h-3 w-5/6 rounded-md bg-raised" />
+        <span className="h-3 w-2/3 rounded-full bg-brand" />
+      </div>
     </div>
   );
 }
