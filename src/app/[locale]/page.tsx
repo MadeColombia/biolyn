@@ -15,9 +15,18 @@ import {
   container,
   cx,
 } from "@/components/ui";
+import { SocialIcon } from "@/components/social-icon";
+import { ThemeMotion } from "@/components/theme-motion";
+import { FONT_CLASS } from "@/components/profile-fonts";
+import { CORNER_CLASSES, CORNERS, type CornerStyle } from "@/lib/corners";
+import { FONTS, type FontId } from "@/lib/fonts";
+import type { SocialId } from "@/lib/socials";
+import { motionOf, THEMES, type ThemeId } from "@/lib/themes";
 
 // Illustrative bar heights for the dashboard preview (not real data).
 const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
+
+const SAMPLE_SOCIALS: SocialId[] = ["instagram", "tiktok", "youtube", "x"];
 
 // Search engines get both homepages, each pointing at the other.
 export async function generateMetadata(): Promise<Metadata> {
@@ -35,6 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function Home() {
   const t = useTranslations("home");
+  const looks = useTranslations("looks");
   return (
     <PageShell showLogo={false}>
       <main className="flex flex-1 flex-col">
@@ -79,6 +89,46 @@ export default function Home() {
           )}
         >
           <Card className="flex flex-col gap-5 md:col-span-2">
+            <Heading>{t("themesTitle")}</Heading>
+            <p className="max-w-lg leading-relaxed text-ink-soft">
+              {t("themesText")}
+            </p>
+            <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
+              {(Object.keys(THEMES) as ThemeId[]).map((id) => (
+                <ThemeTile
+                  key={id}
+                  id={id}
+                  name={looks(`themes.${id}`)}
+                  moves={t("themeMoves")}
+                />
+              ))}
+            </ul>
+          </Card>
+
+          <Feature title={t("styleTitle")} icon={<StylePreview />}>
+            {t("styleText")}
+          </Feature>
+
+          <Feature title={t("blocksTitle")} icon={<BlocksPreview />}>
+            {t("blocksText")}
+          </Feature>
+          <Feature title={t("playersTitle")} icon={<PlayerIcon />}>
+            {t("playersText")}
+          </Feature>
+          <Feature
+            title={t("socialsTitle")}
+            icon={
+              <div className="flex h-10 items-center gap-3 text-brand">
+                {SAMPLE_SOCIALS.map((id) => (
+                  <SocialIcon key={id} id={id} />
+                ))}
+              </div>
+            }
+          >
+            {t("socialsText")}
+          </Feature>
+
+          <Card className="flex flex-col gap-5 md:col-span-2">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <Heading>{t("statsTitle")}</Heading>
               <span className="text-sm text-ink-muted">{t("statsSample")}</span>
@@ -105,23 +155,14 @@ export default function Home() {
             </div>
           </Card>
 
-          <Feature
-            title={t("themesTitle")}
-            icon={
-              <div className="flex gap-2.5" aria-hidden="true">
-                <span className="h-11 w-11 rounded-xl border border-edge bg-white" />
-                <span className="h-11 w-11 rounded-xl border border-slate-700 bg-slate-950" />
-                <span className="h-11 w-11 rounded-xl bg-linear-to-b from-orange-400 via-pink-500 to-purple-600" />
-              </div>
-            }
-          >
-            {t("themesText")}
-          </Feature>
-          <Feature title={t("socialsTitle")} icon={<ShareIcon />}>
-            {t("socialsText")}
-          </Feature>
           <Feature title={t("manageTitle")} icon={<SlidersIcon />}>
             {t("manageText")}
+          </Feature>
+          <Feature title={t("shareTitle")} icon={<ShareIcon />}>
+            {t("shareText")}
+          </Feature>
+          <Feature title={t("languagesTitle")} icon={<LanguagesIcon />}>
+            {t("languagesText")}
           </Feature>
         </section>
 
@@ -186,6 +227,82 @@ function Feature({
   );
 }
 
+// A tiny page in each theme, the same tile the dashboard picker shows.
+// Moving themes move here too (and stop for reduced motion).
+function ThemeTile({
+  id,
+  name,
+  moves,
+}: {
+  id: ThemeId;
+  name: string;
+  moves: string;
+}) {
+  const motion = motionOf(id);
+  return (
+    <li className="flex flex-col items-center gap-1.5 text-center text-xs font-semibold leading-tight">
+      <span
+        aria-hidden
+        className={cx(
+          "relative isolate flex h-16 w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-edge sm:h-20",
+          THEMES[id].page,
+        )}
+      >
+        <ThemeMotion motion={motion} preview />
+        <span className={cx("h-2 w-3/4 rounded-sm", THEMES[id].button)} />
+        <span className={cx("h-2 w-3/4 rounded-sm", THEMES[id].button)} />
+      </span>
+      <span>
+        {name}
+        {motion && (
+          <span className="block font-normal text-ink-muted">{moves}</span>
+        )}
+      </span>
+    </li>
+  );
+}
+
+// Every page font and every corner style, as a quick sample.
+function StylePreview() {
+  return (
+    <div className="flex flex-col gap-3" aria-hidden="true">
+      <div className="flex items-baseline gap-3 text-3xl text-ink">
+        {(Object.keys(FONTS) as FontId[]).map((id) => (
+          <span key={id} className={FONT_CLASS[id]}>
+            Aa
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2.5">
+        {(Object.keys(CORNERS) as CornerStyle[]).map((id) => (
+          <span
+            key={id}
+            className={cx(
+              "h-7 w-12 border-2 border-brand",
+              CORNER_CLASSES[id].block,
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// A small carousel: a row of photos running off the edge.
+function BlocksPreview() {
+  return (
+    <div className="flex flex-col gap-2" aria-hidden="true">
+      <div className="flex gap-2 overflow-hidden">
+        <span className="h-14 w-20 shrink-0 rounded-xl bg-brand" />
+        <span className="h-14 w-20 shrink-0 rounded-xl bg-raised" />
+        <span className="h-14 w-20 shrink-0 rounded-xl bg-edge" />
+        <span className="h-14 w-20 shrink-0 rounded-xl bg-raised" />
+      </div>
+      <span className="h-3 w-full rounded-full bg-raised" />
+    </div>
+  );
+}
+
 function Step({
   n,
   verb,
@@ -233,6 +350,24 @@ function ShareIcon() {
       <circle cx="18" cy="6" r="3" />
       <circle cx="18" cy="18" r="3" />
       <path d="M8.6 10.6l6.8-3.2M8.6 13.4l6.8 3.2" />
+    </svg>
+  );
+}
+
+function PlayerIcon() {
+  return (
+    <svg {...iconProps} width="40" height="40" className="stroke-brand">
+      <rect x="2.5" y="4" width="19" height="16" rx="3" />
+      <path d="M10 9v6l5-3z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function LanguagesIcon() {
+  return (
+    <svg {...iconProps} width="40" height="40" className="stroke-brand">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z" />
     </svg>
   );
 }
