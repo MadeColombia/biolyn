@@ -15,18 +15,22 @@ import {
   container,
   cx,
 } from "@/components/ui";
-import { SocialIcon } from "@/components/social-icon";
 import { ThemeMotion } from "@/components/theme-motion";
 import { FONT_CLASS } from "@/components/profile-fonts";
-import { CORNER_CLASSES, CORNERS, type CornerStyle } from "@/lib/corners";
 import { FONTS, type FontId } from "@/lib/fonts";
-import type { SocialId } from "@/lib/socials";
 import { motionOf, THEMES, type ThemeId } from "@/lib/themes";
 
 // Illustrative bar heights for the dashboard preview (not real data).
 const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
 
-const SAMPLE_SOCIALS: SocialId[] = ["instagram", "tiktok", "youtube", "x"];
+// A few eye-catching themes, moving ones first.
+const SHOWCASE_THEMES: ThemeId[] = [
+  "aurora",
+  "bubbles",
+  "gold",
+  "retro",
+  "sunset",
+];
 
 // Search engines get both homepages, each pointing at the other.
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,7 +48,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function Home() {
   const t = useTranslations("home");
-  const looks = useTranslations("looks");
   return (
     <PageShell showLogo={false}>
       <main className="flex flex-1 flex-col">
@@ -56,8 +59,8 @@ export default function Home() {
         >
           <Logo animated className="text-3xl sm:text-4xl" />
           <Heading as="h1" size="display" className="max-w-4xl">
-            {t("heroStart")} <span className="text-brand">{t("heroBrand")}</span>{" "}
-            {t("heroEnd")}
+            {t("heroStart")}{" "}
+            <span className="text-brand">{t("heroBrand")}</span> {t("heroEnd")}
           </Heading>
           <p className="max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl">
             {t("intro")}
@@ -77,9 +80,7 @@ export default function Home() {
               {t("claim")}
             </span>
           </Link>
-          <p className="text-sm text-ink-muted">
-            {t("signInOptions")}
-          </p>
+          <p className="text-sm text-ink-muted">{t("signInOptions")}</p>
         </section>
 
         <section
@@ -93,39 +94,19 @@ export default function Home() {
             <p className="max-w-lg leading-relaxed text-ink-soft">
               {t("themesText")}
             </p>
-            <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
-              {(Object.keys(THEMES) as ThemeId[]).map((id) => (
-                <ThemeTile
-                  key={id}
-                  id={id}
-                  name={looks(`themes.${id}`)}
-                  moves={t("themeMoves")}
-                />
+            <div className="grid grid-cols-5 gap-2.5" aria-hidden="true">
+              {SHOWCASE_THEMES.map((id) => (
+                <ThemeTile key={id} id={id} />
               ))}
-            </ul>
+            </div>
           </Card>
 
-          <Feature title={t("styleTitle")} icon={<StylePreview />}>
+          <Feature title={t("styleTitle")} icon={<FontSamples />}>
             {t("styleText")}
           </Feature>
 
-          <Feature title={t("blocksTitle")} icon={<BlocksPreview />}>
-            {t("blocksText")}
-          </Feature>
-          <Feature title={t("playersTitle")} icon={<PlayerIcon />}>
-            {t("playersText")}
-          </Feature>
-          <Feature
-            title={t("socialsTitle")}
-            icon={
-              <div className="flex h-10 items-center gap-3 text-brand">
-                {SAMPLE_SOCIALS.map((id) => (
-                  <SocialIcon key={id} id={id} />
-                ))}
-              </div>
-            }
-          >
-            {t("socialsText")}
+          <Feature title={t("mediaTitle")} icon={<PlayerIcon />}>
+            {t("mediaText")}
           </Feature>
 
           <Card className="flex flex-col gap-5 md:col-span-2">
@@ -136,7 +117,7 @@ export default function Home() {
             <p className="max-w-lg leading-relaxed text-ink-soft">
               {t("statsText")}
             </p>
-            <div className="flex h-40 items-end gap-2.5" aria-hidden="true">
+            <div className="flex h-32 items-end gap-2.5" aria-hidden="true">
               {SAMPLE_BARS.map((height, i) => (
                 <div
                   key={i}
@@ -147,23 +128,20 @@ export default function Home() {
             </div>
           </Card>
 
-          <Card tone="brand" className="flex flex-col justify-between gap-4">
-            <QrIcon />
-            <div>
-              <Heading className="mb-2">{t("qrTitle")}</Heading>
-              <p className="leading-relaxed">{t("qrText")}</p>
-            </div>
-          </Card>
-
           <Feature title={t("manageTitle")} icon={<SlidersIcon />}>
             {t("manageText")}
           </Feature>
-          <Feature title={t("shareTitle")} icon={<ShareIcon />}>
-            {t("shareText")}
-          </Feature>
-          <Feature title={t("languagesTitle")} icon={<LanguagesIcon />}>
-            {t("languagesText")}
-          </Feature>
+
+          <Card
+            tone="brand"
+            className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between md:col-span-2"
+          >
+            <div className="max-w-md">
+              <Heading className="mb-2">{t("shareTitle")}</Heading>
+              <p className="leading-relaxed">{t("shareText")}</p>
+            </div>
+            <QrIcon />
+          </Card>
         </section>
 
         <section className="border-t border-line">
@@ -227,78 +205,35 @@ function Feature({
   );
 }
 
-// A tiny page in each theme, the same tile the dashboard picker shows.
-// Moving themes move here too (and stop for reduced motion).
-function ThemeTile({
-  id,
-  name,
-  moves,
-}: {
-  id: ThemeId;
-  name: string;
-  moves: string;
-}) {
-  const motion = motionOf(id);
+// A tiny page in a theme. Moving themes move here too (and stop for
+// reduced motion).
+function ThemeTile({ id }: { id: ThemeId }) {
   return (
-    <li className="flex flex-col items-center gap-1.5 text-center text-xs font-semibold leading-tight">
-      <span
-        aria-hidden
-        className={cx(
-          "relative isolate flex h-16 w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-edge sm:h-20",
-          THEMES[id].page,
-        )}
-      >
-        <ThemeMotion motion={motion} preview />
-        <span className={cx("h-2 w-3/4 rounded-sm", THEMES[id].button)} />
-        <span className={cx("h-2 w-3/4 rounded-sm", THEMES[id].button)} />
-      </span>
-      <span>
-        {name}
-        {motion && (
-          <span className="block font-normal text-ink-muted">{moves}</span>
-        )}
-      </span>
-    </li>
+    <span
+      className={cx(
+        "relative isolate flex h-24 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-edge sm:h-32",
+        THEMES[id].page,
+      )}
+    >
+      <ThemeMotion motion={motionOf(id)} preview />
+      <span className={cx("h-2.5 w-3/4 rounded-sm", THEMES[id].button)} />
+      <span className={cx("h-2.5 w-3/4 rounded-sm", THEMES[id].button)} />
+    </span>
   );
 }
 
-// Every page font and every corner style, as a quick sample.
-function StylePreview() {
+// "Aa" in every page font.
+function FontSamples() {
   return (
-    <div className="flex flex-col gap-3" aria-hidden="true">
-      <div className="flex items-baseline gap-3 text-3xl text-ink">
-        {(Object.keys(FONTS) as FontId[]).map((id) => (
-          <span key={id} className={FONT_CLASS[id]}>
-            Aa
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-2.5">
-        {(Object.keys(CORNERS) as CornerStyle[]).map((id) => (
-          <span
-            key={id}
-            className={cx(
-              "h-7 w-12 border-2 border-brand",
-              CORNER_CLASSES[id].block,
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// A small carousel: a row of photos running off the edge.
-function BlocksPreview() {
-  return (
-    <div className="flex flex-col gap-2" aria-hidden="true">
-      <div className="flex gap-2 overflow-hidden">
-        <span className="h-14 w-20 shrink-0 rounded-xl bg-brand" />
-        <span className="h-14 w-20 shrink-0 rounded-xl bg-raised" />
-        <span className="h-14 w-20 shrink-0 rounded-xl bg-edge" />
-        <span className="h-14 w-20 shrink-0 rounded-xl bg-raised" />
-      </div>
-      <span className="h-3 w-full rounded-full bg-raised" />
+    <div
+      className="flex items-baseline gap-3 text-3xl text-ink"
+      aria-hidden="true"
+    >
+      {(Object.keys(FONTS) as FontId[]).map((id) => (
+        <span key={id} className={FONT_CLASS[id]}>
+          Aa
+        </span>
+      ))}
     </div>
   );
 }
@@ -343,31 +278,11 @@ function QrIcon() {
   );
 }
 
-function ShareIcon() {
-  return (
-    <svg {...iconProps} width="40" height="40" className="stroke-brand">
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="6" r="3" />
-      <circle cx="18" cy="18" r="3" />
-      <path d="M8.6 10.6l6.8-3.2M8.6 13.4l6.8 3.2" />
-    </svg>
-  );
-}
-
 function PlayerIcon() {
   return (
     <svg {...iconProps} width="40" height="40" className="stroke-brand">
       <rect x="2.5" y="4" width="19" height="16" rx="3" />
       <path d="M10 9v6l5-3z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function LanguagesIcon() {
-  return (
-    <svg {...iconProps} width="40" height="40" className="stroke-brand">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z" />
     </svg>
   );
 }
