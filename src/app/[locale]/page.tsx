@@ -15,9 +15,14 @@ import {
   container,
   cx,
 } from "@/components/ui";
+import { ThemeMotion } from "@/components/theme-motion";
+import { motionOf, THEMES, type ThemeId } from "@/lib/themes";
 
 // Illustrative bar heights for the dashboard preview (not real data).
 const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
+
+// Three eye-catching themes (all of them move).
+const SHOWCASE_THEMES: ThemeId[] = ["aurora", "bubbles", "retro"];
 
 // Search engines get both homepages, each pointing at the other.
 export async function generateMetadata(): Promise<Metadata> {
@@ -46,8 +51,8 @@ export default function Home() {
         >
           <Logo animated className="text-3xl sm:text-4xl" />
           <Heading as="h1" size="display" className="max-w-4xl">
-            {t("heroStart")} <span className="text-brand">{t("heroBrand")}</span>{" "}
-            {t("heroEnd")}
+            {t("heroStart")}{" "}
+            <span className="text-brand">{t("heroBrand")}</span> {t("heroEnd")}
           </Heading>
           <p className="max-w-xl text-lg leading-relaxed text-ink-soft sm:text-xl">
             {t("intro")}
@@ -67,9 +72,7 @@ export default function Home() {
               {t("claim")}
             </span>
           </Link>
-          <p className="text-sm text-ink-muted">
-            {t("signInOptions")}
-          </p>
+          <p className="text-sm text-ink-muted">{t("signInOptions")}</p>
         </section>
 
         <section
@@ -79,6 +82,46 @@ export default function Home() {
           )}
         >
           <Card className="flex flex-col gap-5 md:col-span-2">
+            <Heading>{t("themesTitle")}</Heading>
+            <p className="max-w-lg leading-relaxed text-ink-soft">
+              {t("themesText")}
+            </p>
+            <div className="grid grid-cols-4 gap-2.5">
+              {SHOWCASE_THEMES.map((id) => (
+                <ThemeTile key={id} id={id} />
+              ))}
+              <span className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-edge p-2 text-center text-sm font-semibold text-ink-soft sm:h-32">
+                {t("themesMore")}
+              </span>
+            </div>
+          </Card>
+
+          <Link
+            href="/login"
+            className={cx(
+              card({ tone: "interactive" }),
+              "group flex flex-col gap-5",
+            )}
+          >
+            <StylePreview />
+            <Heading>{t("styleTitle")}</Heading>
+            <p className="leading-relaxed text-ink-soft">{t("styleText")}</p>
+            <span className="mt-auto font-bold text-brand">
+              {t("styleCta")}{" "}
+              <span
+                aria-hidden="true"
+                className="inline-block transition group-hover:translate-x-1"
+              >
+                →
+              </span>
+            </span>
+          </Link>
+
+          <Feature title={t("mediaTitle")} icon={<PlayerIcon />}>
+            {t("mediaText")}
+          </Feature>
+
+          <Card className="flex flex-col gap-5 md:col-span-2">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <Heading>{t("statsTitle")}</Heading>
               <span className="text-sm text-ink-muted">{t("statsSample")}</span>
@@ -86,7 +129,7 @@ export default function Home() {
             <p className="max-w-lg leading-relaxed text-ink-soft">
               {t("statsText")}
             </p>
-            <div className="flex h-40 items-end gap-2.5" aria-hidden="true">
+            <div className="flex h-32 items-end gap-2.5" aria-hidden="true">
               {SAMPLE_BARS.map((height, i) => (
                 <div
                   key={i}
@@ -97,32 +140,20 @@ export default function Home() {
             </div>
           </Card>
 
-          <Card tone="brand" className="flex flex-col justify-between gap-4">
-            <QrIcon />
-            <div>
-              <Heading className="mb-2">{t("qrTitle")}</Heading>
-              <p className="leading-relaxed">{t("qrText")}</p>
-            </div>
-          </Card>
-
-          <Feature
-            title={t("themesTitle")}
-            icon={
-              <div className="flex gap-2.5" aria-hidden="true">
-                <span className="h-11 w-11 rounded-xl border border-edge bg-white" />
-                <span className="h-11 w-11 rounded-xl border border-slate-700 bg-slate-950" />
-                <span className="h-11 w-11 rounded-xl bg-linear-to-b from-orange-400 via-pink-500 to-purple-600" />
-              </div>
-            }
-          >
-            {t("themesText")}
-          </Feature>
-          <Feature title={t("socialsTitle")} icon={<ShareIcon />}>
-            {t("socialsText")}
-          </Feature>
           <Feature title={t("manageTitle")} icon={<SlidersIcon />}>
             {t("manageText")}
           </Feature>
+
+          <Card
+            tone="brand"
+            className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between md:col-span-2"
+          >
+            <div className="max-w-md">
+              <Heading className="mb-2">{t("shareTitle")}</Heading>
+              <p className="leading-relaxed">{t("shareText")}</p>
+            </div>
+            <QrIcon />
+          </Card>
         </section>
 
         <section className="border-t border-line">
@@ -186,6 +217,40 @@ function Feature({
   );
 }
 
+// A tiny page in a theme. Moving themes move here too (and stop for
+// reduced motion).
+function ThemeTile({ id }: { id: ThemeId }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cx(
+        "relative isolate flex h-24 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-edge sm:h-32",
+        THEMES[id].page,
+      )}
+    >
+      <ThemeMotion motion={motionOf(id)} preview />
+      <span className={cx("h-2.5 w-3/4 rounded-sm", THEMES[id].button)} />
+      <span className={cx("h-2.5 w-3/4 rounded-sm", THEMES[id].button)} />
+    </span>
+  );
+}
+
+// A tiny page taking shape: a cover photo, a round picture and buttons
+// with different corners.
+function StylePreview() {
+  return (
+    <div aria-hidden="true">
+      <div className="h-16 rounded-2xl bg-linear-to-br from-brand/35 to-brand/5" />
+      <div className="-mt-7 ml-4 h-14 w-14 rounded-full bg-brand ring-4 ring-surface" />
+      <div className="mt-3 flex flex-col gap-2">
+        <span className="h-3 w-full rounded-none bg-raised" />
+        <span className="h-3 w-5/6 rounded-md bg-raised" />
+        <span className="h-3 w-2/3 rounded-full bg-brand" />
+      </div>
+    </div>
+  );
+}
+
 function Step({
   n,
   verb,
@@ -226,13 +291,11 @@ function QrIcon() {
   );
 }
 
-function ShareIcon() {
+function PlayerIcon() {
   return (
     <svg {...iconProps} width="40" height="40" className="stroke-brand">
-      <circle cx="6" cy="12" r="3" />
-      <circle cx="18" cy="6" r="3" />
-      <circle cx="18" cy="18" r="3" />
-      <path d="M8.6 10.6l6.8-3.2M8.6 13.4l6.8 3.2" />
+      <rect x="2.5" y="4" width="19" height="16" rx="3" />
+      <path d="M10 9v6l5-3z" strokeLinejoin="round" />
     </svg>
   );
 }
