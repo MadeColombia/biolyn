@@ -23,14 +23,8 @@ import { motionOf, THEMES, type ThemeId } from "@/lib/themes";
 // Illustrative bar heights for the dashboard preview (not real data).
 const SAMPLE_BARS = [38, 52, 45, 70, 62, 88, 76];
 
-// A few eye-catching themes, moving ones first.
-const SHOWCASE_THEMES: ThemeId[] = [
-  "aurora",
-  "bubbles",
-  "gold",
-  "retro",
-  "sunset",
-];
+// Three eye-catching themes (all of them move).
+const SHOWCASE_THEMES: ThemeId[] = ["aurora", "bubbles", "retro"];
 
 // Search engines get both homepages, each pointing at the other.
 export async function generateMetadata(): Promise<Metadata> {
@@ -94,10 +88,13 @@ export default function Home() {
             <p className="max-w-lg leading-relaxed text-ink-soft">
               {t("themesText")}
             </p>
-            <div className="grid grid-cols-5 gap-2.5" aria-hidden="true">
+            <div className="grid grid-cols-4 gap-2.5">
               {SHOWCASE_THEMES.map((id) => (
                 <ThemeTile key={id} id={id} />
               ))}
+              <span className="flex h-24 items-center justify-center rounded-xl border-2 border-dashed border-edge p-2 text-center text-sm font-semibold text-ink-soft sm:h-32">
+                {t("themesMore")}
+              </span>
             </div>
           </Card>
 
@@ -210,6 +207,7 @@ function Feature({
 function ThemeTile({ id }: { id: ThemeId }) {
   return (
     <span
+      aria-hidden="true"
       className={cx(
         "relative isolate flex h-24 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-edge sm:h-32",
         THEMES[id].page,
